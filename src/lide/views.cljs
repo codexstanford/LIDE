@@ -16,14 +16,18 @@
     :args ["RD" "IULocation"]}])
 
 (def connections
-  {"applies" [{:rule "rd_type"
-               :connections [["RD", "RD"], ["RDType", "Type"]]}
-              {:rule "rd_iu_type"
-               :connections [["RD", "RD"], ["IUType", "IUType"]]}
-              {:rule "rd_iu_location"
-               :connections [["RD", "RD"], ["IULocation", "IULocation"]]}
-              {:rule "compliance_requires"
-               :connections [["RD", "RD"], ["ComplianceOption", "Rule"]]}]})
+  [{:src ["rd_type", "RD"]
+    :dest ["applies", "RD"]}
+   {:src ["rd_type", "Type"]
+    :dest ["applies", "RDType"]}
+   {:src ["rd_iu_type", "RD"]
+    :dest ["applies", "RD"]}
+   {:src ["rd_iu_type", "IUType"]
+    :dest ["applies", "IUType"]}
+   {:src ["rd_iu_location", "RD"]
+    :dest ["applies", "RD"]}
+   {:src ["rd_iu_location", "IULocation"]
+    :dest ["applies", "IULocation"]}])
 
 (def rule-positions
   {"applies" {:x 0 :y 0}
@@ -68,37 +72,62 @@
                    (:internals rule))
         internals-height (* arg-height (->> rule :internals count))]
     {:name name
-     :args args
-     :internals internals
-     :container {:size {:width  150
+     :args (into {} args)
+     :internals (into {} internals)
+     :container {:position (get rule-positions (:name rule) {:x 0 :y 0})
+                 :size {:width  150
                         :height (+ name-height args-height internals-height)}}}))
 
-(defn rule [props]
-  (let [position (get rule-positions (:name props) {:x 0 :y 0})
-        layout (rule-layout props)]
-    [:g {:transform (str "translate(" (:x position) "," (:y position) ")")
-         :key (:name props)}
-     [:rect {:class  "rule__bg"
-             :width  (->> layout :container :size :width)
-             :height (->> layout :container :size :height)}]
-     [:text {:x rule-name-padding
-             :y (/ (+ rule-name-padding rule-name-font-size rule-name-padding) 2)}
-      (:name props)]
-     [:<>
-      (map
-       (fn [[arg arg-layout]]
-         [:text {:x rule-binding-padding-x
-                 :y (->> arg-layout :position :y)}
-          arg])
-       (:args layout))]]))
+(defn rule [{:keys [rule layout]}]
+  [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
+       :key (:name rule)}
+   [:rect {:class  "rule__bg"
+           :width  (->> layout :container :size :width)
+           :height (->> layout :container :size :height)}]
+   [:text {:x rule-name-padding
+           :y (/ (+ rule-name-padding rule-name-font-size rule-name-padding) 2)}
+    (:name rule)]
+   [:<>
+    (map
+     (fn [[arg arg-layout]]
+       [:text {:x rule-binding-padding-x
+               :y (->> arg-layout :position :y)}
+        arg])
+     (:args layout))]])
+
+(defn socket-position [rule-layout value]
+  {:x (-> rule-layout :container :position :x)
+   :y (+ (-> rule-layout :container :position :y)
+         (-> rule-layout :args (get value) :position :y))})
+
+(defn connection [{:keys [connection rule-layouts]}]
+  (let [[start-rule start-value] (:src connection)
+        [end-rule end-value]     (:dest connection)
+        start-layout (get rule-layouts start-rule)
+        end-layout (get rule-layouts end-rule)
+        start (socket-position start-layout start-value)
+        end (socket-position end-layout end-value)]
+    [:line {:x1 (:x start)
+            :y1 (:y start)
+            :x2 (:x end)
+            :y2 (:y end)
+            :stroke "black"}]))
 
 (defn main-panel []
-  [:svg {:height 500
-         :width  1000}
-   [:rect {:class "graph__bg"
-           :height 500
-           :width  1000}]
-   (map rule rules)])
+  (let [rule-layouts (into {} (map
+                               #(vector (:name %) (rule-layout %))
+                               rules))]
+    [:svg {:height 500
+           :width  1000}
+     [:rect {:class "graph__bg"
+             :height 500
+             :width  1000}]
+     (map #(rule {:rule  %
+                  :layout (get rule-layouts (:name %))})
+          rules)
+     (map #(connection {:connection %
+                        :rule-layouts rule-layouts})
+          connections)]))
 
 #_(defn main-panel []
   (let [name (re-frame/subscribe [::subs/name])]
