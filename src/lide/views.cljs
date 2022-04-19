@@ -4,6 +4,34 @@
    [lide.subs :as subs]
    ))
 
+(def program
+  [{:name "applies"
+    :args ["RD", "ComplianceOption"]
+    :conj [{:predicate "rd_type"
+            :args ["RD", "RDType"]}
+           {:predicate "rd_iu_type"
+            :args ["RD", "IUType"]}
+           {:predicate "rd_iu_location"
+            :args ["RD", "IULocation"]}]}])
+
+(defn program-view-model [program]
+  (reduce
+   (fn [{:keys [predicates connections]} predicate]
+     ;; TODO support disjunction - we might already have a definition
+     (let [internals (->> predicate
+                          :conj
+                          (mapcat :args)
+                          (filter (fn [internal]
+                                    (not (some #(= internal %) (:args predicate))))))
+           predicate' (into {}
+                            [(select-keys predicate [:name :args])
+                             {:internals internals}])]
+       {:predicates (conj predicates predicate')
+        :connections connections}))
+   {:predicates  []
+    :connections []}
+   program))
+
 (def rules
   [{:name "applies"
     :args ["RD" "ComplianceOption"]
