@@ -93,7 +93,14 @@
        [:text {:x rule-binding-padding-x
                :y (->> arg-layout :position :y)}
         arg])
-     (:args layout))]])
+     (:args layout))]
+   [:<>
+    (map
+     (fn [[arg arg-layout]]
+       [:text {:x rule-binding-padding-x
+               :y (->> arg-layout :position :y)}
+        arg])
+     (:internals layout))]])
 
 (defn socket-position [rule-layout value {:keys [end]}]
   (let [all-names (merge (:args rule-layout) (:internals rule-layout))]
