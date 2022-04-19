@@ -6,31 +6,59 @@
 
 (def program
   [{:name "applies"
-    :args ["RD", "ComplianceOption"]
+    :args ["RD" "ComplianceOption"]
     :conj [{:predicate "rd_type"
-            :args ["RD", "RDType"]}
+            :args ["RD" "RDType"]}
            {:predicate "rd_iu_type"
-            :args ["RD", "IUType"]}
+            :args ["RD" "IUType"]}
            {:predicate "rd_iu_location"
-            :args ["RD", "IULocation"]}]}])
+            :args ["RD" "IULocation"]}]}
+   {:name "rd_type"
+    :args ["RD" "Type"]}
+   {:name "rd_iu_type"
+    :args ["RD" "IUType"]}
+   {:name "rd_iu_location"
+    :args ["RD" "IULocation"]}])
 
-(defn program-view-model [program]
-  (reduce
-   (fn [{:keys [predicates connections]} predicate]
-     ;; TODO support disjunction - we might already have a definition
+(defn predicates-view-model [program]
+  ;; TODO support disjunction - we might already have a definition
+  (map
+   (fn [predicate]
      (let [internals (->> predicate
                           :conj
                           (mapcat :args)
                           (filter (fn [internal]
-                                    (not (some #(= internal %) (:args predicate))))))
-           predicate' (into {}
-                            [(select-keys predicate [:name :args])
-                             {:internals internals}])]
-       {:predicates (conj predicates predicate')
-        :connections connections}))
-   {:predicates  []
-    :connections []}
+                                    (not (some #(= internal %) (:args predicate)))))
+                          vec)]
+       (into {} [(select-keys predicate [:name :args])
+                 {:internals internals}])))
    program))
+
+(defn connections-view-model [program]
+  (let [predicates-by-name (->> program
+                                (map #(vector (:name %) %))
+                                (into {}))
+        connections-nested (map
+                            (fn [predicate]
+                              (map
+                               (fn [conjunction]
+                                 (map-indexed
+                                  (fn [i arg]
+                                    [i arg]
+                                    {:src  [(:predicate conjunction)
+                                            (as-> conjunction x
+                                              (:predicate x)
+                                              (get predicates-by-name x)
+                                              (:args x)
+                                              (get x i))]
+                                     :dest [(:name predicate)
+                                            arg]})
+                                  (:args conjunction)))
+                               (:conj predicate)))
+                            program)]
+    (->> connections-nested
+         flatten
+         (remove nil?))))
 
 (def rules
   [{:name "applies"
@@ -153,9 +181,16 @@
             :stroke "black"}]))
 
 (defn main-panel []
-  (let [rule-layouts (into {} (map
-                               #(vector (:name %) (rule-layout %))
-                               rules))]
+  (let [predicates-vm (predicates-view-model program)
+        predicate-vms-by-name (->> predicates-vm
+                                   (map #(vector (:name %) %))
+                                   (into {}))
+        rule-layouts (->> predicate-vms-by-name
+                          (map
+                           (fn [[name pred]]
+                             [name (rule-layout pred)]))
+                          (into {}))
+        connections-vm (connections-view-model program)]
     [:svg {:height 500
            :width  1000}
      [:rect {:class "graph__bg"
@@ -163,10 +198,10 @@
              :width  1000}]
      (map #(rule {:rule  %
                   :layout (get rule-layouts (:name %))})
-          rules)
+          predicates-vm)
      (map #(connection {:connection %
                         :rule-layouts rule-layouts})
-          connections)]))
+          connections-vm)]))
 
 #_(defn main-panel []
   (let [name (re-frame/subscribe [::subs/name])]
