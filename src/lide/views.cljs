@@ -95,18 +95,22 @@
         arg])
      (:args layout))]])
 
-(defn socket-position [rule-layout value]
-  {:x (-> rule-layout :container :position :x)
-   :y (+ (-> rule-layout :container :position :y)
-         (-> rule-layout :args (get value) :position :y))})
+(defn socket-position [rule-layout value {:keys [end]}]
+  (let [all-names (merge (:args rule-layout) (:internals rule-layout))]
+    {:x (+ (-> rule-layout :container :position :x)
+           (if (= end :dest)
+             (-> rule-layout :container :size :width)
+             0))
+     :y (+ (-> rule-layout :container :position :y)
+           (-> all-names (get value) :position :y))}))
 
 (defn connection [{:keys [connection rule-layouts]}]
   (let [[start-rule start-value] (:src connection)
         [end-rule end-value]     (:dest connection)
         start-layout (get rule-layouts start-rule)
         end-layout (get rule-layouts end-rule)
-        start (socket-position start-layout start-value)
-        end (socket-position end-layout end-value)]
+        start (socket-position start-layout start-value {:end :src})
+        end (socket-position end-layout end-value {:end :dest})]
     [:line {:x1 (:x start)
             :y1 (:y start)
             :x2 (:x end)
