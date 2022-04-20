@@ -5,22 +5,6 @@
    [lide.subs :as subs]
    ))
 
-(def program
-  [{:head {:predicate "applies"
-           :args ["RD" "ComplianceOption"]}
-    :body [{:predicate "rd_type"
-            :args ["RD" "RDType"]}
-           {:predicate "rd_iu_type"
-            :args ["RD" "IUType"]}
-           {:predicate "rd_iu_location"
-            :args ["RD" "IULocation"]}]}
-   {:head {:predicate "rd_type"
-           :args ["RD" "Type"]}}
-   {:head {:predicate "rd_iu_type"
-           :args ["RD" "IUType"]}}
-   {:head {:predicate "rd_iu_location"
-           :args ["RD" "IULocation"]}}])
-
 (defn literal-to-epilog [literal]
   (str (:predicate literal)
        "("
@@ -175,7 +159,8 @@
             :key (str start-rule ":" start-value "->" end-rule ":" end-value)}]))
 
 (defn main-panel []
-  (let [rules-vm (rules-view-model program)
+  (let [program (re-frame/subscribe [::subs/program])
+        rules-vm (rules-view-model @program)
         rule-vms-by-head (->> rules-vm
                               (map #(vector (-> % :head :predicate) %))
                               (into {}))
@@ -184,7 +169,7 @@
                            (fn [[head pred]]
                              [head (rule-layout pred)]))
                           (into {}))
-        connections-vm (connections-view-model program)]
+        connections-vm (connections-view-model @program)]
     [:svg {:height 500
            :width  1000}
      [:rect {:class "graph__bg"
@@ -196,10 +181,3 @@
      (map #(connection {:connection %
                         :rule-layouts rule-layouts})
           connections-vm)]))
-
-#_(defn main-panel []
-  (let [name (re-frame/subscribe [::subs/name])]
-    [:div
-     [:h1
-      "Hello from " @name]
-     ]))
