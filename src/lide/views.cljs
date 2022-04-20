@@ -1,5 +1,6 @@
 (ns lide.views
   (:require
+   [clojure.string :as string]
    [re-frame.core :as re-frame]
    [lide.subs :as subs]
    ))
@@ -19,6 +20,23 @@
     :args ["RD" "IUType"]}
    {:name "rd_iu_location"
     :args ["RD" "IULocation"]}])
+
+(defn literal-to-epilog [literal]
+  (str (:predicate clause)
+       "("
+       (string/join ", " (:args clause))
+       ")"))
+
+(defn predicate-to-epilog [predicate]
+  (let [head (str (:name predicate)
+                  "("
+                  (string/join ", " (:args predicate))
+                  ")")
+        body (when (seq (:conj predicate))
+               (string/join "\n\t& " (map literal-to-epilog (:conj predicate))))]
+    (str head
+         (when body
+           (str " :-\n\t" body)))))
 
 (defn predicates-view-model [program]
   ;; TODO support disjunction - we might already have a definition
