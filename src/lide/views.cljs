@@ -165,8 +165,6 @@
         end-layout (get rule-layouts end-rule)
         start (socket-position start-layout start-value {:end :src})
         end (socket-position end-layout end-value {:end :dest})]
-    (println start-layout)
-    (println end-layout)
     [:line {:x1 (:x start)
             :y1 (:y start)
             :x2 (:x end)
