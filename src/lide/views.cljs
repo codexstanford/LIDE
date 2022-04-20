@@ -60,31 +60,6 @@
          flatten
          (remove nil?))))
 
-(def rules
-  [{:name "applies"
-    :args ["RD" "ComplianceOption"]
-    :internals ["RDType" "IUType" "IULocation"]}
-   {:name "rd_type"
-    :args ["RD" "Type"]}
-   {:name "rd_iu_type"
-    :args ["RD" "IUType"]}
-   {:name "rd_iu_location"
-    :args ["RD" "IULocation"]}])
-
-(def connections
-  [{:src ["rd_type", "RD"]
-    :dest ["applies", "RD"]}
-   {:src ["rd_type", "Type"]
-    :dest ["applies", "RDType"]}
-   {:src ["rd_iu_type", "RD"]
-    :dest ["applies", "RD"]}
-   {:src ["rd_iu_type", "IUType"]
-    :dest ["applies", "IUType"]}
-   {:src ["rd_iu_location", "RD"]
-    :dest ["applies", "RD"]}
-   {:src ["rd_iu_location", "IULocation"]
-    :dest ["applies", "IULocation"]}])
-
 (def rule-positions
   {"applies" {:x 0 :y 0}
    "rd_type" {:x 220 :y 0}
