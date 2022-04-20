@@ -30,7 +30,7 @@
 (defn rule-to-epilog [rule]
   (let [head (literal-to-epilog (:head rule))
         body (when (seq (:body rule))
-               (string/join "\n\t& " (map literal-to-epilog (:body rule))))]
+               (string/join " &\n\t" (map literal-to-epilog (:body rule))))]
     (str head
          (when body
            (str " :-\n\t" body)))))
