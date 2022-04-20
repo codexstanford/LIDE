@@ -127,7 +127,7 @@
 
 (defn rule [{:keys [rule layout]}]
   [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
-       :key (:head rule)}
+       :key (-> rule :head :predicate)}
    [:rect {:class  "rule__bg"
            :width  (->> layout :container :size :width)
            :height (->> layout :container :size :height)}]
@@ -138,14 +138,16 @@
     (map
      (fn [[arg arg-layout]]
        [:text {:x rule-binding-padding-x
-               :y (->> arg-layout :position :y)}
+               :y (->> arg-layout :position :y)
+               :key arg}
         arg])
      (:args layout))]
    [:<>
     (map
      (fn [[arg arg-layout]]
        [:text {:x rule-binding-padding-x
-               :y (->> arg-layout :position :y)}
+               :y (->> arg-layout :position :y)
+               :key arg}
         arg])
      (:internals layout))]])
 
@@ -169,7 +171,8 @@
             :y1 (:y start)
             :x2 (:x end)
             :y2 (:y end)
-            :stroke "black"}]))
+            :stroke "black"
+            :key (str start-rule ":" start-value "->" end-rule ":" end-value)}]))
 
 (defn main-panel []
   (let [rules-vm (rules-view-model program)
