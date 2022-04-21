@@ -5,6 +5,40 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>LIDE</title>
     <style type="text/css">
+      html, body, #app, #app-container {
+        height: 100%;
+        margin: 0;
+      }
+
+      #app-container {
+        display: flex;
+        flex-flow: row;
+        height: 100%;
+      }
+
+      .graph-panel {
+        width: 65%;
+      }
+
+      .code-panel {
+        width: 35%;
+        overflow-y: auto;
+      }
+
+      .code {
+        flex: 1 0 auto;
+        box-sizing: border-box;
+        min-height: 100%;
+        padding: 30px;
+        background-color: white;
+      }
+
+      svg {
+        /* SVG is inline by default, which causes annoying line-height
+           jiggery-pokery. block is more predictable */
+        display: block;
+      }
+
       svg text {
         dominant-baseline: middle;
       }

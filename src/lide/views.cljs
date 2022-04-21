@@ -1,6 +1,8 @@
 (ns lide.views
   (:require
+   [clojure.string :as string]
    [re-frame.core :as re-frame]
+   [lide.epilog :as epilog]
    [lide.events :as events]
    [lide.subs :as subs]
    ))
@@ -168,14 +170,20 @@
                              [head (rule-layout pred)]))
                           (into {}))
         connections-vm (connections-view-model @program)]
-    [:svg {:height 500
-           :width  1000}
-     [:rect {:class "graph__bg"
-             :height 500
-             :width  1000}]
-     (map #(rule {:rule  %
-                  :layout (get rule-layouts (-> % :head :predicate))})
-          rules-vm)
-     (map #(connection {:connection %
-                        :rule-layouts rule-layouts})
-          connections-vm)]))
+    [:div {:id "app-container"}
+     [:svg {:class "graph-panel"
+            :height 500
+            :width  1000}
+      [:rect {:class "graph__bg"
+              :height 500
+              :width  1000}]
+      (map #(rule {:rule %
+                   :layout (get rule-layouts (-> % :head :predicate))})
+           rules-vm)
+      (map #(connection {:connection %
+                         :rule-layouts rule-layouts})
+           connections-vm)]
+     [:div {:class "code-panel"}
+      [:pre {:class "code"}
+       (string/join "\n\n"
+                    (map epilog/rule-to-epilog @program))]]]))
