@@ -16,7 +16,8 @@
   (->> db
        :program
        (filter #(= predicate (-> % :head :predicate)))
-       first))
+       first
+       :head))
 
 (re-frame/reg-event-db
  ::initialize-db
@@ -74,7 +75,7 @@
                           (conj (:body dest-rule)
                                 (-> (find-head db src-pred)
                                     (update :args
-                                            (partial map (fn [_] :unspecified))))))
+                                            (partial mapv (fn [_] :unspecified))))))
 
                         updated-body
                         (mapv
