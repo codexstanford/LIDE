@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as string]
    [re-frame.core :as re-frame]
+   [lide.events :as events]
    [lide.subs :as subs]
    ))
 
@@ -26,8 +27,9 @@
      (let [internals (->> rule
                           :body
                           (mapcat :args)
-                          (filter (fn [internal]
-                                    (not (some #(= internal %) (-> rule :head :args)))))
+                          (remove #(= % :unspecified))
+                          (remove (fn [internal]
+                                    (some #(= internal %) (-> rule :head :args))))
                           vec)]
        {:head (:head rule)
         :internals internals}))
@@ -43,15 +45,15 @@
                                (fn [body-literal]
                                  (map-indexed
                                   (fn [i arg]
-                                    [i arg]
-                                    {:src  [(:predicate body-literal)
-                                            (as-> body-literal x
-                                              (:predicate x)
-                                              (get rules-by-head-pred x)
-                                              (-> x :head :args)
-                                              (get x i))]
-                                     :dest [(-> rule :head :predicate)
-                                            arg]})
+                                    (when (not= arg :unspecified)
+                                      {:src  [(:predicate body-literal)
+                                              (as-> body-literal x
+                                                (:predicate x)
+                                                (get rules-by-head-pred x)
+                                                (-> x :head :args)
+                                                (get x i))]
+                                       :dest [(-> rule :head :predicate)
+                                              arg]}))
                                   (:args body-literal)))
                                (:body rule)))
                             program)]
@@ -156,7 +158,8 @@
             :x2 (:x end)
             :y2 (:y end)
             :stroke "black"
-            :key (str start-rule ":" start-value "->" end-rule ":" end-value)}]))
+            :key (str start-rule ":" start-value "->" end-rule ":" end-value)
+            :on-click #(re-frame/dispatch [::events/disconnect connection])}]))
 
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])
