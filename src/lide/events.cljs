@@ -30,13 +30,21 @@
    (let [[dest-rule-idx dest-rule] (first-indexed #(= dest-pred (-> % :head :predicate))
                                                   (:program db))
          [src-pred-idx _] (first-indexed #(= src-pred (:predicate %))
-                                         (:body dest-rule))]
-     (update-in db
-                [:program dest-rule-idx :body src-pred-idx :args]
-                (partial mapv (fn [arg]
-                               (if (= arg dest-arg)
-                                 :unspecified
-                                 arg)))))))
+                                         (:body dest-rule))
+         args (get-in db [:program dest-rule-idx :body src-pred-idx :args])
+         updated-args (mapv (fn [arg]
+                              (if (= arg dest-arg)
+                                :unspecified
+                                arg))
+                            args)]
+     (if (some #(not= % :unspecified) updated-args)
+       ;; Still at least one binding for src, so keep it
+       (assoc-in db [:program dest-rule-idx :body src-pred-idx :args] updated-args)
+       ;; No bindings remaining for src: remove it from dest's body
+       (update-in db [:program dest-rule-idx :body]
+                  (fn [body]
+                    (vec (remove #(= src-pred (:predicate %)) body))))))))
+
 (re-frame/reg-event-db
  ::start-connect-dest
  (fn [db [_ dest-pred]]
