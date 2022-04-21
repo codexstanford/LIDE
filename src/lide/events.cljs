@@ -12,22 +12,75 @@
                          [idx elem])))
        first))
 
+(defn find-head [db predicate]
+  (->> db
+       :program
+       (filter #(= predicate (-> % :head :predicate)))
+       first))
+
 (re-frame/reg-event-db
  ::initialize-db
- (fn-traced [_ _]
+ (fn [_ _]
    db/default-db))
 
 (re-frame/reg-event-db
  ::disconnect
- (fn-traced [db [_ {[src-pred src-arg]   :src
-                    [dest-pred dest-arg] :dest}]]
+ (fn [db [_ {[src-pred src-arg]   :src
+             [dest-pred dest-arg] :dest}]]
    (let [[dest-rule-idx dest-rule] (first-indexed #(= dest-pred (-> % :head :predicate))
                                                   (:program db))
          [src-pred-idx _] (first-indexed #(= src-pred (:predicate %))
                                          (:body dest-rule))]
      (update-in db
                 [:program dest-rule-idx :body src-pred-idx :args]
-                (partial map (fn [arg]
+                (partial mapv (fn [arg]
                                (if (= arg dest-arg)
                                  :unspecified
                                  arg)))))))
+(re-frame/reg-event-db
+ ::start-connect-dest
+ (fn [db [_ dest-pred]]
+   (assoc db :connecting-dest dest-pred)))
+
+;; TODO Handle name collisions
+(re-frame/reg-event-db
+ ::connect-src
+ (fn [db [_ src-pred [src-arg-idx src-arg]]]
+   (let [connecting-dest (:connecting-dest db)]
+     (if-not connecting-dest
+       db
+       (let [updated-program
+             (mapv
+              (fn [dest-rule]
+                (if (not= connecting-dest (-> dest-rule :head :predicate))
+                  dest-rule
+                  (let [bound-src-literal
+                        (first (filter #(= src-pred (:predicate %))
+                                       (:body dest-rule)))
+
+                        body-with-src-literal
+                        (if bound-src-literal
+                          ;; Already had source literal in body, so no need to create
+                          (:body dest-rule)
+                          ;; Binding source literal for the first time, need to create
+                          (conj (:body dest-rule)
+                                (-> (find-head db src-pred)
+                                    (update :args
+                                            (partial map (fn [_] :unspecified))))))
+
+                        updated-body
+                        (mapv
+                         (fn [body-literal]
+                           (if (= src-pred (:predicate body-literal))
+                             ;; Add binding for matching arg
+                             (update body-literal
+                                     :args
+                                     (fn [args]
+                                       (assoc args src-arg-idx src-arg)))
+                             body-literal))
+                         body-with-src-literal)]
+                    (assoc dest-rule :body updated-body))))
+              (:program db))]
+         (assoc db
+                :program
+                updated-program))))))

@@ -62,11 +62,13 @@
   (let [name-height (+ rule-head-padding
                        rule-head-font-size
                        rule-head-padding)
+
         head {:predicate (-> rule :head :predicate)
               :position {:x rule-head-padding
                          :y (/ name-height 2)}
               :size     {:width  150
                          :height name-height}}
+
         arg-height (+  rule-binding-padding-y
                        rule-binding-font-size
                        rule-binding-padding-y)
@@ -79,6 +81,7 @@
                                    (* i arg-height))}}])
               (-> rule :head :args))
         args-height (* arg-height (-> rule :head :args count))
+
         internals-y-start (+ name-height
                              args-height
                              (/ arg-height 2))
@@ -88,13 +91,23 @@
                       {:position {:y (+ internals-y-start
                                         (* i arg-height))}}])
                    (:internals rule))
-        internals-height (* arg-height (->> rule :internals count))]
+        internals-height (* arg-height (->> rule :internals count))
+
+        add-binding {:position {:y (+ name-height
+                                      args-height
+                                      internals-height
+                                      (/ arg-height 2))}}]
     {:head head
      :args (into {} args)
      :internals (into {} internals)
+     :add-binding add-binding
      :container {:position (get rule-positions (-> rule :head :predicate) {:x 0 :y 0})
                  :size {:width  150
-                        :height (+ name-height args-height internals-height)}}}))
+                        :height (+ name-height
+                                   args-height
+                                   internals-height
+                                   ;; Add Binding is one arg tall
+                                   arg-height)}}}))
 
 (defn rule [{:keys [rule layout]}]
   [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
@@ -106,21 +119,18 @@
            :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)}
     (-> rule :head :predicate)]
    [:<>
-    (map
-     (fn [[arg arg-layout]]
+    (map-indexed
+     (fn [idx [arg arg-layout]]
        [:text {:x rule-binding-padding-x
                :y (->> arg-layout :position :y)
-               :key arg}
+               :key arg
+               :on-click #(re-frame/dispatch [::events/connect-src (-> rule :head :predicate) [idx arg]])}
         arg])
-     (:args layout))]
-   [:<>
-    (map
-     (fn [[arg arg-layout]]
-       [:text {:x rule-binding-padding-x
-               :y (->> arg-layout :position :y)
-               :key arg}
-        arg])
-     (:internals layout))]])
+     (concat (:args layout) (:internals layout)))]
+   [:text {:x rule-binding-padding-x
+           :y (->> layout :add-binding :position :y)
+           :on-click #(re-frame/dispatch [::events/start-connect-dest (-> rule :head :predicate)])}
+    "+ Add Binding"]])
 
 (defn socket-position [rule-layout value {:keys [end]}]
   (let [all-names (merge (:args rule-layout) (:internals rule-layout))]
