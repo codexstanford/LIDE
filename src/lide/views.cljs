@@ -1,24 +1,9 @@
 (ns lide.views
   (:require
-   [clojure.string :as string]
    [re-frame.core :as re-frame]
    [lide.events :as events]
    [lide.subs :as subs]
    ))
-
-(defn literal-to-epilog [literal]
-  (str (:predicate literal)
-       "("
-       (string/join ", " (:args literal))
-       ")"))
-
-(defn rule-to-epilog [rule]
-  (let [head (literal-to-epilog (:head rule))
-        body (when (seq (:body rule))
-               (string/join " &\n\t" (map literal-to-epilog (:body rule))))]
-    (str head
-         (when body
-           (str " :-\n\t" body)))))
 
 (defn rules-view-model [program]
   ;; TODO support disjunction - we might already have a definition
