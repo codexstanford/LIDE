@@ -90,6 +90,6 @@
                          body-with-src-literal)]
                     (assoc dest-rule :body updated-body))))
               (:program db))]
-         (assoc db
-                :program
-                updated-program))))))
+         (-> db
+             (assoc :program updated-program)
+             (dissoc :connecting-dest)))))))
