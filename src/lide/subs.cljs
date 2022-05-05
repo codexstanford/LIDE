@@ -21,3 +21,8 @@
  ::mouse-position
  (fn [db]
    (:mouse-position db)))
+
+(re-frame/reg-sub
+ ::graph-transform
+ (fn [db]
+   (:graph-transform db)))

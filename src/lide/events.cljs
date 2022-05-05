@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [lide.db :as db]
+   [lide.util :as util]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    ))
 
@@ -106,7 +107,36 @@
              (dissoc :mouse-position)))))))
 
 (re-frame/reg-event-db
+ ::mouse-up
+ (fn [db _]
+   (dissoc db :graph-drag-origin)))
+
+(re-frame/reg-event-db
  ::mouse-move
  (fn [db [_ mouse-event]]
-   (assoc db :mouse-position {:x (.-clientX mouse-event)
-                              :y (.-clientY mouse-event)})))
+   (let [event-position  {:x (.-clientX mouse-event)
+                          :y (.-clientY mouse-event)}]
+     (cond
+       (contains? db :connecting-dest)
+       (assoc db :mouse-position event-position)
+
+       (contains? db :graph-drag-origin)
+       (let [dx (- (-> event-position :x)
+                   (-> db :graph-drag-origin :x))
+             dy (- (-> event-position :y)
+                   (-> db :graph-drag-origin :y))
+             graph-transform (util/dom-matrix-from-vals (:graph-transform db))
+             translate-matrix (.translateSelf (js/DOMMatrix.) dx dy)
+             _ (println (util/dom-matrix-to-vals
+                         (.preMultiplySelf graph-transform translate-matrix)))]
+         (-> db
+             (assoc :graph-transform (util/dom-matrix-to-vals
+                                      (.preMultiplySelf graph-transform translate-matrix)))
+             (assoc :graph-drag-origin event-position)))
+       :else db))))
+
+(re-frame/reg-event-db
+ ::start-drag-graph
+ (fn [db [_ mouse-event]]
+   (assoc db :graph-drag-origin {:x (.-clientX mouse-event)
+                                 :y (.-clientY mouse-event)})))

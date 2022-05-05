@@ -5,6 +5,7 @@
    [lide.epilog :as epilog]
    [lide.events :as events]
    [lide.subs :as subs]
+   [lide.util :as util]
    ))
 
 (defn center-position [{:keys [position size]}]
@@ -186,6 +187,7 @@
         connecting-dest (re-frame/subscribe [::subs/connecting-dest])
         mouse-position (re-frame/subscribe [::subs/mouse-position])
         highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
+        graph-transform (re-frame/subscribe [::subs/graph-transform])
         rules-vm (rules-view-model @program @highlighted-connection)
         rule-vms-by-head (->> rules-vm
                               (map #(vector (-> % :head :predicate) %))
@@ -196,30 +198,34 @@
                              [head (rule-layout pred)]))
                           (into {}))
         connections-vm (connections-view-model @program @highlighted-connection)]
-    [:div {:id "app-container"}
+    [:div {:id "app-container"
+           :on-mouse-up #(re-frame/dispatch [::events/mouse-up %])}
      [:svg {:class "graph-panel"
             :height 500
             :width  1000
-            :on-mouse-move (fn [event]
-                             (when @connecting-dest
-                               (re-frame/dispatch [::events/mouse-move event])))}
-      [:rect {:class "graph__bg"
-              :height 500
-              :width  1000}]
-      (when (and (not (string/blank? @connecting-dest))
-                 @mouse-position)
-        (let [origin-center (center-position (get rule-layouts @connecting-dest))]
-          [:line {:x1 (:x origin-center)
-                  :y1 (:y origin-center)
-                  :x2 (:x @mouse-position)
-                  :y2 (:y @mouse-position)
-                  :stroke "#333"}]))
-      (map #(rule {:rule %
-                   :layout (get rule-layouts (-> % :head :predicate))})
-           rules-vm)
-      (map #(connection {:connection %
-                         :rule-layouts rule-layouts})
-           connections-vm)]
+            :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move %])
+                                                    25)}
+      [:g {:class "graph__viewport"
+           :transform (when @graph-transform
+                        (str (util/dom-matrix-from-vals @graph-transform)))}
+       [:rect {:class "graph__bg"
+               :height 500
+               :width  1000
+               :on-mouse-down #(re-frame/dispatch [::events/start-drag-graph %])}]
+       (when (and (not (string/blank? @connecting-dest))
+                  @mouse-position)
+         (let [origin-center (center-position (get rule-layouts @connecting-dest))]
+           [:line {:x1 (:x origin-center)
+                   :y1 (:y origin-center)
+                   :x2 (:x @mouse-position)
+                   :y2 (:y @mouse-position)
+                   :stroke "#333"}]))
+       (map #(rule {:rule %
+                    :layout (get rule-layouts (-> % :head :predicate))})
+            rules-vm)
+       (map #(connection {:connection %
+                          :rule-layouts rule-layouts})
+            connections-vm)]]
      [:div {:class "code-panel"}
       [:pre {:class "code"}
        (string/join "\n\n"

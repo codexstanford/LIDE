@@ -1,4 +1,6 @@
-(ns lide.db)
+(ns lide.db
+  (:require
+   [lide.util :as util]))
 
 (def default-db
   {:program
@@ -15,4 +17,5 @@
     {:head {:predicate "rd_iu_type"
             :args ["RD" "IUType"]}}
     {:head {:predicate "rd_iu_location"
-            :args ["RD" "IULocation"]}}]})
+            :args ["RD" "IULocation"]}}]
+   :graph-transform (util/dom-matrix-to-vals (js/DOMMatrix.))})
