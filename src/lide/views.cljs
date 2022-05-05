@@ -11,7 +11,7 @@
   {:x (+ (:x position) (/ (:width size) 2))
    :y (+ (:y position) (/ (:height size) 2))})
 
-(defn rules-view-model [program]
+(defn rules-view-model [program highlighted-connection]
   ;; TODO support disjunction - we might already have a definition
   (map
    (fn [rule]
@@ -23,7 +23,12 @@
                                     (some #(= internal %) (-> rule :head :args))))
                           vec)]
        {:head (:head rule)
-        :internals internals}))
+        :internals internals
+        :highlight (filterv (fn [arg]
+                              (some #(= % [(-> rule :head :predicate) arg])
+                                    (vals (select-keys highlighted-connection [:src :dest]))))
+                            (concat (-> rule :head :args) internals))
+       }))
    program))
 
 (defn connections-view-model [program highlighted-connection]
@@ -134,6 +139,7 @@
      (fn [idx [arg arg-layout]]
        [:text {:x rule-binding-padding-x
                :y (->> arg-layout :position :y)
+               :class (when (some #(= % arg) (:highlight rule)) "rule--highlight")
                :key arg
                :on-click #(re-frame/dispatch [::events/connect-src (-> rule :head :predicate) [idx arg]])}
         arg])
@@ -180,7 +186,7 @@
         connecting-dest (re-frame/subscribe [::subs/connecting-dest])
         mouse-position (re-frame/subscribe [::subs/mouse-position])
         highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
-        rules-vm (rules-view-model @program)
+        rules-vm (rules-view-model @program @highlighted-connection)
         rule-vms-by-head (->> rules-vm
                               (map #(vector (-> % :head :predicate) %))
                               (into {}))
