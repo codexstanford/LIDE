@@ -7,6 +7,10 @@
    [lide.subs :as subs]
    ))
 
+(defn center-position [{:keys [position size]}]
+  {:x (+ (:x position) (/ (:width size) 2))
+   :y (+ (:y position) (/ (:height size) 2))})
+
 (defn rules-view-model [program]
   ;; TODO support disjunction - we might already have a definition
   (map
@@ -51,8 +55,8 @@
 (def rule-positions
   {"applies" {:x 0 :y 0}
    "rd_type" {:x 220 :y 0}
-   "rd_iu_type" {:x 220 :y 80}
-   "rd_iu_location" {:x 220 :y 160}})
+   "rd_iu_type" {:x 220 :y 120}
+   "rd_iu_location" {:x 220 :y 240}})
 
 (def rule-head-font-size 18)
 (def rule-head-padding 6)
@@ -147,9 +151,9 @@
   (let [[start-rule start-value] (:src connection)
         [end-rule end-value]     (:dest connection)
         start-layout (get rule-layouts start-rule)
-        end-layout (get rule-layouts end-rule)
+        end-layout   (get rule-layouts end-rule)
         start (socket-position start-layout start-value {:end :src})
-        end (socket-position end-layout end-value {:end :dest})]
+        end   (socket-position end-layout end-value {:end :dest})]
     [:line {:x1 (:x start)
             :y1 (:y start)
             :x2 (:x end)
@@ -160,6 +164,8 @@
 
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])
+        connecting-dest (re-frame/subscribe [::subs/connecting-dest])
+        mouse-position (re-frame/subscribe [::subs/mouse-position])
         rules-vm (rules-view-model @program)
         rule-vms-by-head (->> rules-vm
                               (map #(vector (-> % :head :predicate) %))
@@ -173,10 +179,21 @@
     [:div {:id "app-container"}
      [:svg {:class "graph-panel"
             :height 500
-            :width  1000}
+            :width  1000
+            :on-mouse-move (fn [event]
+                             (when @connecting-dest
+                               (re-frame/dispatch [::events/mouse-move event])))}
       [:rect {:class "graph__bg"
               :height 500
               :width  1000}]
+      (when (and (not (string/blank? @connecting-dest))
+                 @mouse-position)
+        (let [origin-center (center-position (get rule-layouts @connecting-dest))]
+          [:line {:x1 (:x origin-center)
+                  :y1 (:y origin-center)
+                  :x2 (:x @mouse-position)
+                  :y2 (:y @mouse-position)
+                  :stroke "#333"}]))
       (map #(rule {:rule %
                    :layout (get rule-layouts (-> % :head :predicate))})
            rules-vm)

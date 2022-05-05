@@ -92,4 +92,11 @@
               (:program db))]
          (-> db
              (assoc :program updated-program)
-             (dissoc :connecting-dest)))))))
+             (dissoc :connecting-dest)
+             (dissoc :mouse-position)))))))
+
+(re-frame/reg-event-db
+ ::mouse-move
+ (fn [db [_ mouse-event]]
+   (assoc db :mouse-position {:x (.-clientX mouse-event)
+                              :y (.-clientY mouse-event)})))
