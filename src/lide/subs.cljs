@@ -8,6 +8,11 @@
    (:program db)))
 
 (re-frame/reg-sub
+ ::highlighted-connection
+ (fn [db]
+   (:highlighted-connection db)))
+
+(re-frame/reg-sub
  ::connecting-dest
  (fn [db]
    (:connecting-dest db)))

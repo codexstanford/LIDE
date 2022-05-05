@@ -26,7 +26,7 @@
         :internals internals}))
    program))
 
-(defn connections-view-model [program]
+(defn connections-view-model [program highlighted-connection]
   (let [rules-by-head-pred (->> program
                                 (map #(vector (-> % :head :predicate) %))
                                 (into {}))
@@ -37,14 +37,19 @@
                                  (map-indexed
                                   (fn [i arg]
                                     (when (not= arg :unspecified)
-                                      {:src  [(:predicate body-literal)
-                                              (as-> body-literal x
-                                                (:predicate x)
-                                                (get rules-by-head-pred x)
-                                                (-> x :head :args)
-                                                (get x i))]
-                                       :dest [(-> rule :head :predicate)
-                                              arg]}))
+                                      (let [src-rule (:predicate body-literal)
+                                            src-arg  (as-> body-literal x
+                                                       (:predicate x)
+                                                       (get rules-by-head-pred x)
+                                                       (-> x :head :args)
+                                                       (get x i))
+                                            dest-rule (-> rule :head :predicate)
+                                            dest-arg  arg
+                                            unhighlighted {:src  [src-rule src-arg]
+                                                           :dest [dest-rule dest-arg]}]
+                                        (assoc unhighlighted
+                                               :highlighted
+                                               (= unhighlighted highlighted-connection)))))
                                   (:args body-literal)))
                                (:body rule)))
                             program)]
@@ -154,18 +159,27 @@
         end-layout   (get rule-layouts end-rule)
         start (socket-position start-layout start-value {:end :src})
         end   (socket-position end-layout end-value {:end :dest})]
-    [:line {:x1 (:x start)
-            :y1 (:y start)
-            :x2 (:x end)
-            :y2 (:y end)
-            :stroke "black"
-            :key (str start-rule ":" start-value "->" end-rule ":" end-value)
-            :on-click #(re-frame/dispatch [::events/disconnect connection])}]))
+    [:<> {:key (str start-rule ":" start-value "->" end-rule ":" end-value)}
+     [:line {:x1 (:x start)
+             :y1 (:y start)
+             :x2 (:x end)
+             :y2 (:y end)
+             :stroke (if (:highlighted connection) "green" "black")}]
+     [:line {:x1 (:x start)
+             :y1 (:y start)
+             :x2 (:x end)
+             :y2 (:y end)
+             :stroke "transparent"
+             :stroke-width 10
+             :on-mouse-over #(re-frame/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
+             :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])
+             :on-click #(re-frame/dispatch [::events/disconnect connection])}]]))
 
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])
         connecting-dest (re-frame/subscribe [::subs/connecting-dest])
         mouse-position (re-frame/subscribe [::subs/mouse-position])
+        highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
         rules-vm (rules-view-model @program)
         rule-vms-by-head (->> rules-vm
                               (map #(vector (-> % :head :predicate) %))
@@ -175,7 +189,7 @@
                            (fn [[head pred]]
                              [head (rule-layout pred)]))
                           (into {}))
-        connections-vm (connections-view-model @program)]
+        connections-vm (connections-view-model @program @highlighted-connection)]
     [:div {:id "app-container"}
      [:svg {:class "graph-panel"
             :height 500

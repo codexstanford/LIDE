@@ -25,6 +25,16 @@
    db/default-db))
 
 (re-frame/reg-event-db
+ ::highlight-connection
+ (fn [db [_ connection]]
+   (assoc db :highlighted-connection connection)))
+
+(re-frame/reg-event-db
+ ::stop-connection-highlight
+ (fn [db _]
+   (dissoc db :highlighted-connection)))
+
+(re-frame/reg-event-db
  ::disconnect
  (fn [db [_ {[src-pred src-arg]   :src
              [dest-pred dest-arg] :dest}]]
