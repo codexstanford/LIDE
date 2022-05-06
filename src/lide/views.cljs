@@ -207,13 +207,13 @@
                                                     25)
             :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
                                                100)}
+      [:rect {:class "graph__bg"
+              :height 500
+              :width  1000
+              :on-mouse-down #(re-frame/dispatch [::events/start-drag-graph %])}]
       [:g {:class "graph__viewport"
            :transform (when @graph-transform
                         (str (util/dom-matrix-from-vals @graph-transform)))}
-       [:rect {:class "graph__bg"
-               :height 500
-               :width  1000
-               :on-mouse-down #(re-frame/dispatch [::events/start-drag-graph %])}]
        (when (and (not (string/blank? @connecting-dest))
                   @mouse-position)
          (let [origin-center (center-position (get rule-layouts @connecting-dest))]
