@@ -63,19 +63,13 @@
          flatten
          (remove nil?))))
 
-(def rule-positions
-  {"applies" {:x 0 :y 0}
-   "rd_type" {:x 220 :y 0}
-   "rd_iu_type" {:x 220 :y 120}
-   "rd_iu_location" {:x 220 :y 240}})
-
 (def rule-head-font-size 18)
 (def rule-head-padding 6)
 (def rule-binding-font-size 16)
 (def rule-binding-padding-x 6)
 (def rule-binding-padding-y 3)
 
-(defn rule-layout [rule]
+(defn rule-layout [rule positions]
   (let [name-height (+ rule-head-padding
                        rule-head-font-size
                        rule-head-padding)
@@ -118,7 +112,7 @@
      :args (into {} args)
      :internals (into {} internals)
      :add-binding add-binding
-     :container {:position (get rule-positions (-> rule :head :predicate) {:x 0 :y 0})
+     :container {:position (get positions (-> rule :head :predicate) {:x 0 :y 0})
                  :size {:width  150
                         :height (+ name-height
                                    args-height
@@ -127,7 +121,8 @@
                                    arg-height)}}}))
 
 (defn rule [{:keys [rule layout]}]
-  [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
+  [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % rule])
+       :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
        :key (-> rule :head :predicate)}
    [:rect {:class  "rule__bg"
            :width  (->> layout :container :size :width)
@@ -184,6 +179,7 @@
 
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])
+        rule-positions (re-frame/subscribe [::subs/rule-positions])
         connecting-dest (re-frame/subscribe [::subs/connecting-dest])
         mouse-position (re-frame/subscribe [::subs/mouse-position])
         highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
@@ -195,7 +191,7 @@
         rule-layouts (->> rule-vms-by-head
                           (map
                            (fn [[head pred]]
-                             [head (rule-layout pred)]))
+                             [head (rule-layout pred @rule-positions)]))
                           (into {}))
         connections-vm (connections-view-model @program @highlighted-connection)]
     [:div {:id "app-container"

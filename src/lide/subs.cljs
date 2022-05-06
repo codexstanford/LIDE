@@ -8,6 +8,11 @@
    (:program db)))
 
 (re-frame/reg-sub
+ ::rule-positions
+ (fn [db]
+   (:rule-positions db)))
+
+(re-frame/reg-sub
  ::highlighted-connection
  (fn [db]
    (:highlighted-connection db)))

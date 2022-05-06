@@ -109,13 +109,15 @@
 (re-frame/reg-event-db
  ::mouse-up
  (fn [db _]
-   (dissoc db :graph-drag-origin)))
+   (-> db
+       (dissoc :graph-drag-origin)
+       (dissoc :rule-drag-origin))))
 
 (re-frame/reg-event-db
  ::mouse-move
  (fn [db [_ mouse-event]]
-   (let [event-position {:x (.-clientX mouse-event)
-                         :y (.-clientY mouse-event)}]
+   (let [event-position {:x (-> mouse-event .-nativeEvent .-offsetX)
+                         :y (-> mouse-event .-nativeEvent .-offsetY)}]
      (cond
        (contains? db :connecting-dest)
        (assoc db :mouse-position event-position)
@@ -131,13 +133,28 @@
              (assoc :graph-transform (util/dom-matrix-to-vals
                                       (.preMultiplySelf graph-transform translate-matrix)))
              (assoc :graph-drag-origin event-position)))
+
+       (contains? db :rule-drag-origin)
+       (let [dx (- (-> event-position :x)
+                   (-> db :rule-drag-origin :x))
+             dy (- (-> event-position :y)
+                   (-> db :rule-drag-origin :y))
+             dragging-rule-pred (-> db :dragging-rule :head :predicate)]
+         (-> db
+             (update-in [:rule-positions dragging-rule-pred]
+                        (fn [position]
+                          (-> position
+                              (update :x #(+ % dx))
+                              (update :y #(+ % dy)))))
+             (assoc :rule-drag-origin event-position)))
+
        :else db))))
 
 (re-frame/reg-event-db
  ::start-drag-graph
  (fn [db [_ mouse-event]]
-   (assoc db :graph-drag-origin {:x (.-clientX mouse-event)
-                                 :y (.-clientY mouse-event)})))
+   (assoc db :graph-drag-origin {:x (-> mouse-event .-nativeEvent .-offsetX)
+                                 :y (-> mouse-event .-nativeEvent .-offsetY)})))
 
 (re-frame/reg-event-db
  ::scroll-graph
@@ -156,3 +173,11 @@
                                          (- (:y event-position))))]
      (assoc db :graph-transform (util/dom-matrix-to-vals
                                  (.preMultiplySelf graph-transform zoom-matrix))))))
+
+(re-frame/reg-event-db
+ ::start-drag-rule
+ (fn [db [_ mouse-event rule]]
+   (-> db
+       (assoc :dragging-rule rule)
+       (assoc :rule-drag-origin {:x (-> mouse-event .-nativeEvent .-offsetX)
+                                 :y (-> mouse-event .-nativeEvent .-offsetY)}))))
