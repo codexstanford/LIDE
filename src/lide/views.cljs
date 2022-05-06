@@ -204,7 +204,9 @@
             :height 500
             :width  1000
             :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move %])
-                                                    25)}
+                                                    25)
+            :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
+                                               100)}
       [:g {:class "graph__viewport"
            :transform (when @graph-transform
                         (str (util/dom-matrix-from-vals @graph-transform)))}

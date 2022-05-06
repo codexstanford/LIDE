@@ -114,8 +114,8 @@
 (re-frame/reg-event-db
  ::mouse-move
  (fn [db [_ mouse-event]]
-   (let [event-position  {:x (.-clientX mouse-event)
-                          :y (.-clientY mouse-event)}]
+   (let [event-position {:x (.-clientX mouse-event)
+                         :y (.-clientY mouse-event)}]
      (cond
        (contains? db :connecting-dest)
        (assoc db :mouse-position event-position)
@@ -126,9 +126,7 @@
              dy (- (-> event-position :y)
                    (-> db :graph-drag-origin :y))
              graph-transform (util/dom-matrix-from-vals (:graph-transform db))
-             translate-matrix (.translateSelf (js/DOMMatrix.) dx dy)
-             _ (println (util/dom-matrix-to-vals
-                         (.preMultiplySelf graph-transform translate-matrix)))]
+             translate-matrix (.translateSelf (js/DOMMatrix.) dx dy)]
          (-> db
              (assoc :graph-transform (util/dom-matrix-to-vals
                                       (.preMultiplySelf graph-transform translate-matrix)))
@@ -140,3 +138,21 @@
  (fn [db [_ mouse-event]]
    (assoc db :graph-drag-origin {:x (.-clientX mouse-event)
                                  :y (.-clientY mouse-event)})))
+
+(re-frame/reg-event-db
+ ::scroll-graph
+ (fn [db [_ scroll-event]]
+   (let [event-position {:x (-> scroll-event .-nativeEvent .-offsetX)
+                         :y (-> scroll-event .-nativeEvent .-offsetY)}
+         scale (if (> (.-deltaY scroll-event) 0)
+                 0.8
+                 1.25)
+         graph-transform (util/dom-matrix-from-vals (:graph-transform db))
+         zoom-matrix (-> (js/DOMMatrix.)
+                         (.translateSelf (:x event-position)
+                                         (:y event-position))
+                         (.scaleSelf scale scale)
+                         (.translateSelf (- (:x event-position))
+                                         (- (:y event-position))))]
+     (assoc db :graph-transform (util/dom-matrix-to-vals
+                                 (.preMultiplySelf graph-transform zoom-matrix))))))
