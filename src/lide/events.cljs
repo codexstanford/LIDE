@@ -6,6 +6,10 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    ))
 
+(defn offset-position [evt]
+  {:x (-> evt .-nativeEvent .-offsetX)
+   :y (-> evt .-nativeEvent .-offsetY)})
+
 (defn first-indexed [pred coll]
   (->> coll
        (keep-indexed (fn [idx elem]
@@ -107,17 +111,49 @@
              (dissoc :mouse-position)))))))
 
 (re-frame/reg-event-db
+ ::create-node
+ (fn [db [_ mouse-event]]
+   ;; TODO generate a guaranteed unique name
+   (let [new-node-name "new"
+         position (offset-position mouse-event)]
+     (-> db
+         (update :program
+                 (fn [program]
+                   (conj program {:head {:predicate new-node-name}})))
+         (update :rule-positions
+                 (fn [positions]
+                   (conj positions [new-node-name position])))))))
+
+(re-frame/reg-event-db
+ ::select-node
+ (fn [db [_ node]]
+   (assoc db :selected-node node)))
+
+(re-frame/reg-event-db
+ ::edit-predicate
+ (fn [db [_ rule new-predicate]]
+   (let [_ (println rule)
+         _ (println new-predicate)
+         program (:program db)
+         updated-program (map (fn [db-rule]
+                                (if (= (:head rule) (:head db-rule))
+                                  (assoc-in db-rule [:head :predicate] new-predicate)
+                                  db-rule))
+                              program)]
+     (assoc db :program updated-program))))
+
+(re-frame/reg-event-db
  ::mouse-up
  (fn [db _]
    (-> db
        (dissoc :graph-drag-origin)
+       (dissoc :dragging-rule)
        (dissoc :rule-drag-origin))))
 
 (re-frame/reg-event-db
  ::mouse-move
  (fn [db [_ mouse-event]]
-   (let [event-position {:x (-> mouse-event .-nativeEvent .-offsetX)
-                         :y (-> mouse-event .-nativeEvent .-offsetY)}]
+   (let [event-position (offset-position mouse-event)]
      (cond
        (contains? db :connecting-dest)
        (assoc db :mouse-position event-position)

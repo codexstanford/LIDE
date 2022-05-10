@@ -13,6 +13,11 @@
    (:rule-positions db)))
 
 (re-frame/reg-sub
+ ::selected-node
+ (fn [db]
+   (:selected-node db)))
+
+(re-frame/reg-sub
  ::highlighted-connection
  (fn [db]
    (:highlighted-connection db)))

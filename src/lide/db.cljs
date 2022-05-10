@@ -3,34 +3,41 @@
    [lide.util :as util]))
 
 (def default-db
-  {:program
-   [{:head {:predicate "applies"
-            :args ["RD" "ComplianceOption"]}
-     :body [{:predicate "rd_type"
-             :args ["RD" "RDType"]}
-            {:predicate "rd_iu_type"
-             :args ["RD" "IUType"]}
-            {:predicate "rd_iu_location"
-             :args ["RD" "IULocation"]}]}
-    {:head {:predicate "rd_type"
-            :args ["RD" "Type"]}}
-    {:head {:predicate "rd_iu_type"
-            :args ["RD" "IUType"]}}
+  (let [applies-id (random-uuid)
+        rd-type-id (random-uuid)
+        rd-iu-type-id (random-uuid)
+        rd400-iu-location-id (random-uuid)]
+    {:program
+     (into {}
+           [[applies-id {:head {:predicate "applies"
+                                :args ["RD" "ComplianceOption"]}
+                         :body [{:predicate "rd_type"
+                                 :args ["RD" "RDType"]}
+                                {:predicate "rd_iu_type"
+                                 :args ["RD" "IUType"]}
+                                {:predicate "rd_iu_location"
+                                 :args ["RD" "IULocation"]}]}]
+            [rd-type-id {:head {:predicate "rd_type"
+                                :args ["RD" "Type"]}}]
+            [rd-iu-type-id {:head {:predicate "rd_iu_type"
+                                   :args ["RD" "IUType"]}}]
 
-    {:head {:predicate "rd_type"
-            :args ["rd400" "for_sale"]}}
-    {:head {:predicate "rd_iu_type"
-            :args ["rd400" "for_sale"]}}
-    {:head {:predicate "rd_iu_location"
-            :args ["rd400" "on_site"]}}
-    {:head {:predicate "rd_iu_share"
-            :args ["rd400" "ami110" "0.15"]}}]
+             ;; rd400 example
 
-   :rule-positions
-   {"applies" {:x 0 :y 0}
-    "rd_type" {:x 220 :y 0}
-    "rd_iu_type" {:x 220 :y 120}
-    "rd_iu_location" {:x 220 :y 240}}
+            [(random-uuid) {:head {:predicate "rd_type"
+                                   :args ["rd400" "for_sale"]}}]
+            [(random-uuid) {:head {:predicate "rd_iu_type"
+                                   :args ["rd400" "for_sale"]}}]
+            [rd400-iu-location-id {:head {:predicate "rd_iu_location"
+                                          :args ["rd400" "on_site"]}}]
+            [(random-uuid) {:head {:predicate "rd_iu_share"
+                                   :args ["rd400" "ami110" "0.15"]}}]])
 
-   :graph-transform
-   (util/dom-matrix-to-vals (js/DOMMatrix.))})
+     :rule-positions
+     {applies-id {:x 0 :y 0}
+      rd-type-id {:x 220 :y 0}
+      rd-iu-type-id {:x 220 :y 120}
+      rd400-iu-location-id {:x 220 :y 240}}
+
+     :graph-transform
+     (util/dom-matrix-to-vals (js/DOMMatrix.))}))

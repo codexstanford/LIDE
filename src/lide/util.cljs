@@ -10,3 +10,6 @@
 
 (defn dom-matrix-from-vals [vals]
   (js/DOMMatrix. vals))
+
+(defn map-vals [f m]
+  (into (empty m) (for [[k v] m] [k (f v)])))
