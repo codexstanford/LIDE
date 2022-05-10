@@ -17,10 +17,6 @@
                                  :args ["RD" "IUType"]}
                                 {:predicate "rd_iu_location"
                                  :args ["RD" "IULocation"]}]}]
-            [rd-type-id {:head {:predicate "rd_type"
-                                :args ["RD" "Type"]}}]
-            [rd-iu-type-id {:head {:predicate "rd_iu_type"
-                                   :args ["RD" "IUType"]}}]
 
              ;; rd400 example
 
@@ -35,8 +31,6 @@
 
      :rule-positions
      {applies-id {:x 0 :y 0}
-      rd-type-id {:x 220 :y 0}
-      rd-iu-type-id {:x 220 :y 120}
       rd400-iu-location-id {:x 220 :y 240}}
 
      :graph-transform

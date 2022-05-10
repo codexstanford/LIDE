@@ -124,22 +124,14 @@
                    (conj positions [new-id position])))))))
 
 (re-frame/reg-event-db
- ::select-node
- (fn [db [_ node]]
-   (assoc db :selected-node node)))
+ ::select-rule
+ (fn [db [_ rule-id]]
+   (assoc db :selected-rule rule-id)))
 
 (re-frame/reg-event-db
  ::edit-predicate
- (fn [db [_ rule new-predicate]]
-   (let [_ (println rule)
-         _ (println new-predicate)
-         program (:program db)
-         updated-program (map (fn [db-rule]
-                                (if (= (:head rule) (:head db-rule))
-                                  (assoc-in db-rule [:head :predicate] new-predicate)
-                                  db-rule))
-                              program)]
-     (assoc db :program updated-program))))
+ (fn [db [_ rule-id new-predicate]]
+   (update-in db [:program rule-id] #(assoc-in % [:head :predicate] new-predicate))))
 
 (re-frame/reg-event-db
  ::mouse-up

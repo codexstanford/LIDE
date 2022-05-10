@@ -13,9 +13,9 @@
    (:rule-positions db)))
 
 (re-frame/reg-sub
- ::selected-node
+ ::selected-rule
  (fn [db]
-   (:selected-node db)))
+   (:selected-rule db)))
 
 (re-frame/reg-sub
  ::highlighted-connection

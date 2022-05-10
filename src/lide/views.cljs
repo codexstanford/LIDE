@@ -137,7 +137,7 @@
 
 (defn rule [{:keys [id model layout]}]
   [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % id])
-       :on-click #(re-frame/dispatch [::events/select-node model])
+       :on-click #(re-frame/dispatch [::events/select-rule id])
        :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
        :key id}
    [:rect {:class  "rule__bg"
@@ -193,17 +193,17 @@
              :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])
              :on-click #(re-frame/dispatch [::events/disconnect connection])}]]))
 
-(defn node-inspector [node]
-  (if-not node
+(defn rule-inspector [id rule]
+  (if-not rule
     [:div "No active selection."]
     [:input {:type "text"
-             :value (-> node :head :predicate)
-             :on-change #(re-frame/dispatch [::events/edit-predicate node (-> % .-target .-value)])}]))
+             :value (-> rule :head :predicate)
+             :on-change #(re-frame/dispatch [::events/edit-predicate id (-> % .-target .-value)])}]))
 
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])
         rule-positions (re-frame/subscribe [::subs/rule-positions])
-        selected-node (re-frame/subscribe [::subs/selected-node])
+        selected-rule (re-frame/subscribe [::subs/selected-rule])
         connecting-dest (re-frame/subscribe [::subs/connecting-dest])
         mouse-position (re-frame/subscribe [::subs/mouse-position])
         highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
@@ -250,7 +250,7 @@
                             :rule-layouts rule-layouts})
               connections-vm)]]
        [:div {:class "inspector-panel"}
-        (node-inspector @selected-node)]
+        (rule-inspector @selected-rule (get @program @selected-rule))]
        [:div {:class "code-panel"}
         [:pre {:class "code"}
          (string/join "\n\n"
