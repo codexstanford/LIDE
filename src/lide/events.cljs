@@ -113,16 +113,15 @@
 (re-frame/reg-event-db
  ::create-node
  (fn [db [_ mouse-event]]
-   ;; TODO generate a guaranteed unique name
-   (let [new-node-name "new"
+   (let [new-id (random-uuid)
          position (offset-position mouse-event)]
      (-> db
          (update :program
                  (fn [program]
-                   (conj program {:head {:predicate new-node-name}})))
+                   (assoc program new-id {:head {:predicate "new"}})))
          (update :rule-positions
                  (fn [positions]
-                   (conj positions [new-node-name position])))))))
+                   (conj positions [new-id position])))))))
 
 (re-frame/reg-event-db
  ::select-node
@@ -177,7 +176,7 @@
                    (-> db :rule-drag-origin :y))
              dragging-rule-pred (-> db :dragging-rule :head :predicate)]
          (-> db
-             (update-in [:rule-positions dragging-rule-pred]
+             (update-in [:rule-positions (:dragging-rule db)]
                         (fn [position]
                           (-> position
                               (update :x #(+ % dx))
@@ -212,8 +211,8 @@
 
 (re-frame/reg-event-db
  ::start-drag-rule
- (fn [db [_ mouse-event rule]]
+ (fn [db [_ mouse-event rule-id]]
    (-> db
-       (assoc :dragging-rule rule)
+       (assoc :dragging-rule rule-id)
        (assoc :rule-drag-origin {:x (-> mouse-event .-nativeEvent .-offsetX)
                                  :y (-> mouse-event .-nativeEvent .-offsetY)}))))

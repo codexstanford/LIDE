@@ -53,32 +53,30 @@
        (into {})))
 
 (defn connections-view-model [program highlighted-connection]
-  (let [connections-nested
-        (map
-         (fn [[id rule]]
-           (map
-            (fn [body-literal]
-              (map-indexed
-               (fn [i arg]
-                 (when (not= arg :unspecified)
-                   (let [dest-rule-id id
-                         dest-arg arg
-                         matching-rules (filter-by-head body-literal program)]
-                     (map
-                      (fn [[src-rule-id src-rule]]
-                        (let [src-arg (get (-> src-rule :head :args) i)
-                              unhighlighted {:src  [src-rule-id  src-arg]
-                                             :dest [dest-rule-id dest-arg]}]
-                          (assoc unhighlighted
-                                 :highlighted
-                                 (= unhighlighted highlighted-connection))))
-                      matching-rules))))
-               (:args body-literal)))
-            (:body rule)))
-         program)]
-    (->> connections-nested
-         flatten
-         (remove nil?))))
+  (->> program
+       (map
+        (fn [[id rule]]
+          (map
+           (fn [body-literal]
+             (map-indexed
+              (fn [i arg]
+                (when (not= arg :unspecified)
+                  (let [dest-rule-id id
+                        dest-arg arg
+                        matching-rules (filter-by-head body-literal program)]
+                    (map
+                     (fn [[src-rule-id src-rule]]
+                       (let [src-arg (get (-> src-rule :head :args) i)
+                             unhighlighted {:src  [src-rule-id  src-arg]
+                                            :dest [dest-rule-id dest-arg]}]
+                         (assoc unhighlighted
+                                :highlighted
+                                (= unhighlighted highlighted-connection))))
+                     matching-rules))))
+              (:args body-literal)))
+           (:body rule))))
+       flatten
+       (remove nil?)))
 
 (def rule-head-font-size 18)
 (def rule-head-padding 6)
@@ -138,7 +136,7 @@
                                    arg-height)}}}))
 
 (defn rule [{:keys [id model layout]}]
-  [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % model])
+  [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % id])
        :on-click #(re-frame/dispatch [::events/select-node model])
        :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
        :key id}
