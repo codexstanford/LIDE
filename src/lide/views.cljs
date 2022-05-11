@@ -54,11 +54,17 @@
    (:rules program)))
 
 (defn literals-view-model [program]
-  (util/map-vals
-   (fn [literal]
-     {:predicate (:predicate literal)
-      :args      (:args literal)})
-   (:literals program)))
+  (->> (:rules program)
+       (mapv
+        (fn [ref-rule]
+          (mapv
+           (fn [body-literal-id]
+             (let [body-literal (get (:literals program) body-literal-id)]
+               {body-literal-id {:predicate (:predicate body-literal)
+                                 :args      (:args body-literal)}}))
+           (:body ref-rule))))
+       flatten
+       (into {})))
 
 (defn filter-by-head [head-literal program]
   (->> program
@@ -69,27 +75,21 @@
        (into {})))
 
 (defn connections-view-model [program highlighted-connection]
-  (->> program
-       (map
-        (fn [[id rule]]
+  (->> (:rules program)
+       (map-indexed
+        (fn [rule-idx rule]
           (map
-           (fn [body-literal]
-             (map-indexed
-              (fn [i arg]
-                (when (not= arg :unspecified)
-                  (let [dest-rule-id id
-                        dest-arg arg
-                        matching-rules (filter-by-head body-literal program)]
-                    (map
-                     (fn [[src-rule-id src-rule]]
-                       (let [src-arg (get (-> src-rule :head :args) i)
-                             unhighlighted {:src  [src-rule-id  src-arg]
-                                            :dest [dest-rule-id dest-arg]}]
-                         (assoc unhighlighted
-                                :highlighted
-                                (= unhighlighted highlighted-connection))))
-                     matching-rules))))
-              (:args body-literal)))
+           (fn [body-literal-id]
+             (let [body-literal (get (:literals program) body-literal-id)]
+               (map-indexed
+                (fn [i arg]
+                  (when (not= arg :unspecified)
+                    (let [unhighlighted {:src  [rule-idx        arg]
+                                         :dest [body-literal-id arg]}]
+                      (assoc unhighlighted
+                             :highlighted
+                             (= unhighlighted highlighted-connection)))))
+                (:args body-literal))))
            (:body rule))))
        flatten
        (remove nil?)))
@@ -131,7 +131,6 @@
                                    args-height)}}}))
 
 (defn literal [{:keys [id model layout]}]
-  (println id)
   [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-literal % id])
        :on-click #(re-frame/dispatch [::events/select-literal id])
        :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
@@ -230,23 +229,24 @@
            :on-click #(re-frame/dispatch [::events/start-connect-dest (-> model :head :predicate)])}
     "+ Add Binding"]])
 
-(defn socket-position [rule-layout value {:keys [end]}]
-  (let [all-names (merge (:args rule-layout) (:internals rule-layout))]
-    {:x (+ (-> rule-layout :container :position :x)
+(defn socket-position [layout arg {:keys [end]}]
+  (let [all-names (merge (:args layout)
+                         (:internals layout))]
+    {:x (+ (-> layout :container :position :x)
            (if (= end :dest)
-             (-> rule-layout :container :size :width)
+             (-> layout :container :size :width)
              0))
-     :y (+ (-> rule-layout :container :position :y)
-           (-> all-names (get value) :position :y))}))
+     :y (+ (-> layout :container :position :y)
+           (-> all-names (get arg) :position :y))}))
 
-(defn connection [{:keys [connection rule-layouts]}]
-  (let [[start-rule start-value] (:src connection)
-        [end-rule end-value]     (:dest connection)
-        start-layout (get rule-layouts start-rule)
-        end-layout   (get rule-layouts end-rule)
-        start (socket-position start-layout start-value {:end :src})
-        end   (socket-position end-layout end-value {:end :dest})]
-    [:<> {:key (str start-rule ":" start-value "->" end-rule ":" end-value)}
+(defn connection [{:keys [connection literal-layouts rule-layouts]}]
+  (let [[start-rule-idx start-arg] (:src connection)
+        [end-literal-id end-arg]   (:dest connection)
+        start-layout (get rule-layouts start-rule-idx)
+        end-layout   (get literal-layouts end-literal-id)
+        start (socket-position start-layout start-arg {:end :dest})
+        end   (socket-position end-layout end-arg {:end :src})]
+    [:<>
      [:line {:x1 (:x start)
              :y1 (:y start)
              :x2 (:x end)
@@ -279,6 +279,11 @@
         highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
         graph-transform (re-frame/subscribe [::subs/graph-transform])
         literals-vm (literals-view-model @program)
+        literal-layouts (->> literals-vm
+                             (map
+                              (fn [[id literal]]
+                                [id (literal-layout literal (get @literal-positions id))]))
+                             (into {}))
         rules-vm (rules-view-model @program @highlighted-connection)
         rule-layouts (->> rules-vm
                           (map-indexed
@@ -323,11 +328,13 @@
                  [literal {:id id
                            :key id
                            :model vm
-                           :layout (literal-layout vm (get @literal-positions id {:x 0 :y 0}))}])
+                           :layout (get literal-layouts id {:x 0 :y 0})}])
                literals-vm))
          (map (fn [vm]
                 [connection {:connection vm
-                             :rule-layouts rule-layouts}])
+                             :literal-layouts literal-layouts
+                             :rule-layouts rule-layouts
+                             :key vm}])
               connections-vm)]]
        [:div {:class "inspector-panel"}
         (rule-inspector @selected-rule (get @program @selected-rule))]
