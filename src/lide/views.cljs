@@ -25,11 +25,20 @@
   Essentially, we're performing one round of bottom-up unification."
   )
 
+(defn populate-rule [program rule]
+  (-> rule
+      (update :head (fn [id]
+                      (-> program :literals (get id))))
+      (update :body (fn [literals]
+                      (map (fn [id] (-> program :literals (get id)))
+                           literals)))))
+
 (defn rules-view-model [program highlighted-connection]
   ;; TODO support disjunction - we might already have a definition
-  (util/map-vals
-   (fn [rule]
-     (let [internals (->> rule
+  (mapv
+   (fn [ref-rule]
+     (let [rule (populate-rule program ref-rule)
+           internals (->> rule
                           :body
                           (mapcat :args)
                           (remove #(= % :unspecified))
@@ -42,7 +51,14 @@
                               (some #(= % [(-> rule :head :predicate) arg])
                                     (vals (select-keys highlighted-connection [:src :dest]))))
                             (concat (-> rule :head :args) internals))}))
-   program))
+   (:rules program)))
+
+(defn literals-view-model [program]
+  (util/map-vals
+   (fn [literal]
+     {:predicate (:predicate literal)
+      :args      (:args literal)})
+   (:literals program)))
 
 (defn filter-by-head [head-literal program]
   (->> program
@@ -84,16 +100,69 @@
 (def rule-binding-padding-x 6)
 (def rule-binding-padding-y 3)
 
+(defn literal-layout [literal position]
+  (let [name-height (+ rule-head-padding
+                       rule-head-font-size
+                       rule-head-padding)
+
+        predicate {:predicate (:predicate literal)
+                   :position {:x rule-head-padding
+                              :y (/ name-height 2)}
+                   :size     {:width  150
+                              :height name-height}}
+
+        arg-height (+  rule-binding-padding-y
+                       rule-binding-font-size
+                       rule-binding-padding-y)
+        args-y-start (+ name-height
+                        (/ arg-height 2))
+        args (map-indexed
+              (fn [i arg]
+                [arg
+                 {:position {:y (+ args-y-start
+                                   (* i arg-height))}}])
+              (:args literal))
+        args-height (* arg-height (-> literal :args count))]
+    {:predicate predicate
+     :args (into {} args)
+     :container {:position (or position {:x 0 :y 0})
+                 :size {:width  150
+                        :height (+ name-height
+                                   args-height)}}}))
+
+(defn literal [{:keys [id model layout]}]
+  (println id)
+  [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-literal % id])
+       :on-click #(re-frame/dispatch [::events/select-literal id])
+       :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
+       :key id}
+   [:rect {:class  "rule__bg"
+           :width  (->> layout :container :size :width)
+           :height (->> layout :container :size :height)}]
+   [:text {:x rule-head-padding
+           :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)}
+    (:predicate model)]
+   [:<>
+    (map-indexed
+     (fn [arg-index [arg arg-layout]]
+       [:text {:x rule-binding-padding-x
+               :y (->> arg-layout :position :y)
+               :class (when (some #(= % arg) (:highlight model)) "rule--highlight")
+               :key arg
+               :on-click #(re-frame/dispatch [::events/connect-src-literal id [arg-index arg]])}
+        arg])
+     (:args layout))]])
+
 (defn rule-layout [rule position]
   (let [name-height (+ rule-head-padding
                        rule-head-font-size
                        rule-head-padding)
 
-        head {:predicate (-> rule :head :predicate)
-              :position {:x rule-head-padding
-                         :y (/ name-height 2)}
-              :size     {:width  150
-                         :height name-height}}
+        predicate {:predicate (-> rule :head :predicate)
+                   :position {:x rule-head-padding
+                              :y (/ name-height 2)}
+                   :size     {:width  150
+                              :height name-height}}
 
         arg-height (+  rule-binding-padding-y
                        rule-binding-font-size
@@ -123,7 +192,7 @@
                                       args-height
                                       internals-height
                                       (/ arg-height 2))}}]
-    {:head head
+    {:predicate predicate
      :args (into {} args)
      :internals (into {} internals)
      :add-binding add-binding
@@ -135,11 +204,11 @@
                                    ;; Add Binding is one arg tall
                                    arg-height)}}}))
 
-(defn rule [{:keys [id model layout]}]
-  [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % id])
-       :on-click #(re-frame/dispatch [::events/select-rule id])
+(defn rule [{:keys [index model layout]}]
+  [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % index])
+       :on-click #(re-frame/dispatch [::events/select-rule index])
        :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
-       :key id}
+       :key index}
    [:rect {:class  "rule__bg"
            :width  (->> layout :container :size :width)
            :height (->> layout :container :size :height)}]
@@ -148,12 +217,12 @@
     (-> model :head :predicate)]
    [:<>
     (map-indexed
-     (fn [idx [arg arg-layout]]
+     (fn [arg-index [arg arg-layout]]
        [:text {:x rule-binding-padding-x
                :y (->> arg-layout :position :y)
                :class (when (some #(= % arg) (:highlight model)) "rule--highlight")
                :key arg
-               :on-click #(re-frame/dispatch [::events/connect-src (-> model :head :predicate) [idx arg]])}
+               :on-click #(re-frame/dispatch [::events/connect-src index [arg-index arg]])}
         arg])
      (concat (:args layout) (:internals layout)))]
    [:text {:x rule-binding-padding-x
@@ -203,16 +272,18 @@
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])
         rule-positions (re-frame/subscribe [::subs/rule-positions])
+        literal-positions (re-frame/subscribe [::subs/literal-positions])
         selected-rule (re-frame/subscribe [::subs/selected-rule])
         connecting-dest (re-frame/subscribe [::subs/connecting-dest])
         mouse-position (re-frame/subscribe [::subs/mouse-position])
         highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
         graph-transform (re-frame/subscribe [::subs/graph-transform])
+        literals-vm (literals-view-model @program)
         rules-vm (rules-view-model @program @highlighted-connection)
         rule-layouts (->> rules-vm
-                          (map
-                           (fn [[id rule]]
-                             [id (rule-layout rule (get @rule-positions id))]))
+                          (map-indexed
+                           (fn [idx rule]
+                             [idx (rule-layout rule (get @rule-positions idx))]))
                           (into {}))
         connections-vm (connections-view-model @program @highlighted-connection)]
     (when @program
@@ -241,13 +312,22 @@
                      :x2 (:x @mouse-position)
                      :y2 (:y @mouse-position)
                      :stroke "#333"}]))
-         (map (fn [[id rule-vm]]
-                (rule {:id id
-                       :model  rule-vm
-                       :layout (get rule-layouts id)}))
+         (map-indexed (fn [idx rule-vm]
+                        [rule {:index  idx
+                               :key    idx
+                               :model  rule-vm
+                               :layout (get rule-layouts idx)}])
               rules-vm)
-         (map #(connection {:connection %
-                            :rule-layouts rule-layouts})
+         (doall
+          (map (fn [[id vm]]
+                 [literal {:id id
+                           :key id
+                           :model vm
+                           :layout (literal-layout vm (get @literal-positions id {:x 0 :y 0}))}])
+               literals-vm))
+         (map (fn [vm]
+                [connection {:connection vm
+                             :rule-layouts rule-layouts}])
               connections-vm)]]
        [:div {:class "inspector-panel"}
         (rule-inspector @selected-rule (get @program @selected-rule))]

@@ -125,8 +125,13 @@
 
 (re-frame/reg-event-db
  ::select-rule
- (fn [db [_ rule-id]]
-   (assoc db :selected-rule rule-id)))
+ (fn [db [_ rule-idx]]
+   (assoc db :selected-rule rule-idx)))
+
+(re-frame/reg-event-db
+ ::select-literal
+ (fn [db [_ literal-id]]
+   (assoc db :selected-literal literal-id)))
 
 (re-frame/reg-event-db
  ::edit-predicate
@@ -137,9 +142,10 @@
  ::mouse-up
  (fn [db _]
    (-> db
-       (dissoc :graph-drag-origin)
        (dissoc :dragging-rule)
-       (dissoc :rule-drag-origin))))
+       (dissoc :dragging-literal)
+       (dissoc :node-drag-origin)
+       (dissoc :graph-drag-origin))))
 
 (re-frame/reg-event-db
  ::mouse-move
@@ -161,11 +167,24 @@
                                       (.preMultiplySelf graph-transform translate-matrix)))
              (assoc :graph-drag-origin event-position)))
 
-       (contains? db :rule-drag-origin)
+       (contains? db :dragging-literal)
        (let [dx (- (-> event-position :x)
-                   (-> db :rule-drag-origin :x))
+                   (-> db :node-drag-origin :x))
              dy (- (-> event-position :y)
-                   (-> db :rule-drag-origin :y))
+                   (-> db :node-drag-origin :y))]
+         (-> db
+             (update-in [:literal-positions (:dragging-literal db)]
+                        (fn [position]
+                          (-> position
+                              (update :x #(+ % dx))
+                              (update :y #(+ % dy)))))
+             (assoc :node-drag-origin event-position)))
+
+       (contains? db :dragging-rule)
+       (let [dx (- (-> event-position :x)
+                   (-> db :node-drag-origin :x))
+             dy (- (-> event-position :y)
+                   (-> db :node-drag-origin :y))
              dragging-rule-pred (-> db :dragging-rule :head :predicate)]
          (-> db
              (update-in [:rule-positions (:dragging-rule db)]
@@ -173,7 +192,7 @@
                           (-> position
                               (update :x #(+ % dx))
                               (update :y #(+ % dy)))))
-             (assoc :rule-drag-origin event-position)))
+             (assoc :node-drag-origin event-position)))
 
        :else db))))
 
@@ -202,9 +221,17 @@
                                  (.preMultiplySelf graph-transform zoom-matrix))))))
 
 (re-frame/reg-event-db
+ ::start-drag-literal
+ (fn [db [_ mouse-event literal-id]]
+   (-> db
+       (assoc :dragging-literal literal-id)
+       (assoc :node-drag-origin {:x (-> mouse-event .-nativeEvent .-offsetX)
+                                 :y (-> mouse-event .-nativeEvent .-offsetY)}))))
+
+(re-frame/reg-event-db
  ::start-drag-rule
  (fn [db [_ mouse-event rule-id]]
    (-> db
        (assoc :dragging-rule rule-id)
-       (assoc :rule-drag-origin {:x (-> mouse-event .-nativeEvent .-offsetX)
+       (assoc :node-drag-origin {:x (-> mouse-event .-nativeEvent .-offsetX)
                                  :y (-> mouse-event .-nativeEvent .-offsetY)}))))

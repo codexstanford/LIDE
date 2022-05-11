@@ -13,6 +13,11 @@
    (:rule-positions db)))
 
 (re-frame/reg-sub
+ ::literal-positions
+ (fn [db]
+   (:literal-positions db)))
+
+(re-frame/reg-sub
  ::selected-rule
  (fn [db]
    (:selected-rule db)))
