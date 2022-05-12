@@ -12,7 +12,25 @@
   {:x (+ (:x position) (/ (:width size) 2))
    :y (+ (:y position) (/ (:height size) 2))})
 
-(defn matches? [clause matcher])
+(defn variable? [arg]
+  (let [first-char (subs arg 0 1)]
+    (= first-char
+       (string/upper-case first-char))))
+
+(defn ground? [arg]
+  (not (variable? arg)))
+
+(defn grounds? [a b]
+  "Literal `b` grounds literal `a` if they have the same predicate, same arity,
+  and at least one shared argument is ground in `b` and variable in `a`. "
+  (and (= (:predicate a)
+          (:predicate b))
+       (= (count (:args a))
+          (count (:args b)))
+       (some (fn [[a-arg b-arg]]
+               (and (variable? a-arg)
+                    (ground? b-arg)))
+             (map vector (:args a) (:args b)))))
 
 (defn find-substitutions [program]
   "Infers connections between fully or partially ground rules in `program` and
@@ -74,7 +92,7 @@
        ;; TODO filter by args as well?
        (into {})))
 
-(defn connections-view-model [program highlighted-connection]
+(defn compositions-view-model [program highlighted-connection]
   (->> (:rules program)
        (map-indexed
         (fn [rule-idx rule]
@@ -93,6 +111,29 @@
            (:body rule))))
        flatten
        (remove nil?)))
+
+;; We're looking for head literals that ground body literals from other rules.
+
+(defn groundings-view-model [program]
+  (->> (:rules program)
+       (map-indexed
+        (fn [rule-idx rule]
+          (->> (:body rule)
+               (mapv
+                (fn [body-literal-id]
+                  (let [body-literal (get (:literals program) body-literal-id)]
+                    (->> (:rules program)
+                         (map-indexed (fn [idx rule] [idx rule]))
+                         (filter (fn [[_ grounding-rule]]
+                                   (grounds? body-literal (get (:literals program)
+                                                               (:head grounding-rule)))))
+                         (map (fn [[grounding-rule-idx grounding-rule]]
+                                {:src  [grounding-rule-idx (->> grounding-rule
+                                                                :head
+                                                                (get (:literals program))
+                                                                :args)]
+                                 :dest [body-literal-id (:args body-literal)]})))))))))
+       flatten))
 
 (def rule-head-font-size 18)
 (def rule-head-padding 6)
@@ -239,7 +280,7 @@
      :y (+ (-> layout :container :position :y)
            (-> all-names (get arg) :position :y))}))
 
-(defn connection [{:keys [connection literal-layouts rule-layouts]}]
+(defn composition-connector [{:keys [connection literal-layouts rule-layouts]}]
   (let [[start-rule-idx start-arg] (:src connection)
         [end-literal-id end-arg]   (:dest connection)
         start-layout (get rule-layouts start-rule-idx)
@@ -261,6 +302,36 @@
              :on-mouse-over #(re-frame/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
              :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])
              :on-click #(re-frame/dispatch [::events/disconnect connection])}]]))
+
+(defn grounding-connector [{:keys [connection literal-layouts rule-layouts]}]
+  (let [[start-rule-idx start-args] (:src connection)
+        [end-literal-id end-args]   (:dest connection)
+        start-layout (get rule-layouts start-rule-idx)
+        end-layout   (get literal-layouts end-literal-id)]
+    (into
+     [:<>]
+     (mapv
+      (fn [start-arg end-arg]
+        (let [start (socket-position start-layout start-arg {:end :src})
+              end (socket-position end-layout end-arg {:end :dest})]
+          [:<>
+           [:line {:x1 (:x start)
+                   :y1 (:y start)
+                   :x2 (:x end)
+                   :y2 (:y end)
+                   :stroke-dasharray "5,5"
+                   :stroke (if (:highlighted connection) "green" "black")}]
+           [:line {:x1 (:x start)
+                   :y1 (:y start)
+                   :x2 (:x end)
+                   :y2 (:y end)
+                   :stroke "transparent"
+                   :stroke-width 10
+                   :on-mouse-over #(re-frame/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
+                   :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])
+                   :on-click #(re-frame/dispatch [::events/disconnect connection])}]]))
+      start-args
+      end-args))))
 
 (defn rule-inspector [id rule]
   (if-not rule
@@ -290,7 +361,8 @@
                            (fn [idx rule]
                              [idx (rule-layout rule (get @rule-positions idx))]))
                           (into {}))
-        connections-vm (connections-view-model @program @highlighted-connection)]
+        compositions-vm (compositions-view-model @program @highlighted-connection)
+        groundings-vm (groundings-view-model @program)]
     (when @program
       [:div {:id "app-container"
              :on-mouse-up #(re-frame/dispatch [::events/mouse-up %])}
@@ -331,14 +403,24 @@
                            :layout (get literal-layouts id {:x 0 :y 0})}])
                literals-vm))
          (map (fn [vm]
-                [connection {:connection vm
-                             :literal-layouts literal-layouts
-                             :rule-layouts rule-layouts
-                             :key vm}])
-              connections-vm)]]
+                [composition-connector
+                 {:connection vm
+                  :literal-layouts literal-layouts
+                  :rule-layouts rule-layouts
+                  :key (str vm)}])
+              compositions-vm)
+         (map (fn [vm]
+                [grounding-connector
+                 {:connection vm
+                  :literal-layouts literal-layouts
+                  :rule-layouts rule-layouts
+                  :key (str vm)}])
+              groundings-vm)]]
        [:div {:class "inspector-panel"}
         (rule-inspector @selected-rule (get @program @selected-rule))]
        [:div {:class "code-panel"}
         [:pre {:class "code"}
          (string/join "\n\n"
-                      (map epilog/rule-to-epilog (vals @program)))]]])))
+                      (->> (:rules @program)
+                           (map #(populate-rule @program %))
+                           (map epilog/rule-to-epilog)))]]])))
