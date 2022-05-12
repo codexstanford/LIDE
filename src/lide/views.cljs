@@ -43,33 +43,30 @@
   Essentially, we're performing one round of bottom-up unification."
   )
 
-(defn populate-rule [program rule]
-  (-> rule
-      (update :head (fn [id]
-                      (-> program :literals (get id))))
-      (update :body (fn [literals]
-                      (map (fn [id] (-> program :literals (get id)))
-                           literals)))))
+(defn rule-view-model [rule highlighted-connection]
+  (let [internals (->> rule
+                       :body
+                       (mapcat :args)
+                       (remove #(= % :unspecified))
+                       (remove (fn [internal]
+                                 (some #(= internal %) (-> rule :head :args))))
+                       vec)]
+    {:head (:head rule)
+     :internals internals
+     :highlight (filterv (fn [arg]
+                           (some #(= % [(-> rule :head :predicate) arg])
+                                 (vals (select-keys highlighted-connection [:src :dest]))))
+                         (concat (-> rule :head :args) internals))}))
 
 (defn rules-view-model [program highlighted-connection]
   ;; TODO support disjunction - we might already have a definition
-  (mapv
-   (fn [ref-rule]
-     (let [rule (populate-rule program ref-rule)
-           internals (->> rule
-                          :body
-                          (mapcat :args)
-                          (remove #(= % :unspecified))
-                          (remove (fn [internal]
-                                    (some #(= internal %) (-> rule :head :args))))
-                          vec)]
-       {:head (:head rule)
-        :internals internals
-        :highlight (filterv (fn [arg]
-                              (some #(= % [(-> rule :head :predicate) arg])
-                                    (vals (select-keys highlighted-connection [:src :dest]))))
-                            (concat (-> rule :head :args) internals))}))
-   (:rules program)))
+  (->> (:rules program)
+       (mapv #(util/populate-rule program %))
+       (mapv #(rule-view-model % highlighted-connection))))
+
+(defn literal-view-model [literal]
+  {:predicate (:predicate literal)
+   :args      (:args literal)})
 
 (defn literals-view-model [program]
   (->> (:rules program)
@@ -78,8 +75,7 @@
           (mapv
            (fn [body-literal-id]
              (let [body-literal (get (:literals program) body-literal-id)]
-               {body-literal-id {:predicate (:predicate body-literal)
-                                 :args      (:args body-literal)}}))
+               {body-literal-id (literal-view-model body-literal)}))
            (:body ref-rule))))
        flatten
        (into {})))
@@ -92,25 +88,22 @@
        ;; TODO filter by args as well?
        (into {})))
 
-(defn compositions-view-model [program highlighted-connection]
-  (->> (:rules program)
-       (map-indexed
-        (fn [rule-idx rule]
-          (map
-           (fn [body-literal-id]
-             (let [body-literal (get (:literals program) body-literal-id)]
-               (map-indexed
-                (fn [i arg]
-                  (when (not= arg :unspecified)
-                    (let [unhighlighted {:src  [rule-idx        arg]
-                                         :dest [body-literal-id arg]}]
-                      (assoc unhighlighted
-                             :highlighted
-                             (= unhighlighted highlighted-connection)))))
-                (:args body-literal))))
-           (:body rule))))
-       flatten
-       (remove nil?)))
+(defn compositions-view-model [program rule-idx rule highlighted-connection]
+  (->> rule
+       (util/compositions program)
+       (mapv
+        (fn [composition]
+          ;; arg from composition should match an arg in rule, so we can use it on
+          ;; both ends of the connector
+          (let [arg (:arg composition)]
+            {:src [rule-idx arg]
+             :dest [(:literal-id composition) arg]})))))
+
+#_(defn compositions-view-model [program highlighted-connection]
+  (->> program
+       util/all-compositions
+       (mapv (fn [composition]
+               (assoc composition :highlighted (= composition highlighted-connection))))))
 
 ;; We're looking for head literals that ground body literals from other rules.
 
@@ -171,27 +164,31 @@
                         :height (+ name-height
                                    args-height)}}}))
 
-(defn literal [{:keys [id model layout]}]
-  [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-literal % id])
-       :on-click #(re-frame/dispatch [::events/select-literal id])
-       :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
-       :key id}
-   [:rect {:class  "rule__bg"
-           :width  (->> layout :container :size :width)
-           :height (->> layout :container :size :height)}]
-   [:text {:x rule-head-padding
-           :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)}
-    (:predicate model)]
-   [:<>
-    (map-indexed
-     (fn [arg-index [arg arg-layout]]
-       [:text {:x rule-binding-padding-x
-               :y (->> arg-layout :position :y)
-               :class (when (some #(= % arg) (:highlight model)) "rule--highlight")
-               :key arg
-               :on-click #(re-frame/dispatch [::events/connect-src-literal id [arg-index arg]])}
-        arg])
-     (:args layout))]])
+(defn literal [{:keys [id]}]
+  (let [literal-raw @(re-frame/subscribe [::subs/literal id])
+        literal-model (literal-view-model literal-raw)
+        position @(re-frame/subscribe [::subs/literal-position id])
+        layout (literal-layout literal-model position)]
+    [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-literal % id])
+         :on-click #(re-frame/dispatch [::events/select-literal id])
+         :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
+         :key id}
+     [:rect {:class  "rule__bg"
+             :width  (->> layout :container :size :width)
+             :height (->> layout :container :size :height)}]
+     [:text {:x rule-head-padding
+             :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)}
+      (:predicate literal-model)]
+     [:<>
+      (map-indexed
+       (fn [arg-index [arg arg-layout]]
+         [:text {:x rule-binding-padding-x
+                 :y (->> arg-layout :position :y)
+                 :class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
+                 :key arg
+                 :on-click #(re-frame/dispatch [::events/connect-src-literal id [arg-index arg]])}
+          arg])
+       (:args layout))]]))
 
 (defn rule-layout [rule position]
   (let [name-height (+ rule-head-padding
@@ -244,31 +241,36 @@
                                    ;; Add Binding is one arg tall
                                    arg-height)}}}))
 
-(defn rule [{:keys [index model layout]}]
-  [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % index])
-       :on-click #(re-frame/dispatch [::events/select-rule index])
-       :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
-       :key index}
-   [:rect {:class  "rule__bg"
-           :width  (->> layout :container :size :width)
-           :height (->> layout :container :size :height)}]
-   [:text {:x rule-head-padding
-           :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)}
-    (-> model :head :predicate)]
-   [:<>
-    (map-indexed
-     (fn [arg-index [arg arg-layout]]
-       [:text {:x rule-binding-padding-x
-               :y (->> arg-layout :position :y)
-               :class (when (some #(= % arg) (:highlight model)) "rule--highlight")
-               :key arg
-               :on-click #(re-frame/dispatch [::events/connect-src index [arg-index arg]])}
-        arg])
-     (concat (:args layout) (:internals layout)))]
-   [:text {:x rule-binding-padding-x
-           :y (->> layout :add-binding :position :y)
-           :on-click #(re-frame/dispatch [::events/start-connect-dest (-> model :head :predicate)])}
-    "+ Add Binding"]])
+(defn rule [{:keys [index]}]
+  (let [rule-raw @(re-frame/subscribe [::subs/populated-rule index])
+        highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
+        rule-model (rule-view-model rule-raw highlighted-connection)
+        position @(re-frame/subscribe [::subs/rule-position index])
+        layout (rule-layout rule-model position)]
+    [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % index])
+         :on-click #(re-frame/dispatch [::events/select-rule index])
+         :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
+         :key index}
+     [:rect {:class  "rule__bg"
+             :width  (->> layout :container :size :width)
+             :height (->> layout :container :size :height)}]
+     [:text {:x rule-head-padding
+             :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)}
+      (-> rule-model :head :predicate)]
+     [:<>
+      (map-indexed
+       (fn [arg-index [arg arg-layout]]
+         [:text {:x rule-binding-padding-x
+                 :y (->> arg-layout :position :y)
+                 :class (when (some #(= % arg) (:highlight rule-model)) "rule--highlight")
+                 :key arg
+                 :on-click #(re-frame/dispatch [::events/connect-src index [arg-index arg]])}
+          arg])
+       (concat (:args layout) (:internals layout)))]
+     [:text {:x rule-binding-padding-x
+             :y (->> layout :add-binding :position :y)
+             :on-click #(re-frame/dispatch [::events/start-connect-dest (-> rule-model :head :predicate)])}
+      "+ Add Binding"]]))
 
 (defn socket-position [layout arg {:keys [end]}]
   (let [all-names (merge (:args layout)
@@ -280,11 +282,18 @@
      :y (+ (-> layout :container :position :y)
            (-> all-names (get arg) :position :y))}))
 
-(defn composition-connector [{:keys [connection literal-layouts rule-layouts]}]
+(defn composition-connector [connection]
   (let [[start-rule-idx start-arg] (:src connection)
         [end-literal-id end-arg]   (:dest connection)
-        start-layout (get rule-layouts start-rule-idx)
-        end-layout   (get literal-layouts end-literal-id)
+        start-rule @(re-frame/subscribe [::subs/populated-rule start-rule-idx])
+        start-rule-position @(re-frame/subscribe [::subs/rule-position start-rule-idx])
+        end-literal @(re-frame/subscribe [::subs/literal end-literal-id])
+        end-literal-position @(re-frame/subscribe [::subs/literal-position end-literal-id])
+        highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
+        start-layout (rule-layout (rule-view-model start-rule highlighted-connection)
+                                  start-rule-position)
+        end-layout   (literal-layout (literal-view-model end-literal)
+                                     end-literal-position)
         start (socket-position start-layout start-arg {:end :dest})
         end   (socket-position end-layout end-arg {:end :src})]
     [:<>
@@ -302,6 +311,14 @@
              :on-mouse-over #(re-frame/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
              :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])
              :on-click #(re-frame/dispatch [::events/disconnect connection])}]]))
+
+(defn composition-connectors [{:keys [rule-index]}]
+  (let [program @(re-frame/subscribe [::subs/program])
+        rule @(re-frame/subscribe [::subs/rule rule-index])
+        compositions-model (compositions-view-model program rule-index rule {})]
+    (into [:<>] (mapv (fn [cm]
+                        [composition-connector cm])
+                      compositions-model))))
 
 (defn grounding-connector [{:keys [connection literal-layouts rule-layouts]}]
   (let [[start-rule-idx start-args] (:src connection)
@@ -333,20 +350,23 @@
       start-args
       end-args))))
 
-(defn rule-inspector [id rule]
-  (if-not rule
-    [:div "No active selection."]
-    [:input {:type "text"
-             :value (-> rule :head :predicate)
-             :on-change #(re-frame/dispatch [::events/edit-predicate id (-> % .-target .-value)])}]))
+;; XXX not used at the moment, rethinking how connections work
+#_(defn pending-connector []
+  (let [connecting-dest (re-frame/subscribe [::subs/connecting-dest])
+        mouse-position (re-frame/subscribe [::subs/mouse-position])]
+    (when (and (not (string/blank? @connecting-dest))
+               @mouse-position)
+      (let [origin-center (center-position (get rule-layouts @connecting-dest))]
+        [:line {:x1 (:x origin-center)
+                :y1 (:y origin-center)
+                :x2 (:x @mouse-position)
+                :y2 (:y @mouse-position)
+                :stroke "#333"}]))))
 
-(defn main-panel []
+(defn program-graph []
   (let [program (re-frame/subscribe [::subs/program])
         rule-positions (re-frame/subscribe [::subs/rule-positions])
         literal-positions (re-frame/subscribe [::subs/literal-positions])
-        selected-rule (re-frame/subscribe [::subs/selected-rule])
-        connecting-dest (re-frame/subscribe [::subs/connecting-dest])
-        mouse-position (re-frame/subscribe [::subs/mouse-position])
         highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
         graph-transform (re-frame/subscribe [::subs/graph-transform])
         literals-vm (literals-view-model @program)
@@ -361,66 +381,66 @@
                            (fn [idx rule]
                              [idx (rule-layout rule (get @rule-positions idx))]))
                           (into {}))
-        compositions-vm (compositions-view-model @program @highlighted-connection)
         groundings-vm (groundings-view-model @program)]
+    [:svg {:class "graph-panel"
+           :height 500
+           :width  1000
+           :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move %])
+                                                   25)
+           :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
+                                              100)}
+     [:rect {:class "graph__bg"
+             :height 500
+             :width  1000
+             :on-mouse-down #(re-frame/dispatch [::events/start-drag-graph %])
+             :on-click #(re-frame/dispatch [::events/create-node %])}]
+     [:g {:class "graph__viewport"
+          :transform (when @graph-transform
+                       (str (util/dom-matrix-from-vals @graph-transform)))}
+      (map-indexed (fn [idx]
+                     [rule {:index  idx
+                            :key    idx}])
+                   (:rules @program))
+      (doall
+       (map (fn [[id _]]
+              [literal {:id id
+                        :key id}])
+            (util/all-body-literals @program)))
+      (map-indexed (fn [rule-idx _]
+                     [composition-connectors
+                      {:rule-index rule-idx
+                       :key rule-idx}])
+                   (:rules @program))
+      (map (fn [vm]
+             [grounding-connector
+              {:connection vm
+               :literal-layouts literal-layouts
+               :rule-layouts rule-layouts
+               :key (str vm)}])
+           groundings-vm)]]))
+
+(defn rule-inspector []
+  (let [rules @(re-frame/subscribe [::subs/populated-rules])
+        rule-idx @(re-frame/subscribe [::subs/selected-rule-index])
+        rule (get rules rule-idx)]
+    (if-not rule-idx
+      [:div "No active selection."]
+      [:input {:type "text"
+               :value (-> rule :head :predicate)
+               :on-change #(re-frame/dispatch [::events/edit-predicate rule-idx (-> % .-target .-value)])}])))
+
+(defn epilog-panel []
+  (let [rules @(re-frame/subscribe [::subs/populated-rules])]
+    [:pre {:class "code"}
+     (string/join "\n\n" (map epilog/rule-to-epilog rules))]))
+
+(defn main-panel []
+  (let [program (re-frame/subscribe [::subs/program])]
     (when @program
       [:div {:id "app-container"
              :on-mouse-up #(re-frame/dispatch [::events/mouse-up %])}
-       [:svg {:class "graph-panel"
-              :height 500
-              :width  1000
-              :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move %])
-                                                      25)
-              :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
-                                                 100)}
-        [:rect {:class "graph__bg"
-                :height 500
-                :width  1000
-                :on-mouse-down #(re-frame/dispatch [::events/start-drag-graph %])
-                :on-click #(re-frame/dispatch [::events/create-node %])}]
-        [:g {:class "graph__viewport"
-             :transform (when @graph-transform
-                          (str (util/dom-matrix-from-vals @graph-transform)))}
-         (when (and (not (string/blank? @connecting-dest))
-                    @mouse-position)
-           (let [origin-center (center-position (get rule-layouts @connecting-dest))]
-             [:line {:x1 (:x origin-center)
-                     :y1 (:y origin-center)
-                     :x2 (:x @mouse-position)
-                     :y2 (:y @mouse-position)
-                     :stroke "#333"}]))
-         (map-indexed (fn [idx rule-vm]
-                        [rule {:index  idx
-                               :key    idx
-                               :model  rule-vm
-                               :layout (get rule-layouts idx)}])
-              rules-vm)
-         (doall
-          (map (fn [[id vm]]
-                 [literal {:id id
-                           :key id
-                           :model vm
-                           :layout (get literal-layouts id {:x 0 :y 0})}])
-               literals-vm))
-         (map (fn [vm]
-                [composition-connector
-                 {:connection vm
-                  :literal-layouts literal-layouts
-                  :rule-layouts rule-layouts
-                  :key (str vm)}])
-              compositions-vm)
-         (map (fn [vm]
-                [grounding-connector
-                 {:connection vm
-                  :literal-layouts literal-layouts
-                  :rule-layouts rule-layouts
-                  :key (str vm)}])
-              groundings-vm)]]
+       [program-graph]
        [:div {:class "inspector-panel"}
-        (rule-inspector @selected-rule (get @program @selected-rule))]
+        [rule-inspector]]
        [:div {:class "code-panel"}
-        [:pre {:class "code"}
-         (string/join "\n\n"
-                      (->> (:rules @program)
-                           (map #(populate-rule @program %))
-                           (map epilog/rule-to-epilog)))]]])))
+        [epilog-panel]]])))

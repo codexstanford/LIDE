@@ -20,6 +20,7 @@
 (defn find-head [db predicate]
   (->> db
        :program
+       :rules
        (filter #(= predicate (-> % :head :predicate)))
        first
        :head))
@@ -44,10 +45,10 @@
  (fn [db [_ {[src-pred src-arg]   :src
              [dest-pred dest-arg] :dest}]]
    (let [[dest-rule-idx dest-rule] (first-indexed #(= dest-pred (-> % :head :predicate))
-                                                  (:program db))
+                                                  (-> db :program :rules))
          [src-pred-idx _] (first-indexed #(= src-pred (:predicate %))
                                          (:body dest-rule))
-         args (get-in db [:program dest-rule-idx :body src-pred-idx :args])
+         args (get-in db [:program :rules dest-rule-idx :body src-pred-idx :args])
          updated-args (mapv (fn [arg]
                               (if (= arg dest-arg)
                                 :unspecified
@@ -55,9 +56,9 @@
                             args)]
      (if (some #(not= % :unspecified) updated-args)
        ;; Still at least one binding for src, so keep it
-       (assoc-in db [:program dest-rule-idx :body src-pred-idx :args] updated-args)
+       (assoc-in db [:program :rules dest-rule-idx :body src-pred-idx :args] updated-args)
        ;; No bindings remaining for src: remove it from dest's body
-       (update-in db [:program dest-rule-idx :body]
+       (update-in db [:program :rules dest-rule-idx :body]
                   (fn [body]
                     (vec (remove #(= src-pred (:predicate %)) body))))))))
 
@@ -73,7 +74,7 @@
    (let [connecting-dest (:connecting-dest db)]
      (if-not connecting-dest
        db
-       (let [updated-program
+       (let [updated-rules
              (mapv
               (fn [dest-rule]
                 (if (not= connecting-dest (-> dest-rule :head :predicate))
@@ -104,29 +105,29 @@
                              body-literal))
                          body-with-src-literal)]
                     (assoc dest-rule :body updated-body))))
-              (:program db))]
+              (-> db :program :rules))]
          (-> db
-             (assoc :program updated-program)
+             (assoc-in [:program :rules] updated-rules)
              (dissoc :connecting-dest)
              (dissoc :mouse-position)))))))
 
 (re-frame/reg-event-db
  ::create-node
  (fn [db [_ mouse-event]]
-   (let [new-id (random-uuid)
+   (let [new-idx (-> db :program :rules count)
          position (offset-position mouse-event)]
      (-> db
-         (update :program
-                 (fn [program]
-                   (assoc program new-id {:head {:predicate "new"}})))
+         (update-in [:program :rules]
+                    (fn [rules]
+                      (conj rules {:head {:predicate "new"}})))
          (update :rule-positions
                  (fn [positions]
-                   (conj positions [new-id position])))))))
+                   (conj positions [new-idx position])))))))
 
 (re-frame/reg-event-db
  ::select-rule
  (fn [db [_ rule-idx]]
-   (assoc db :selected-rule rule-idx)))
+   (assoc db :selected-rule-index rule-idx)))
 
 (re-frame/reg-event-db
  ::select-literal
@@ -135,8 +136,10 @@
 
 (re-frame/reg-event-db
  ::edit-predicate
- (fn [db [_ rule-id new-predicate]]
-   (update-in db [:program rule-id] #(assoc-in % [:head :predicate] new-predicate))))
+ (fn [db [_ rule-idx new-predicate]]
+   (update-in db
+              [:program :rules rule-idx]
+              #(assoc-in % [:head :predicate] new-predicate))))
 
 (re-frame/reg-event-db
  ::mouse-up
