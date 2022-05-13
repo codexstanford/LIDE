@@ -4,18 +4,20 @@
 
 (defn literal-to-epilog [literal]
   (str (:predicate literal)
-       "("
-       (string/join ", "
-                    (->
-                     (reduce
-                      (fn [[anon-idx acc] arg]
-                        (if (= arg :unspecified)
-                          [(inc anon-idx) (conj acc (str "_" anon-idx))]
-                          [anon-idx (conj acc arg)]))
-                      [0 []]
-                      (:args literal))
-                     (get 1)))
-       ")"))
+       (when (:args literal)
+         (str
+          "("
+          (string/join ", "
+                       (->
+                        (reduce
+                         (fn [[anon-idx acc] arg]
+                           (if (= arg :unspecified)
+                             [(inc anon-idx) (conj acc (str "_" anon-idx))]
+                             [anon-idx (conj acc arg)]))
+                         [0 []]
+                         (:args literal))
+                        (get 1)))
+          ")"))))
 
 (defn rule-to-epilog [rule]
   (let [head (literal-to-epilog (:head rule))
