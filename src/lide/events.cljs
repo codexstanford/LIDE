@@ -63,6 +63,15 @@
                     (vec (remove #(= src-pred (:predicate %)) body))))))))
 
 (re-frame/reg-event-db
+ ::add-argument
+ (fn [db [_ rule-idx]]
+   (let [head-id (get-in db [:program :rules rule-idx :head])]
+     (update-in db
+                [:program :literals head-id :args]
+                (fn [args]
+                  (conj args "arg"))))))
+
+(re-frame/reg-event-db
  ::start-connect-dest
  (fn [db [_ dest-pred]]
    (assoc db :connecting-dest dest-pred)))
@@ -112,14 +121,17 @@
              (dissoc :mouse-position)))))))
 
 (re-frame/reg-event-db
- ::create-node
+ ::create-rule
  (fn [db [_ mouse-event]]
-   (let [new-idx (-> db :program :rules count)
+   (let [new-head-id (random-uuid)
+         new-idx (-> db :program :rules count)
          position (offset-position mouse-event)]
      (-> db
+         (assoc-in [:program :literals new-head-id]
+                   {:predicate "new"})
          (update-in [:program :rules]
                     (fn [rules]
-                      (conj rules {:head {:predicate "new"}})))
+                      (conj rules {:head new-head-id})))
          (update :rule-positions
                  (fn [positions]
                    (conj positions [new-idx position])))))))
@@ -137,9 +149,11 @@
 (re-frame/reg-event-db
  ::edit-predicate
  (fn [db [_ rule-idx new-predicate]]
-   (update-in db
-              [:program :rules rule-idx]
-              #(assoc-in % [:head :predicate] new-predicate))))
+   (let [rule (get (-> db :program :rules) rule-idx)]
+     (update-in db
+                [:program :literals (:head rule)]
+                (fn [literal]
+                  (assoc literal :predicate new-predicate))))))
 
 (re-frame/reg-event-db
  ::mouse-up

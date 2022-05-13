@@ -269,8 +269,8 @@
        (concat (:args layout) (:internals layout)))]
      [:text {:x rule-binding-padding-x
              :y (->> layout :add-binding :position :y)
-             :on-click #(re-frame/dispatch [::events/start-connect-dest (-> rule-model :head :predicate)])}
-      "+ Add Binding"]]))
+             :on-click #(re-frame/dispatch [::events/add-argument index])}
+      "+ Add argument"]]))
 
 (defn socket-position [layout arg {:keys [end]}]
   (let [all-names (merge (:args layout)
@@ -393,7 +393,7 @@
              :height 500
              :width  1000
              :on-mouse-down #(re-frame/dispatch [::events/start-drag-graph %])
-             :on-click #(re-frame/dispatch [::events/create-node %])}]
+             :on-click #(re-frame/dispatch [::events/create-rule %])}]
      [:g {:class "graph__viewport"
           :transform (when @graph-transform
                        (str (util/dom-matrix-from-vals @graph-transform)))}
