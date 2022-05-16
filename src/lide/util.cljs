@@ -89,12 +89,3 @@
              (:args body-literal)))))
        flatten
        (remove nil?)))
-
-(defn all-compositions [program]
-  (->> (:rules program)
-       (map-indexed
-        (fn [rule-idx rule]
-          (mapv
-           (fn [composition]
-             )
-           (compositions rule-idx rule))))))

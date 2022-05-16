@@ -69,12 +69,6 @@
             {:src [rule-idx arg]
              :dest [(:literal-id composition) arg]})))))
 
-#_(defn compositions-view-model [program highlighted-connection]
-  (->> program
-       util/all-compositions
-       (mapv (fn [composition]
-               (assoc composition :highlighted (= composition highlighted-connection))))))
-
 ;; We're looking for head literals that ground body literals from other rules.
 
 (defn groundings-view-model [program]
