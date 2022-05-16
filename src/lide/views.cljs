@@ -32,17 +32,6 @@
                     (ground? b-arg)))
              (map vector (:args a) (:args b)))))
 
-(defn find-substitutions [program]
-  "Infers connections between fully or partially ground rules in `program` and
-  the more general rules they can substitute for.
-
-  For example, pred(a, b) could substitute for pred(X, Y). This will not be
-  explicitly indicated in `program`, but displaying the semantic connection
-  between pred(a, b) and pred(X, Y) is very informative.
-
-  Essentially, we're performing one round of bottom-up unification."
-  )
-
 (defn rule-view-model [rule highlighted-connection]
   (let [internals (->> rule
                        :body
