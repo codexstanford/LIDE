@@ -1,7 +1,18 @@
 (ns lide.util)
 
+;; General utilities
+
 (defn map-vals [f m]
   (into (empty m) (for [[k v] m] [k (f v)])))
+
+(defn first-indexed [pred coll]
+  "Return a vector of the first element in `coll` matching `pred` and the index
+  of that element, ordered [index, item]."
+  (->> coll
+       (keep-indexed (fn [idx elem]
+                       (when (pred elem)
+                         [idx elem])))
+       first))
 
 ;; DOM transform matrix stuff
 

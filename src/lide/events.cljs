@@ -1,5 +1,6 @@
 (ns lide.events
   (:require
+   [clojure.edn :as edn]
    [re-frame.core :as re-frame]
    [lide.db :as db]
    [lide.util :as util]
@@ -10,13 +11,6 @@
   {:x (-> evt .-nativeEvent .-offsetX)
    :y (-> evt .-nativeEvent .-offsetY)})
 
-(defn first-indexed [pred coll]
-  (->> coll
-       (keep-indexed (fn [idx elem]
-                       (when (pred elem)
-                         [idx elem])))
-       first))
-
 (defn find-head [db predicate]
   (->> db
        :program
@@ -24,11 +18,35 @@
        (filter #(= predicate (-> % :head :predicate)))
        first
        :head))
+;; LocalStorage
 
-(re-frame/reg-event-db
+(re-frame/reg-fx
+ ::set-local-storage
+ (fn [[key val]]
+   (-> js/window
+       (.-localStorage)
+       (.setItem key val))))
+
+(re-frame/reg-cofx
+ ::saved-state
+ (fn [cofx key]
+   (assoc cofx
+          ::saved-state
+          (-> js/localStorage
+              (.getItem "lide.state")
+              edn/read-string))))
+
+(re-frame/reg-event-fx
  ::initialize-db
- (fn [_ _]
-   db/default-db))
+ [(re-frame/inject-cofx ::saved-state)]
+ (fn [cofx _]
+   {:db (or (::saved-state cofx)
+            db/default-db)}))
+
+(re-frame/reg-event-fx
+ ::save
+ (fn [cofx _]
+   {:fx [[::set-local-storage ["lide.state" (pr-str (:db cofx))]]]}))
 
 (re-frame/reg-event-db
  ::highlight-connection
@@ -44,9 +62,9 @@
  ::disconnect
  (fn [db [_ {[src-pred src-arg]   :src
              [dest-pred dest-arg] :dest}]]
-   (let [[dest-rule-idx dest-rule] (first-indexed #(= dest-pred (-> % :head :predicate))
+   (let [[dest-rule-idx dest-rule] (util/first-indexed #(= dest-pred (-> % :head :predicate))
                                                   (-> db :program :rules))
-         [src-pred-idx _] (first-indexed #(= src-pred (:predicate %))
+         [src-pred-idx _] (util/first-indexed #(= src-pred (:predicate %))
                                          (:body dest-rule))
          args (get-in db [:program :rules dest-rule-idx :body src-pred-idx :args])
          updated-args (mapv (fn [arg]
