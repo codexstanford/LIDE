@@ -13,8 +13,11 @@
    :y (+ (:y position) (/ (:height size) 2))})
 
 (defn variable? [arg]
-  (let [first-char (subs arg 0 1)]
+  "True if `arg` is a string starting with an upper-case letter."
+  (let [first-char (subs arg 0 1)
+        first-char-alpha (apply str (re-seq #"[a-zA-Z]" first-char))]
     (= first-char
+       first-char-alpha
        (string/upper-case first-char))))
 
 (defn ground? [arg]
