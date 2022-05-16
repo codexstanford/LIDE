@@ -12,24 +12,41 @@
 
       #app-container {
         display: flex;
+        flex-flow: column;
+        height: 100%;
+      }
+
+      .work-viewport {
+        display: flex;
         flex-flow: row;
         height: 100%;
       }
 
-      .graph-panel {
-        width: 65%;
+      .toolbar {
+        padding: 5px;
+        box-shadow: 0 2px 5px 5px #ccc;
       }
 
-      .code-panel {
-        width: 35%;
-        overflow-y: auto;
+      .inspectors {
+        display: flex;
+      }
+
+      .graph-panel {
+        flex-grow: 1;
+      }
+
+      .epilog-inspector {
+        width: 300px;
+        overflow-y: scroll;
       }
 
       .code {
         flex: 1 0 auto;
         box-sizing: border-box;
         min-height: 100%;
-        padding: 30px;
+        margin: 0;
+        padding: 20px;
+        border-left: 1px solid #ccc;
         background-color: white;
       }
 

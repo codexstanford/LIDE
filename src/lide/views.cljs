@@ -375,15 +375,13 @@
                           (into {}))
         groundings-vm (groundings-view-model @program)]
     [:svg {:class "graph-panel"
-           :height 500
-           :width  1000
            :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move %])
                                                    25)
            :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
                                               100)}
      [:rect {:class "graph__bg"
-             :height 500
-             :width  1000
+             :height 10000
+             :width  10000
              :on-mouse-down #(re-frame/dispatch [::events/start-drag-graph %])
              :on-click #(re-frame/dispatch [::events/create-rule %])}]
      [:g {:class "graph__viewport"
@@ -415,24 +413,31 @@
   (let [rules @(re-frame/subscribe [::subs/populated-rules])
         rule-idx @(re-frame/subscribe [::subs/selected-rule-index])
         rule (get rules rule-idx)]
-    (if-not rule-idx
-      [:div "No active selection."]
-      [:input {:type "text"
-               :value (-> rule :head :predicate)
-               :on-change #(re-frame/dispatch [::events/edit-predicate rule-idx (-> % .-target .-value)])}])))
+    [:div {:class (str "node-inspector")}
+     (when rule-idx
+       [:input {:type "text"
+                :value (-> rule :head :predicate)
+                :on-change #(re-frame/dispatch [::events/edit-predicate rule-idx (-> % .-target .-value)])}])]))
 
 (defn epilog-panel []
   (let [rules @(re-frame/subscribe [::subs/populated-rules])]
-    [:pre {:class "code"}
-     (string/join "\n\n" (map epilog/rule-to-epilog rules))]))
+    [:div {:class "epilog-inspector"}
+     [:pre {:class "code"}
+      (string/join "\n\n" (map epilog/rule-to-epilog rules))]]))
+
+(defn toolbar []
+  [:div {:class "toolbar"}
+   [:button {:on-click #(re-frame/dispatch [::events/save])}
+    "Save"]])
 
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])]
     (when @program
       [:div {:id "app-container"
              :on-mouse-up #(re-frame/dispatch [::events/mouse-up %])}
-       [program-graph]
-       [:div {:class "inspector-panel"}
-        [rule-inspector]]
-       [:div {:class "code-panel"}
-        [epilog-panel]]])))
+       [:div {:class "work-viewport"}
+        [program-graph]
+        [:div {:class "inspectors"}
+         [rule-inspector]
+         [epilog-panel]]]
+       [toolbar]])))
