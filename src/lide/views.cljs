@@ -349,13 +349,13 @@
     [:svg {:class "graph-panel"
            :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move %])
                                                    25)
+           :on-mouse-up #(re-frame/dispatch [::events/mouse-up %])
            :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
                                               100)}
      [:rect {:class "graph__bg"
              :height 10000
              :width  10000
-             :on-mouse-down #(re-frame/dispatch [::events/start-drag-graph %])
-             :on-click #(re-frame/dispatch [::events/create-rule %])}]
+             :on-mouse-down #(re-frame/dispatch [::events/mouse-down-graph-bg %])}]
      [:g {:class "graph__viewport"
           :transform (when @graph-transform
                        (str (util/dom-matrix-from-vals @graph-transform)))}
@@ -413,8 +413,7 @@
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])]
     (when @program
-      [:div {:id "app-container"
-             :on-mouse-up #(re-frame/dispatch [::events/mouse-up %])}
+      [:div {:id "app-container"}
        [:div {:class "work-viewport"}
         [program-graph]
         [:div {:class "inspectors"}

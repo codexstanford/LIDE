@@ -140,6 +140,23 @@
              (dissoc :connecting-dest)
              (dissoc :mouse-position)))))))
 
+(re-frame/reg-event-fx
+ ::mouse-up
+ (fn [cofx [_ mouse-event]]
+   ;; Mouse up could be the end of a drag, in which case we do nothing. If there
+   ;; was no drag between mouse down and mouse up, that's a click, and we create
+   ;; a rule.
+   (let [fx (if (:dragged (:db cofx))
+              []
+              [[:dispatch [::create-rule mouse-event]]])]
+     {:db (-> (:db cofx)
+              (dissoc :dragged)
+              (dissoc :dragging-rule)
+              (dissoc :dragging-literal)
+              (dissoc :node-drag-origin)
+              (dissoc :graph-drag-origin))
+      :fx fx})))
+
 (re-frame/reg-event-db
  ::create-rule
  (undo/undoable "create rule")
@@ -178,15 +195,6 @@
                   (assoc literal :predicate new-predicate))))))
 
 (re-frame/reg-event-db
- ::mouse-up
- (fn [db _]
-   (-> db
-       (dissoc :dragging-rule)
-       (dissoc :dragging-literal)
-       (dissoc :node-drag-origin)
-       (dissoc :graph-drag-origin))))
-
-(re-frame/reg-event-db
  ::mouse-move
  (fn [db [_ mouse-event]]
    (let [event-position (offset-position mouse-event)]
@@ -202,6 +210,7 @@
              graph-transform (util/dom-matrix-from-vals (:graph-transform db))
              translate-matrix (.translateSelf (js/DOMMatrix.) dx dy)]
          (-> db
+             (assoc :dragged true)
              (assoc :graph-transform (util/dom-matrix-to-vals
                                       (.preMultiplySelf graph-transform translate-matrix)))
              (assoc :graph-drag-origin event-position)))
@@ -212,6 +221,7 @@
              dy (- (-> event-position :y)
                    (-> db :node-drag-origin :y))]
          (-> db
+             (assoc :dragged true)
              (update-in [:literal-positions (:dragging-literal db)]
                         (fn [position]
                           (-> position
@@ -226,6 +236,7 @@
                    (-> db :node-drag-origin :y))
              dragging-rule-pred (-> db :dragging-rule :head :predicate)]
          (-> db
+             (assoc :dragged true)
              (update-in [:rule-positions (:dragging-rule db)]
                         (fn [position]
                           (-> position
@@ -236,7 +247,7 @@
        :else db))))
 
 (re-frame/reg-event-db
- ::start-drag-graph
+ ::mouse-down-graph-bg
  (fn [db [_ mouse-event]]
    (assoc db :graph-drag-origin {:x (-> mouse-event .-nativeEvent .-offsetX)
                                  :y (-> mouse-event .-nativeEvent .-offsetY)})))
