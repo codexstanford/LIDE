@@ -2,9 +2,10 @@
   (:require
    [clojure.edn :as edn]
    [re-frame.core :as re-frame]
+   [day8.re-frame.undo :as undo]
+   [day8.re-frame.tracing :refer-macros [fn-traced]]
    [lide.db :as db]
    [lide.util :as util]
-   [day8.re-frame.tracing :refer-macros [fn-traced]]
    ))
 
 (defn offset-position [evt]
@@ -82,6 +83,7 @@
 
 (re-frame/reg-event-db
  ::add-argument
+ (undo/undoable "add argument")
  (fn [db [_ rule-idx]]
    (let [head-id (get-in db [:program :rules rule-idx :head])]
      (update-in db
@@ -140,6 +142,7 @@
 
 (re-frame/reg-event-db
  ::create-rule
+ (undo/undoable "create rule")
  (fn [db [_ mouse-event]]
    (let [new-head-id (random-uuid)
          new-idx (-> db :program :rules count)
@@ -166,6 +169,7 @@
 
 (re-frame/reg-event-db
  ::edit-predicate
+ (undo/undoable "edit predicate")
  (fn [db [_ rule-idx new-predicate]]
    (let [rule (get (-> db :program :rules) rule-idx)]
      (update-in db

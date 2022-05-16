@@ -426,9 +426,17 @@
       (string/join "\n\n" (map epilog/rule-to-epilog rules))]]))
 
 (defn toolbar []
-  [:div {:class "toolbar"}
-   [:button {:on-click #(re-frame/dispatch [::events/save])}
-    "Save"]])
+  (let [undos? @(re-frame/subscribe [:undos?])
+        redos? @(re-frame/subscribe [:redos?])]
+    [:div {:class "toolbar"}
+     [:button {:on-click #(re-frame/dispatch [::events/save])}
+      "Save"]
+     [:button {:on-click #(re-frame/dispatch [:undo])
+               :disabled (not undos?)}
+      "Undo"]
+     [:button {:on-click #(re-frame/dispatch [:redo])
+               :disabled (not redos?)}
+      "Redo"]]))
 
 (defn main-panel []
   (let [program (re-frame/subscribe [::subs/program])]
