@@ -1,5 +1,10 @@
 (ns lide.util)
 
+(defn map-vals [f m]
+  (into (empty m) (for [[k v] m] [k (f v)])))
+
+;; DOM transform matrix stuff
+
 (defn dom-matrix-to-vals [dm]
   [(.-a dm)
    (.-b dm)
@@ -11,8 +16,7 @@
 (defn dom-matrix-from-vals [vals]
   (js/DOMMatrix. vals))
 
-(defn map-vals [f m]
-  (into (empty m) (for [[k v] m] [k (f v)])))
+;; Rule/program utilities
 
 (defn populate-rule [program rule]
   (-> rule
@@ -21,6 +25,7 @@
       (update :body (fn [literals]
                       (mapv (fn [id] (-> program :literals (get id)))
                             literals)))))
+
 (defn all-body-literals [program]
   (->> (:rules program)
        (map
