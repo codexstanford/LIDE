@@ -12,34 +12,12 @@
   {:x (+ (:x position) (/ (:width size) 2))
    :y (+ (:y position) (/ (:height size) 2))})
 
-(defn variable? [arg]
-  "True if `arg` is a string starting with an upper-case letter."
-  (let [first-char (subs arg 0 1)
-        first-char-alpha (apply str (re-seq #"[a-zA-Z]" first-char))]
-    (= first-char
-       first-char-alpha
-       (string/upper-case first-char))))
-
-(defn ground? [arg]
-  (not (variable? arg)))
-
-(defn grounds? [a b]
-  "Literal `b` grounds literal `a` if they have the same predicate, same arity,
-  and at least one shared argument is ground in `b` and variable in `a`. "
-  (and (= (:predicate a)
-          (:predicate b))
-       (= (count (:args a))
-          (count (:args b)))
-       (some (fn [[a-arg b-arg]]
-               (and (variable? a-arg)
-                    (ground? b-arg)))
-             (map vector (:args a) (:args b)))))
-
 (defn rule-view-model [rule highlighted-connection]
   (let [internals (->> rule
                        :body
                        (mapcat :args)
                        (remove #(= % :unspecified))
+                       (remove util/ground?)
                        (remove (fn [internal]
                                  (some #(= internal %) (-> rule :head :args))))
                        vec)]
@@ -110,8 +88,8 @@
                     (->> (:rules program)
                          (map-indexed (fn [idx rule] [idx rule]))
                          (filter (fn [[_ grounding-rule]]
-                                   (grounds? body-literal (get (:literals program)
-                                                               (:head grounding-rule)))))
+                                   (util/grounds? body-literal (get (:literals program)
+                                                                    (:head grounding-rule)))))
                          (map (fn [[grounding-rule-idx grounding-rule]]
                                 {:src  [grounding-rule-idx (->> grounding-rule
                                                                 :head
