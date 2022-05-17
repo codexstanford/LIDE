@@ -12,6 +12,12 @@
   {:x (+ (:x position) (/ (:width size) 2))
    :y (+ (:y position) (/ (:height size) 2))})
 
+(defn localize-event-to-svg [svg event]
+  (let [dom-point (js/DOMPoint. (.-clientX event) (.-clientY event))
+        svg-point (.matrixTransform dom-point (.inverse (.getScreenCTM ^js svg)))]
+    {:x (.-x svg-point)
+     :y (.-y svg-point)}))
+
 (defn rule-view-model [rule highlighted-connection]
   (let [internals (->> rule
                        :body
@@ -128,12 +134,12 @@
                         :height (+ name-height
                                    args-height)}}}))
 
-(defn literal [{:keys [id]}]
+(defn literal [{:keys [id local-position]}]
   (let [literal-raw @(re-frame/subscribe [::subs/literal id])
         literal-model (literal-view-model literal-raw)
         position @(re-frame/subscribe [::subs/literal-position id])
         layout (literal-layout literal-model position)]
-    [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-literal % id])
+    [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-literal (local-position %) id])
          :on-click #(re-frame/dispatch [::events/select-literal id])
          :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
          :key id}
@@ -205,13 +211,13 @@
                                    ;; Add Binding is one arg tall
                                    arg-height)}}}))
 
-(defn rule [{:keys [index]}]
+(defn rule [{:keys [index local-position]}]
   (let [rule-raw @(re-frame/subscribe [::subs/populated-rule index])
         highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
         rule-model (rule-view-model rule-raw highlighted-connection)
         position @(re-frame/subscribe [::subs/rule-position index])
         layout (rule-layout rule-model position)]
-    [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule % index])
+    [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule (local-position %) index])
          :on-click #(re-frame/dispatch [::events/select-rule index])
          :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
          :key index}
@@ -327,59 +333,72 @@
                 :y2 (:y @mouse-position)
                 :stroke "#333"}]))))
 
+(defn graph-viewport [{:keys [set-ref]} & children]
+  (let [graph-transform @(re-frame/subscribe [::subs/graph-transform])]
+    [:g {:ref set-ref
+         :class "graph__viewport"
+         :transform (when graph-transform
+                      (str (util/dom-matrix-from-vals graph-transform)))}
+     children]))
+
 (defn program-graph []
-  (let [program (re-frame/subscribe [::subs/program])
-        rule-positions (re-frame/subscribe [::subs/rule-positions])
-        literal-positions (re-frame/subscribe [::subs/literal-positions])
-        highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
-        graph-transform (re-frame/subscribe [::subs/graph-transform])
-        literals-vm (literals-view-model @program)
-        literal-layouts (->> literals-vm
-                             (map
-                              (fn [[id literal]]
-                                [id (literal-layout literal (get @literal-positions id))]))
-                             (into {}))
-        rules-vm (rules-view-model @program @highlighted-connection)
-        rule-layouts (->> rules-vm
-                          (map-indexed
-                           (fn [idx rule]
-                             [idx (rule-layout rule (get @rule-positions idx))]))
-                          (into {}))
-        groundings-vm (groundings-view-model @program)]
-    [:svg {:class "graph-panel"
-           :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move %])
-                                                   25)
-           :on-mouse-up #(re-frame/dispatch [::events/mouse-up %])
-           :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
-                                              100)}
-     [:rect {:class "graph__bg"
-             :height 10000
-             :width  10000
-             :on-mouse-down #(re-frame/dispatch [::events/mouse-down-graph-bg %])}]
-     [:g {:class "graph__viewport"
-          :transform (when @graph-transform
-                       (str (util/dom-matrix-from-vals @graph-transform)))}
-      (map-indexed (fn [idx]
-                     [rule {:index  idx
-                            :key    idx}])
-                   (:rules @program))
-      (doall
-       (map (fn [[id _]]
-              [literal {:id id
-                        :key id}])
-            (util/all-body-literals @program)))
-      (map-indexed (fn [rule-idx _]
-                     [composition-connectors
-                      {:rule-index rule-idx
-                       :key rule-idx}])
-                   (:rules @program))
-      (map (fn [vm]
-             [grounding-connector
-              {:connection vm
-               :literal-layouts literal-layouts
-               :rule-layouts rule-layouts
-               :key (str vm)}])
-           groundings-vm)]]))
+  (let [!svg-viewport (atom nil)]
+    (fn []
+      (let [local-position (fn [event]
+                             (localize-event-to-svg @!svg-viewport event))
+
+            program (re-frame/subscribe [::subs/program])
+            rule-positions (re-frame/subscribe [::subs/rule-positions])
+            literal-positions (re-frame/subscribe [::subs/literal-positions])
+            highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
+            literals-vm (literals-view-model @program)
+            literal-layouts (->> literals-vm
+                                 (map
+                                  (fn [[id literal]]
+                                    [id (literal-layout literal (get @literal-positions id))]))
+                                 (into {}))
+            rules-vm (rules-view-model @program @highlighted-connection)
+            rule-layouts (->> rules-vm
+                              (map-indexed
+                               (fn [idx rule]
+                                 [idx (rule-layout rule (get @rule-positions idx))]))
+                              (into {}))
+            groundings-vm (groundings-view-model @program)]
+        [:svg {:class "graph-panel"
+               :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move (local-position %)])
+                                                       25)
+               :on-mouse-up #(re-frame/dispatch [::events/mouse-up (local-position %)])
+               :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
+                                                  100)}
+         [:rect {:class "graph__bg"
+                 :height 10000
+                 :width  10000
+                 :on-mouse-down #(re-frame/dispatch [::events/mouse-down-graph-bg (local-position %)])}]
+         [graph-viewport
+          {:set-ref #(reset! !svg-viewport %)}
+          (map-indexed (fn [idx]
+                         [rule {:index  idx
+                                :local-position local-position
+                                :key    idx}])
+                       (:rules @program))
+          (doall
+           (map (fn [[id _]]
+                  [literal {:id id
+                            :local-position local-position
+                            :key id}])
+                (util/all-body-literals @program)))
+          (map-indexed (fn [rule-idx _]
+                         [composition-connectors
+                          {:rule-index rule-idx
+                           :key rule-idx}])
+                       (:rules @program))
+          (map (fn [vm]
+                 [grounding-connector
+                  {:connection vm
+                   :literal-layouts literal-layouts
+                   :rule-layouts rule-layouts
+                   :key (str vm)}])
+               groundings-vm)]]))))
 
 (defn rule-inspector []
   (let [rules @(re-frame/subscribe [::subs/populated-rules])
