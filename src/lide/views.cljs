@@ -436,11 +436,10 @@
       "Redo"]]))
 
 (defn main-panel []
-  (let [program (re-frame/subscribe [::subs/program])]
-    (when @program
-      [:div {:id "app-container"}
-       [:div {:class "work-viewport"}
-        [program-graph]
-        [:div {:class "inspectors"}
-         [epilog-panel]]]
-       [toolbar]])))
+  (when @(re-frame/subscribe [::subs/program])
+    [:div {:id "app-container"}
+     [:div {:class "work-viewport"}
+      [program-graph]
+      [:div {:class "inspectors"}
+       [epilog-panel]]]
+     [toolbar]]))
