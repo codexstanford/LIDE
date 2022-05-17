@@ -151,19 +151,22 @@
 (re-frame/reg-event-fx
  ::mouse-up
  (fn [cofx [_ position]]
-   ;; Mouse up could be the end of a drag, in which case we do nothing. If there
-   ;; was no drag between mouse down and mouse up, that's a click, and we create
-   ;; a rule.
-   (let [fx (if (:dragged (:db cofx))
-              []
-              [[:dispatch [::create-rule position]]])]
-     {:db (-> (:db cofx)
-              (dissoc :dragged)
-              (dissoc :dragging-rule)
-              (dissoc :dragging-literal)
-              (dissoc :node-drag-origin)
-              (dissoc :graph-drag-origin))
-      :fx fx})))
+   {:db (-> (:db cofx)
+            (dissoc :dragged)
+            (dissoc :dragging-rule)
+            (dissoc :dragging-literal)
+            (dissoc :node-drag-origin)
+            (dissoc :mouse-down-graph))
+    :fx (cond
+          ;; If mouse down was on the graph background, and there was no drag
+          ;; before mouse up, that's a click on the graph background. In
+          ;; response, we create a rule.
+          (and (:mouse-down-graph (:db cofx))
+               (not (:dragged (:db cofx))))
+          [[:dispatch [::create-rule position]]]
+
+          :else
+          [])}))
 
 (re-frame/reg-event-db
  ::create-rule
@@ -208,11 +211,15 @@
      (contains? db :connecting-dest)
      (assoc db :mouse-position event-position)
 
-     (contains? db :graph-drag-origin)
+     ;; XXX There's a bug here that I haven't quite figured out: When zoomed way
+     ;; out, dragging causes the graph to jump around wildly. I think it's
+     ;; related to the graph transform changing but the drag origin staying
+     ;; the same?
+     (contains? db :mouse-down-graph)
      (let [dx (- (-> event-position :x)
-                 (-> db :graph-drag-origin :x))
+                 (-> db :mouse-down-graph :x))
            dy (- (-> event-position :y)
-                 (-> db :graph-drag-origin :y))
+                 (-> db :mouse-down-graph :y))
            graph-transform (util/dom-matrix-from-vals (:graph-transform db))
            translate-matrix (.translateSelf (js/DOMMatrix.) dx dy)]
        (-> db
@@ -254,7 +261,7 @@
 (re-frame/reg-event-db
  ::mouse-down-graph-bg
  (fn [db [_ position]]
-   (assoc db :graph-drag-origin position)))
+   (assoc db :mouse-down-graph position)))
 
 (re-frame/reg-event-db
  ::scroll-graph
