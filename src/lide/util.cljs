@@ -1,6 +1,7 @@
 (ns lide.util
   (:require
-   [clojure.string :as string]))
+   [clojure.string :as string]
+   [reagent.core :as r]))
 
 ;; General utilities
 
@@ -89,3 +90,25 @@
              (:args body-literal)))))
        flatten
        (remove nil?)))
+
+;; Reusable components
+
+(defn eip-svg-text [{:keys [val on-change x y width height]}]
+  (let [!editing? (r/atom false)
+        start-editing #(reset! !editing? true)
+        stop-editing  #(reset! !editing? false)]
+    (fn [{:keys [val update x y width height]}]
+      (if @!editing?
+        [:foreignObject {:width width
+                         :height height}
+         [:input {:class "eip-svg-text__input"
+                  :value val
+                  :on-change #(on-change %)
+                  :on-blur stop-editing
+                  :on-key-down #(when (= "Enter" (.-key %))
+                                  (stop-editing))}]]
+        [:text {:x x
+                :y y
+                :on-click start-editing}
+         val]))))
+

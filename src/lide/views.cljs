@@ -224,9 +224,13 @@
      [:rect {:class  "rule__bg"
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]
-     [:text {:x rule-head-padding
-             :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)}
-      (-> rule-model :head :predicate)]
+     [util/eip-svg-text
+      {:val (-> rule-model :head :predicate)
+       :on-change #(re-frame/dispatch [::events/edit-predicate index (-> % .-target .-value)])
+       :x rule-head-padding
+       :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
+       :width  (->> layout :container :size :width)
+       :height (->> layout :container :size :height)}]
      [:<>
       (map-indexed
        (fn [arg-index [arg arg-layout]]
