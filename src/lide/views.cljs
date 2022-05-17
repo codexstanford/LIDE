@@ -404,16 +404,6 @@
                    :key (str vm)}])
                groundings-vm)]]))))
 
-(defn rule-inspector []
-  (let [rules @(re-frame/subscribe [::subs/populated-rules])
-        rule-idx @(re-frame/subscribe [::subs/selected-rule-index])
-        rule (get rules rule-idx)]
-    [:div {:class (str "node-inspector")}
-     (when rule-idx
-       [:input {:type "text"
-                :value (-> rule :head :predicate)
-                :on-change #(re-frame/dispatch [::events/edit-predicate rule-idx (-> % .-target .-value)])}])]))
-
 (defn epilog-panel []
   (let [rules @(re-frame/subscribe [::subs/populated-rules])]
     [:div {:class "epilog-inspector"}
@@ -440,6 +430,5 @@
        [:div {:class "work-viewport"}
         [program-graph]
         [:div {:class "inspectors"}
-         [rule-inspector]
          [epilog-panel]]]
        [toolbar]])))
