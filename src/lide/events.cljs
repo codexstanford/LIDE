@@ -1,6 +1,7 @@
 (ns lide.events
   (:require
    [clojure.edn :as edn]
+   [clojure.string :as string]
    [re-frame.core :as re-frame]
    [day8.re-frame.undo :as undo]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
@@ -198,13 +199,17 @@
  ::edit-literal-predicate
  (undo/undoable "edit literal predicate")
  (fn [db [_ literal-id new-predicate]]
-   (assoc-in db [:program :literals literal-id :predicate] new-predicate)))
+   (if (string/blank? new-predicate)
+     (update db :program #(util/remove-literal % literal-id))
+     (assoc-in db [:program :literals literal-id :predicate] new-predicate))))
 
 (re-frame/reg-event-db
  ::edit-literal-arg
  (undo/undoable "edit literal arg")
  (fn [db [_ literal-id arg-idx new-arg]]
-   (assoc-in db [:program :literals literal-id :args arg-idx] new-arg)))
+   (if (string/blank? new-arg)
+     (update-in db [:program :literals literal-id :args] #(util/vector-remove % arg-idx))
+     (assoc-in db [:program :literals literal-id :args arg-idx] new-arg))))
 
 (re-frame/reg-event-db
  ::edit-head-predicate

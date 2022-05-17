@@ -17,6 +17,9 @@
                          [idx elem])))
        first))
 
+(defn vector-remove [vec idx]
+  (into (subvec vec 0 idx) (subvec vec (inc idx))))
+
 ;; DOM transform matrix stuff
 
 (defn dom-matrix-to-vals [dm]
@@ -90,6 +93,21 @@
              (:args body-literal)))))
        flatten
        (remove nil?)))
+
+(defn remove-literal [program literal-id]
+  (-> program
+      ;; Remove the literal itself
+      (update :literals #(dissoc % literal-id))
+      ;; Remove references to the literal in rules
+      (update :rules
+              (fn [rules]
+                (mapv
+                 (fn [rule]
+                   (update rule
+                           :body
+                           (fn [body]
+                             (vec (remove #(= literal-id %) body)))))
+                 rules)))))
 
 ;; Reusable components
 
