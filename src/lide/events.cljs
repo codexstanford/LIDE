@@ -195,8 +195,20 @@
    (assoc db :selected-literal literal-id)))
 
 (re-frame/reg-event-db
- ::edit-predicate
- (undo/undoable "edit predicate")
+ ::edit-literal-predicate
+ (undo/undoable "edit literal predicate")
+ (fn [db [_ literal-id new-predicate]]
+   (assoc-in db [:program :literals literal-id :predicate] new-predicate)))
+
+(re-frame/reg-event-db
+ ::edit-literal-arg
+ (undo/undoable "edit literal arg")
+ (fn [db [_ literal-id arg-idx new-arg]]
+   (assoc-in db [:program :literals literal-id :args arg-idx] new-arg)))
+
+(re-frame/reg-event-db
+ ::edit-head-predicate
+ (undo/undoable "edit head predicate")
  (fn [db [_ rule-idx new-predicate]]
    (let [rule (get (-> db :program :rules) rule-idx)]
      (assoc-in db
@@ -204,8 +216,8 @@
                new-predicate))))
 
 (re-frame/reg-event-db
- ::edit-arg
- (undo/undoable "edit arg")
+ ::edit-head-arg
+ (undo/undoable "edit head arg")
  (fn [db [_ rule-idx arg-idx new-arg]]
    (let [rule (get-in db [:program :rules rule-idx])]
      (assoc-in db

@@ -146,18 +146,25 @@
      [:rect {:class  "rule__bg"
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]
-     [:text {:x rule-head-padding
-             :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)}
-      (:predicate literal-model)]
+     [util/eip-svg-text
+      {:val (:predicate literal-model)
+       :on-change #(re-frame/dispatch-sync [::events/edit-literal-predicate id (-> % .-target .-value)])
+       :x rule-head-padding
+       :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
+       :width (->> layout :container :size :width)
+       :height (+ rule-head-padding rule-head-font-size rule-head-padding)}]
      [:<>
       (map-indexed
        (fn [arg-index [arg arg-layout]]
-         [:text {:x rule-binding-padding-x
-                 :y (->> arg-layout :position :y)
-                 :class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
-                 :key arg
-                 :on-click #(re-frame/dispatch [::events/connect-src-literal id [arg-index arg]])}
-          arg])
+         [util/eip-svg-text
+          {:val arg
+           :on-change #(re-frame/dispatch-sync [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
+           :x rule-binding-padding-x
+           :y (->> arg-layout :position :y)
+           :width  (->> layout :container :size :width)
+           :height (+ rule-head-padding rule-head-font-size rule-head-padding)
+           :class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
+           :key arg-index}])
        (:args layout))]]))
 
 (defn rule-layout [rule position]
@@ -227,7 +234,7 @@
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
       {:val (-> rule-model :head :predicate)
-       :on-change #(re-frame/dispatch-sync [::events/edit-predicate index (-> % .-target .-value)])
+       :on-change #(re-frame/dispatch-sync [::events/edit-head-predicate index (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
        :width  (->> layout :container :size :width)
@@ -237,7 +244,7 @@
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
           {:val arg
-           :on-change #(re-frame/dispatch-sync [::events/edit-arg index arg-index (-> % .-target .-value)])
+           :on-change #(re-frame/dispatch-sync [::events/edit-head-arg index arg-index (-> % .-target .-value)])
            :x rule-binding-padding-x
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
