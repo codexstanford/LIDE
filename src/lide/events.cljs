@@ -199,10 +199,18 @@
  (undo/undoable "edit predicate")
  (fn [db [_ rule-idx new-predicate]]
    (let [rule (get (-> db :program :rules) rule-idx)]
-     (update-in db
-                [:program :literals (:head rule)]
-                (fn [literal]
-                  (assoc literal :predicate new-predicate))))))
+     (assoc-in db
+               [:program :literals (:head rule) :predicate]
+               new-predicate))))
+
+(re-frame/reg-event-db
+ ::edit-arg
+ (undo/undoable "edit arg")
+ (fn [db [_ rule-idx arg-idx new-arg]]
+   (let [rule (get-in db [:program :rules rule-idx])]
+     (assoc-in db
+               [:program :literals (:head rule) :args arg-idx]
+               new-arg))))
 
 (re-frame/reg-event-db
  ::mouse-move

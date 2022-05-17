@@ -212,6 +212,7 @@
                                    arg-height)}}}))
 
 (defn rule [{:keys [index local-position]}]
+  ;; TODO Should get layout data for EIPs from layout object
   (let [rule-raw @(re-frame/subscribe [::subs/populated-rule index])
         highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
         rule-model (rule-view-model rule-raw highlighted-connection)
@@ -226,20 +227,24 @@
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
       {:val (-> rule-model :head :predicate)
-       :on-change #(re-frame/dispatch [::events/edit-predicate index (-> % .-target .-value)])
+       :on-change #(re-frame/dispatch-sync [::events/edit-predicate index (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
        :width  (->> layout :container :size :width)
-       :height (->> layout :container :size :height)}]
+       :height (+ rule-head-padding rule-head-font-size rule-head-padding)}]
      [:<>
       (map-indexed
        (fn [arg-index [arg arg-layout]]
-         [:text {:x rule-binding-padding-x
-                 :y (->> arg-layout :position :y)
-                 :class (when (some #(= % arg) (:highlight rule-model)) "rule--highlight")
-                 :key arg
-                 :on-click #(re-frame/dispatch [::events/connect-src index [arg-index arg]])}
-          arg])
+         [util/eip-svg-text
+          {:val arg
+           :on-change #(re-frame/dispatch-sync [::events/edit-arg index arg-index (-> % .-target .-value)])
+           :x rule-binding-padding-x
+           :y (->> arg-layout :position :y)
+           :width  (->> layout :container :size :width)
+           :height (+ rule-head-padding rule-head-font-size rule-head-padding)
+           :class (when (some #(= % arg) (:highlight rule-model)) "rule--highlight")
+           :key arg-index
+           :on-click #(re-frame/dispatch [::events/connect-src index [arg-index arg]])}])
        (concat (:args layout) (:internals layout)))]
      [:text {:x rule-binding-padding-x
              :y (->> layout :add-binding :position :y)

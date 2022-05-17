@@ -99,7 +99,9 @@
         stop-editing  #(reset! !editing? false)]
     (fn [{:keys [val update x y width height]}]
       (if @!editing?
-        [:foreignObject {:width width
+        [:foreignObject {:x 0
+                         :y (- y (/ height 2))
+                         :width width
                          :height height}
          [:input {:ref #(when % (.focus %))
                   :class "eip-svg-text__input"
