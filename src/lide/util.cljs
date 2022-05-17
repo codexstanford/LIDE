@@ -101,14 +101,14 @@
       (if @!editing?
         [:foreignObject {:width width
                          :height height}
-         [:input {:class "eip-svg-text__input"
+         [:input {:ref #(when % (.focus %))
+                  :class "eip-svg-text__input"
                   :value val
                   :on-change #(on-change %)
                   :on-blur stop-editing
-                  :on-key-down #(when (= "Enter" (.-key %))
+                  :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
                                   (stop-editing))}]]
         [:text {:x x
                 :y y
                 :on-click start-editing}
          val]))))
-
