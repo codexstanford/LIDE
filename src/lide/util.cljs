@@ -111,32 +111,37 @@
 
 ;; Reusable components
 
-(defn eip-svg-text [{:keys [value on-change on-blur x y width height]
-                     :or {on-change (fn [] nil)
-                          on-blur   (fn [] nil)}}]
+(defn eip-svg-text-input [{:keys [value on-blur stop-editing x y width height]}]
+  (let [!value (r/atom value)]
+    (fn [{:keys [value on-blur x y width height]
+          :or {on-change (fn [] nil)
+               on-blur   (fn [] nil)}}]
+      (let [blur #(do (stop-editing)
+                      (on-blur %))]
+        [:foreignObject {:x 0
+                         :y (- y (/ height 2))
+                         :width width
+                         :height height}
+         [:input {:ref #(when % (.focus %))
+                  :class "eip-svg-text__input"
+                  :value @!value
+                  :on-change #(reset! !value (-> % .-target .-value))
+                  :on-blur #(blur %)
+                  ;; Notice that the event blur is passed here is not in fact a
+                  ;; blur event. This could be misleading to callers but
+                  ;; event.target.value still works and that's all I use it for
+                  ;; for now
+                  :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
+                                  (blur %))}]]))))
+
+(defn eip-svg-text [{:keys [value on-blur x y width height]}]
   (let [!editing? (r/atom false)
-        !value (r/atom value)
         start-editing #(reset! !editing? true)
         stop-editing  #(reset! !editing? false)]
-    (fn [{:keys [value update x y width height]}]
-      (let [!value (r/atom value)]
-        (if @!editing?
-          [:foreignObject {:x 0
-                           :y (- y (/ height 2))
-                           :width width
-                           :height height}
-           [:input {:ref #(when % (.focus %))
-                    :class "eip-svg-text__input"
-                    :value @!value
-                    :on-change #(do
-                                  (reset! !value (-> % .-target .-value))
-                                  (on-change %))
-                    :on-blur #(do
-                                (stop-editing)
-                                (on-blur %))
-                    :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
-                                    (stop-editing))}]]
-          [:text {:x x
-                  :y y
-                  :on-click start-editing}
-           value])))))
+    (fn [{:keys [value update x y width height] :as props}]
+      (if @!editing?
+        [eip-svg-text-input (assoc props :stop-editing stop-editing)]
+        [:text {:x x
+                :y y
+                :on-click start-editing}
+         value]))))

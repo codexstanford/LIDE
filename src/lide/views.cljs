@@ -148,7 +148,7 @@
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
       {:value (:predicate literal-model)
-       :on-change #(re-frame/dispatch-sync [::events/edit-literal-predicate id (-> % .-target .-value)])
+       :on-blur #(re-frame/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
        :width (->> layout :container :size :width)
@@ -158,7 +158,7 @@
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
           {:value arg
-           :on-change #(re-frame/dispatch-sync [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
+           :on-blur #(re-frame/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
            :x rule-binding-padding-x
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
@@ -239,7 +239,7 @@
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
       {:value (-> rule-model :head :predicate)
-       :on-change #(re-frame/dispatch-sync [::events/edit-head-predicate index (-> % .-target .-value)])
+       :on-blur #(re-frame/dispatch [::events/edit-head-predicate index (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
        :width  (->> layout :container :size :width)
@@ -249,7 +249,7 @@
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
           {:value arg
-           :on-change #(re-frame/dispatch-sync [::events/edit-head-arg index arg-index (-> % .-target .-value)])
+           :on-blur #(re-frame/dispatch [::events/edit-head-arg index arg-index (-> % .-target .-value)])
            :x rule-binding-padding-x
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
