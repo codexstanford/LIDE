@@ -111,24 +111,32 @@
 
 ;; Reusable components
 
-(defn eip-svg-text [{:keys [val on-change x y width height]}]
+(defn eip-svg-text [{:keys [value on-change on-blur x y width height]
+                     :or {on-change (fn [] nil)
+                          on-blur   (fn [] nil)}}]
   (let [!editing? (r/atom false)
+        !value (r/atom value)
         start-editing #(reset! !editing? true)
         stop-editing  #(reset! !editing? false)]
-    (fn [{:keys [val update x y width height]}]
-      (if @!editing?
-        [:foreignObject {:x 0
-                         :y (- y (/ height 2))
-                         :width width
-                         :height height}
-         [:input {:ref #(when % (.focus %))
-                  :class "eip-svg-text__input"
-                  :value val
-                  :on-change #(on-change %)
-                  :on-blur stop-editing
-                  :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
-                                  (stop-editing))}]]
-        [:text {:x x
-                :y y
-                :on-click start-editing}
-         val]))))
+    (fn [{:keys [value update x y width height]}]
+      (let [!value (r/atom value)]
+        (if @!editing?
+          [:foreignObject {:x 0
+                           :y (- y (/ height 2))
+                           :width width
+                           :height height}
+           [:input {:ref #(when % (.focus %))
+                    :class "eip-svg-text__input"
+                    :value @!value
+                    :on-change #(do
+                                  (reset! !value (-> % .-target .-value))
+                                  (on-change %))
+                    :on-blur #(do
+                                (stop-editing)
+                                (on-blur %))
+                    :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
+                                    (stop-editing))}]]
+          [:text {:x x
+                  :y y
+                  :on-click start-editing}
+           value])))))

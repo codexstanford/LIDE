@@ -215,19 +215,27 @@
  ::edit-head-predicate
  (undo/undoable "edit head predicate")
  (fn [db [_ rule-idx new-predicate]]
-   (let [rule (get (-> db :program :rules) rule-idx)]
-     (assoc-in db
-               [:program :literals (:head rule) :predicate]
-               new-predicate))))
+   (update-in db
+              [:program :rules]
+              (fn [rules]
+                (if (string/blank? new-predicate)
+                  ;; TODO Should also delete body literals that don't appear in any other rules
+                  (util/vector-remove rules rule-idx)
+                  (assoc-in rules [rule-idx :head :predicate] new-predicate))))))
 
 (re-frame/reg-event-db
  ::edit-head-arg
  (undo/undoable "edit head arg")
  (fn [db [_ rule-idx arg-idx new-arg]]
    (let [rule (get-in db [:program :rules rule-idx])]
-     (assoc-in db
-               [:program :literals (:head rule) :args arg-idx]
-               new-arg))))
+     (update-in db
+                [:program :literals (:head rule) :args]
+                (fn [args]
+                  (if (string/blank? new-arg)
+                    ;; XXX Seems not to work quite right, rule heads are
+                    ;; rendered with extra space after losing an argument
+                    (util/vector-remove args arg-idx)
+                    (assoc args arg-idx new-arg)))))))
 
 (re-frame/reg-event-db
  ::mouse-move

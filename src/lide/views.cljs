@@ -147,7 +147,7 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
-      {:val (:predicate literal-model)
+      {:value (:predicate literal-model)
        :on-change #(re-frame/dispatch-sync [::events/edit-literal-predicate id (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
@@ -157,7 +157,7 @@
       (map-indexed
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
-          {:val arg
+          {:value arg
            :on-change #(re-frame/dispatch-sync [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
            :x rule-binding-padding-x
            :y (->> arg-layout :position :y)
@@ -165,7 +165,10 @@
            :height (+ rule-head-padding rule-head-font-size rule-head-padding)
            :class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
            :key arg-index}])
-       (:args layout))]]))
+       (:args layout))]
+     [:rect {:class  "rule__border"
+             :width  (->> layout :container :size :width)
+             :height (->> layout :container :size :height)}]]))
 
 (defn rule-layout [rule position]
   (let [name-height (+ rule-head-padding
@@ -178,6 +181,7 @@
                    :size     {:width  150
                               :height name-height}}
 
+        ;; Add Binding is also one arg tall
         arg-height (+  rule-binding-padding-y
                        rule-binding-font-size
                        rule-binding-padding-y)
@@ -191,21 +195,23 @@
               (-> rule :head :args))
         args-height (* arg-height (-> rule :head :args count))
 
+        add-binding {:position {:y (+ name-height
+                                      args-height
+                                      (/ arg-height 2))}}
+
         internals-y-start (+ name-height
                              args-height
+                             arg-height
                              (/ arg-height 2))
         internals (map-indexed
                    (fn [i internal]
                      [internal
                       {:position {:y (+ internals-y-start
-                                        (* i arg-height))}}])
+                                        (* i arg-height))}
+                       :size {:width 150
+                              :height arg-height}}])
                    (:internals rule))
-        internals-height (* arg-height (->> rule :internals count))
-
-        add-binding {:position {:y (+ name-height
-                                      args-height
-                                      internals-height
-                                      (/ arg-height 2))}}]
+        internals-height (* arg-height (->> rule :internals count))]
     {:predicate predicate
      :args (into {} args)
      :internals (into {} internals)
@@ -215,7 +221,6 @@
                         :height (+ name-height
                                    args-height
                                    internals-height
-                                   ;; Add Binding is one arg tall
                                    arg-height)}}}))
 
 (defn rule [{:keys [index local-position]}]
@@ -233,7 +238,7 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
-      {:val (-> rule-model :head :predicate)
+      {:value (-> rule-model :head :predicate)
        :on-change #(re-frame/dispatch-sync [::events/edit-head-predicate index (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
@@ -243,7 +248,7 @@
       (map-indexed
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
-          {:val arg
+          {:value arg
            :on-change #(re-frame/dispatch-sync [::events/edit-head-arg index arg-index (-> % .-target .-value)])
            :x rule-binding-padding-x
            :y (->> arg-layout :position :y)
@@ -252,11 +257,32 @@
            :class (when (some #(= % arg) (:highlight rule-model)) "rule--highlight")
            :key arg-index
            :on-click #(re-frame/dispatch [::events/connect-src index [arg-index arg]])}])
-       (concat (:args layout) (:internals layout)))]
-     [:text {:x rule-binding-padding-x
+       (:args layout))]
+     [:text {:class "rule__add-arg"
+             :x rule-binding-padding-x
              :y (->> layout :add-binding :position :y)
              :on-click #(re-frame/dispatch [::events/add-argument index])}
-      "+ Add argument"]]))
+      "+ Add argument"]
+     [:<>
+      (map-indexed
+       (fn [arg-index [arg arg-layout]]
+         [:<> {:key arg-index}
+          [:rect
+           {:class "rule__internal-bg"
+            :x 0
+            :y (- (-> arg-layout :position :y)
+                  (/ (-> arg-layout :size :height) 2))
+            :width (-> layout :container :size :width)
+            :height (-> arg-layout :size :height) }]
+          [:text
+           {:x rule-binding-padding-x
+            :y (->> arg-layout :position :y)
+            :class (when (some #(= % arg) (:highlight rule-model)) "rule--highlight")}
+           arg]])
+       (:internals layout))]
+     [:rect {:class  "rule__border"
+             :width  (->> layout :container :size :width)
+             :height (->> layout :container :size :height)}]]))
 
 (defn socket-position [layout arg {:keys [end]}]
   (let [all-names (merge (:args layout)
