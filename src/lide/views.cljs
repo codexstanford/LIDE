@@ -273,8 +273,7 @@
            :width  (->> layout :container :size :width)
            :height (+ rule-head-padding rule-head-font-size rule-head-padding)
            :class (when (some #(= % arg) (:highlight rule-model)) "rule--highlight")
-           :key arg-index
-           :on-click #(re-frame/dispatch [::events/connect-src index [arg-index arg]])}])
+           :key arg-index}])
        (:args layout))]
      [:<>
       (map-indexed
@@ -346,8 +345,7 @@
              :stroke "transparent"
              :stroke-width 10
              :on-mouse-over #(re-frame/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
-             :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])
-             :on-click #(re-frame/dispatch [::events/disconnect connection])}]]))
+             :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])}]]))
 
 (defn composition-connectors [{:keys [rule-index]}]
   (let [program @(re-frame/subscribe [::subs/program])

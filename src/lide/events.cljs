@@ -9,14 +9,6 @@
    [lide.util :as util]
    ))
 
-(defn find-head [db predicate]
-  (->> db
-       :program
-       :rules
-       (filter #(= predicate (-> % :head :predicate)))
-       first
-       :head))
-
 ;; Undo/redo config
 
 (undo/undo-config!
@@ -28,7 +20,7 @@
   (fn [!db val]
     (swap! !db assoc :program val))})
 
-;; LocalStorage
+;; Persistent state
 
 (re-frame/reg-fx
  ::set-local-storage
@@ -58,6 +50,8 @@
    {:db (or (::saved-state cofx)
             db/default-db)}))
 
+;; Connections
+
 (re-frame/reg-event-db
  ::highlight-connection
  (fn [db [_ connection]]
@@ -67,28 +61,6 @@
  ::stop-connection-highlight
  (fn [db _]
    (dissoc db :highlighted-connection)))
-
-(re-frame/reg-event-db
- ::disconnect
- (fn [db [_ {[src-pred src-arg]   :src
-             [dest-pred dest-arg] :dest}]]
-   (let [[dest-rule-idx dest-rule] (util/first-indexed #(= dest-pred (-> % :head :predicate))
-                                                  (-> db :program :rules))
-         [src-pred-idx _] (util/first-indexed #(= src-pred (:predicate %))
-                                         (:body dest-rule))
-         args (get-in db [:program :rules dest-rule-idx :body src-pred-idx :args])
-         updated-args (mapv (fn [arg]
-                              (if (= arg dest-arg)
-                                :unspecified
-                                arg))
-                            args)]
-     (if (some #(not= % :unspecified) updated-args)
-       ;; Still at least one binding for src, so keep it
-       (assoc-in db [:program :rules dest-rule-idx :body src-pred-idx :args] updated-args)
-       ;; No bindings remaining for src: remove it from dest's body
-       (update-in db [:program :rules dest-rule-idx :body]
-                  (fn [body]
-                    (vec (remove #(= src-pred (:predicate %)) body))))))))
 
 (re-frame/reg-event-db
  ::add-argument
@@ -110,50 +82,6 @@
  ::start-connect-dest
  (fn [db [_ dest-pred]]
    (assoc db :connecting-dest dest-pred)))
-
-;; TODO Handle name collisions
-(re-frame/reg-event-db
- ::connect-src
- (fn [db [_ src-pred [src-arg-idx src-arg]]]
-   (let [connecting-dest (:connecting-dest db)]
-     (if-not connecting-dest
-       db
-       (let [updated-rules
-             (mapv
-              (fn [dest-rule]
-                (if (not= connecting-dest (-> dest-rule :head :predicate))
-                  dest-rule
-                  (let [bound-src-literal
-                        (first (filter #(= src-pred (:predicate %))
-                                       (:body dest-rule)))
-
-                        body-with-src-literal
-                        (if bound-src-literal
-                          ;; Already had source literal in body, so no need to create
-                          (:body dest-rule)
-                          ;; Binding source literal for the first time, need to create
-                          (conj (:body dest-rule)
-                                (-> (find-head db src-pred)
-                                    (update :args
-                                            (partial mapv (fn [_] :unspecified))))))
-
-                        updated-body
-                        (mapv
-                         (fn [body-literal]
-                           (if (= src-pred (:predicate body-literal))
-                             ;; Add binding for matching arg
-                             (update body-literal
-                                     :args
-                                     (fn [args]
-                                       (assoc args src-arg-idx src-arg)))
-                             body-literal))
-                         body-with-src-literal)]
-                    (assoc dest-rule :body updated-body))))
-              (-> db :program :rules))]
-         (-> db
-             (assoc-in [:program :rules] updated-rules)
-             (dissoc :connecting-dest)
-             (dissoc :mouse-position)))))))
 
 (re-frame/reg-event-fx
  ::mouse-up
