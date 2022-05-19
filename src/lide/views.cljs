@@ -388,19 +388,6 @@
       start-args
       end-args))))
 
-;; XXX not used at the moment, rethinking how connections work
-#_(defn pending-connector []
-  (let [connecting-dest (re-frame/subscribe [::subs/connecting-dest])
-        mouse-position (re-frame/subscribe [::subs/mouse-position])]
-    (when (and (not (string/blank? @connecting-dest))
-               @mouse-position)
-      (let [origin-center (center-position (get rule-layouts @connecting-dest))]
-        [:line {:x1 (:x origin-center)
-                :y1 (:y origin-center)
-                :x2 (:x @mouse-position)
-                :y2 (:y @mouse-position)
-                :stroke "#333"}]))))
-
 (defn graph-viewport [{:keys [set-ref]} & children]
   (let [graph-transform @(re-frame/subscribe [::subs/graph-transform])]
     [:g {:ref set-ref
