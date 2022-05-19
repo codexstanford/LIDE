@@ -130,7 +130,8 @@
                          :y (- y (/ height 2))
                          :width width
                          :height height}
-         [:input {:ref #(when % (.focus %))
+         [:input {:ref #(when % (do (.focus %)
+                                    (.select %)))
                   :class "eip-svg-text__input"
                   :value @!value
                   :on-change #(reset! !value (-> % .-target .-value))
