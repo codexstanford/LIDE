@@ -125,13 +125,19 @@
                  {:position {:y (+ args-y-start
                                    (* i arg-height))}}])
               (:args literal))
-        args-height (* arg-height (-> literal :args count))]
+        args-height (* arg-height (-> literal :args count))
+
+        add-argument {:position {:y (+ name-height
+                                       args-height
+                                       (/ arg-height 2))}}]
     {:predicate predicate
      :args (into {} args)
+     :add-argument add-argument
      :container {:position (or position {:x 0 :y 0})
                  :size {:width  150
                         :height (+ name-height
-                                   args-height)}}}))
+                                   args-height
+                                   arg-height)}}}))
 
 (defn literal [{:keys [id local-position]}]
   (let [literal-raw @(re-frame/subscribe [::subs/literal id])
@@ -165,6 +171,11 @@
            :class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
            :key arg-index}])
        (:args layout))]
+     [:text {:class "rule__add-arg"
+             :x rule-binding-padding-x
+             :y (->> layout :add-argument :position :y)
+             :on-click #(re-frame/dispatch [::events/add-literal-argument id])}
+      "+ Add argument"]
      [:rect {:class  "rule__border"
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))

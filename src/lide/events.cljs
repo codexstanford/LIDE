@@ -101,6 +101,12 @@
                   (conj args "arg"))))))
 
 (re-frame/reg-event-db
+ ::add-literal-argument
+ (undo/undoable "add literal argument")
+ (fn [db [_ literal-id]]
+   (update-in db [:program :literals literal-id :args] conj "new")))
+
+(re-frame/reg-event-db
  ::start-connect-dest
  (fn [db [_ dest-pred]]
    (assoc db :connecting-dest dest-pred)))
