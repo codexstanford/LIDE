@@ -22,6 +22,7 @@
   (let [internals (->> rule
                        :body
                        (mapcat :args)
+                       distinct ;; internals share a namespace
                        (remove #(= % :unspecified))
                        (remove util/ground?)
                        (remove (fn [internal]
