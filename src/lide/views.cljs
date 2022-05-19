@@ -12,9 +12,9 @@
   {:x (+ (:x position) (/ (:width size) 2))
    :y (+ (:y position) (/ (:height size) 2))})
 
-(defn localize-event-to-svg [svg event]
+(defn localize-event-to-svg [^js svg event]
   (let [dom-point (js/DOMPoint. (.-clientX event) (.-clientY event))
-        svg-point (.matrixTransform dom-point (.inverse (.getScreenCTM ^js svg)))]
+        svg-point (.matrixTransform dom-point (.inverse (.getScreenCTM svg)))]
     {:x (.-x svg-point)
      :y (.-y svg-point)}))
 
