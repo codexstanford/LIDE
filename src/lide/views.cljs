@@ -100,6 +100,8 @@
 
 (def rule-head-font-size 18)
 (def rule-head-padding 6)
+(def rule-head-height (+ rule-head-font-size
+                         (* 2 rule-head-padding)))
 (def rule-binding-font-size 16)
 (def rule-binding-padding-x 6)
 (def rule-binding-padding-y 3)
@@ -316,7 +318,7 @@
              0))
      :y (+ (-> layout :container :position :y)
            (if (= arg :unbound)
-             0
+             (/ rule-head-height 2)
              (-> all-names (get arg) :position :y)))}))
 
 (defn composition-connector [connection]
