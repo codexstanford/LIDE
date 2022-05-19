@@ -1,22 +1,13 @@
-# lide
+# LIDE
 
-A [re-frame](https://github.com/day8/re-frame) application designed to ... well, that part is up to
-you.
+A visual logic programming environment.
 
 ## Getting Started
 
 ### Project Overview
 
-* Architecture:
-[Single Page Application (SPA)](https://en.wikipedia.org/wiki/Single-page_application)
 * Languages
-  - Front end is [ClojureScript](https://clojurescript.org/) with ([re-frame](https://github.com/day8/re-frame))
-* Dependencies
-  - UI framework: [re-frame](https://github.com/day8/re-frame)
-  ([docs](https://github.com/day8/re-frame/blob/master/docs/README.md),
-  [FAQs](https://github.com/day8/re-frame/blob/master/docs/FAQs/README.md)) ->
-  [Reagent](https://github.com/reagent-project/reagent) ->
-  [React](https://github.com/facebook/react)
+  - Front end is [ClojureScript](https://clojurescript.org/) with [re-frame](https://github.com/day8/re-frame) ([docs](https://github.com/day8/re-frame/blob/master/docs/README.md))
 * Build tools
   - CLJS compilation, dependency management, REPL, & hot reload: [`shadow-cljs`](https://github.com/thheller/shadow-cljs)
   - Test framework: [cljs.test](https://clojurescript.org/tools/testing)
