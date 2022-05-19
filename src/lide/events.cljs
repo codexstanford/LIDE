@@ -186,6 +186,15 @@
                    (conj positions [new-idx position])))))))
 
 (re-frame/reg-event-db
+ ::add-body-literal
+ (undo/undoable "add body literal")
+ (fn [db [_ rule-idx]]
+   (let [new-literal-id (random-uuid)]
+     (-> db
+         (assoc-in [:program :literals new-literal-id] {:predicate "new"})
+         (update-in [:program :rules rule-idx :body] conj new-literal-id)))))
+
+(re-frame/reg-event-db
  ::select-rule
  (fn [db [_ rule-idx]]
    (assoc db :selected-rule-index rule-idx)))

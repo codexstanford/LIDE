@@ -82,15 +82,23 @@
        (map
         (fn [body-literal-id]
           (let [body-literal (get (:literals program) body-literal-id)]
-            (mapv
-             (fn [arg]
-               (when (and (not= arg :unspecified)
-                          ;; Ground args aren't relevant here because there's
-                          ;; no unification to be done with them
-                          (not (ground? arg)))
-                 {:literal-id body-literal-id
-                  :arg        arg}))
-             (:args body-literal)))))
+            (->> (:args body-literal)
+                 (mapv
+                  (fn [arg]
+                    (when (and (not= arg :unspecified)
+                               ;; Ground args aren't relevant here because there's
+                               ;; no unification to be done with them
+                               (not (ground? arg)))
+                      {:literal-id body-literal-id
+                       :arg        arg})))
+                 ((fn [comps]
+                    ;; We want there to always be at least one composition returned, so
+                    ;; that we can draw at least one edge. When arg is :unbound, we'll just
+                    ;; draw a line to the entire literal.
+                    (if (empty? comps)
+                      [{:literal-id body-literal-id
+                        :arg        :unbound}]
+                      comps)))))))
        flatten
        (remove nil?)))
 

@@ -68,12 +68,11 @@
   (->> rule
        (util/compositions program)
        (mapv
-        (fn [composition]
-          ;; arg from composition should match an arg in rule, so we can use it on
-          ;; both ends of the connector
-          (let [arg (:arg composition)]
-            {:src [rule-idx arg]
-             :dest [(:literal-id composition) arg]})))))
+        (fn [{:keys [literal-id arg]}]
+          ;; arg from composition should match an arg in rule (or be nil), so we
+          ;; can use it on both ends of the connector
+          {:src [rule-idx arg]
+           :dest [literal-id arg]}))))
 
 ;; We're looking for head literals that ground body literals from other rules.
 
@@ -195,13 +194,8 @@
               (-> rule :head :args))
         args-height (* arg-height (-> rule :head :args count))
 
-        add-binding {:position {:y (+ name-height
-                                      args-height
-                                      (/ arg-height 2))}}
-
         internals-y-start (+ name-height
                              args-height
-                             arg-height
                              (/ arg-height 2))
         internals (map-indexed
                    (fn [i internal]
@@ -211,15 +205,28 @@
                        :size {:width 150
                               :height arg-height}}])
                    (:internals rule))
-        internals-height (* arg-height (->> rule :internals count))]
+        internals-height (* arg-height (->> rule :internals count))
+
+        add-argument {:position {:y (+ name-height
+                                       args-height
+                                       internals-height
+                                       (/ arg-height 2))}}
+
+        add-body-literal {:position {:y (+ name-height
+                                           args-height
+                                           internals-height
+                                           arg-height
+                                           (/ arg-height 2))}}]
     {:predicate predicate
      :args (into {} args)
      :internals (into {} internals)
-     :add-binding add-binding
+     :add-argument add-argument
+     :add-body-literal add-body-literal
      :container {:position (or position {:x 0 :y 0})
                  :size {:width  150
                         :height (+ name-height
                                    args-height
+                                   arg-height
                                    internals-height
                                    arg-height)}}}))
 
@@ -258,11 +265,6 @@
            :key arg-index
            :on-click #(re-frame/dispatch [::events/connect-src index [arg-index arg]])}])
        (:args layout))]
-     [:text {:class "rule__add-arg"
-             :x rule-binding-padding-x
-             :y (->> layout :add-binding :position :y)
-             :on-click #(re-frame/dispatch [::events/add-argument index])}
-      "+ Add argument"]
      [:<>
       (map-indexed
        (fn [arg-index [arg arg-layout]]
@@ -280,6 +282,16 @@
             :class (when (some #(= % arg) (:highlight rule-model)) "rule--highlight")}
            arg]])
        (:internals layout))]
+     [:text {:class "rule__add-arg"
+             :x rule-binding-padding-x
+             :y (->> layout :add-argument :position :y)
+             :on-click #(re-frame/dispatch [::events/add-argument index])}
+      "+ Add argument"]
+     [:text {:class "rule__add-arg"
+             :x rule-binding-padding-x
+             :y (->> layout :add-body-literal :position :y)
+             :on-click #(re-frame/dispatch [::events/add-body-literal index])}
+      "+ Add subgoal"]
      [:rect {:class  "rule__border"
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
@@ -292,7 +304,9 @@
              (-> layout :container :size :width)
              0))
      :y (+ (-> layout :container :position :y)
-           (-> all-names (get arg) :position :y))}))
+           (if (= arg :unbound)
+             0
+             (-> all-names (get arg) :position :y)))}))
 
 (defn composition-connector [connection]
   (let [[start-rule-idx start-arg] (:src connection)
