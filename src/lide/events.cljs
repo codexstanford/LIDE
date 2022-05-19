@@ -76,7 +76,7 @@
  ::add-literal-argument
  (undo/undoable "add literal argument")
  (fn [db [_ literal-id]]
-   (update-in db [:program :literals literal-id :args] conj "new")))
+   (update-in db [:program :literals literal-id :args] #(conj % "new"))))
 
 (re-frame/reg-event-db
  ::start-connect-dest
@@ -111,7 +111,7 @@
          new-idx (-> db :program :rules count)]
      (-> db
          (assoc-in [:program :literals new-head-id]
-                   {:predicate "new"})
+                   {:predicate "new" :args []})
          (update-in [:program :rules]
                     (fn [rules]
                       (conj rules {:head new-head-id})))
@@ -125,7 +125,7 @@
  (fn [db [_ rule-idx]]
    (let [new-literal-id (random-uuid)]
      (-> db
-         (assoc-in [:program :literals new-literal-id] {:predicate "new"})
+         (assoc-in [:program :literals new-literal-id] {:predicate "new" :args []})
          (update-in [:program :rules rule-idx :body] conj new-literal-id)))))
 
 (re-frame/reg-event-db
