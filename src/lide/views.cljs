@@ -366,16 +366,14 @@
                       compositions-model))))
 
 (defn grounding-connector [{:keys [connection literal-layouts rule-layouts]}]
+  ;; n.b. We expect start-args and end-args to have the same length.
   (let [[start-rule-idx start-args] (:src connection)
         [end-literal-id end-args]   (:dest connection)
         start-layout (get rule-layouts start-rule-idx)
-        end-layout   (get literal-layouts end-literal-id)]
-    (into
-     [:<>]
-     (mapv
-      (fn [start-arg end-arg]
-        (let [start (socket-position start-layout start-arg {:end :src})
-              end (socket-position end-layout end-arg {:end :dest})]
+        end-layout   (get literal-layouts end-literal-id)
+
+        draw-connector
+        (fn [start end]
           [:<>
            [:line {:x1 (:x start)
                    :y1 (:y start)
@@ -391,9 +389,19 @@
                    :stroke-width 10
                    :on-mouse-over #(re-frame/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
                    :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])
-                   :on-click #(re-frame/dispatch [::events/disconnect connection])}]]))
-      start-args
-      end-args))))
+                   :on-click #(re-frame/dispatch [::events/disconnect connection])}]])]
+    (if (empty? start-args)
+      (draw-connector (socket-position start-layout :unbound {:end :src})
+                      (socket-position end-layout   :unbound {:end :dest}))
+      (into
+       [:<>]
+       (mapv
+        (fn [start-arg end-arg]
+          (let [start (socket-position start-layout start-arg {:end :src})
+                end (socket-position end-layout end-arg {:end :dest})]
+            (draw-connector start end)))
+        start-args
+        end-args)))))
 
 (defn graph-viewport [{:keys [set-ref]} & children]
   (let [graph-transform @(re-frame/subscribe [::subs/graph-transform])]

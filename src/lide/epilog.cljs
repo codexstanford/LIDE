@@ -4,7 +4,7 @@
 
 (defn literal-to-epilog [literal]
   (str (:predicate literal)
-       (when (:args literal)
+       (when (not-empty (:args literal))
          (str
           "("
           (string/join ", "
