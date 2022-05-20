@@ -79,9 +79,8 @@
                    :highlighted
                    (= unhighlighted highlighted-connection)))))))
 
-;; We're looking for head literals that ground body literals from other rules.
-
 (defn groundings-view-model [program]
+  "Find head literals that match with body literals from other rules."
   (->> (:rules program)
        (map-indexed
         (fn [rule-idx rule]
@@ -92,7 +91,7 @@
                     (->> (:rules program)
                          (map-indexed (fn [idx rule] [idx rule]))
                          (filter (fn [[_ grounding-rule]]
-                                   (util/grounds? body-literal (get (:literals program)
+                                   (util/matches? body-literal (get (:literals program)
                                                                     (:head grounding-rule)))))
                          (map (fn [[grounding-rule-idx grounding-rule]]
                                 {:src  [grounding-rule-idx (->> grounding-rule

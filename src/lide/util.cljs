@@ -54,6 +54,19 @@
 (defn ground? [arg]
   (not (variable? arg)))
 
+(defn matches? [a b]
+  "Literals `a` and `b` match if they have the same predicate, same arity, and
+  any ground arguments are the same."
+  (and (= (:predicate a)
+          (:predicate b))
+       (= (count (:args a))
+          (count (:args b)))
+       (not-any? (fn [[a-arg b-arg]]
+                   (and (not= a-arg b-arg)
+                        (ground? a-arg)
+                        (ground? b-arg)))
+                 (map vector (:args a) (:args b)))))
+
 (defn grounds? [a b]
   "Literal `b` grounds literal `a` if they have the same predicate, same arity,
   and at least one shared argument is ground in `b` and variable in `a`. "
