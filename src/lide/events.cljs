@@ -196,6 +196,12 @@
                     (assoc args arg-idx new-arg)))))))
 
 (re-frame/reg-event-db
+ ::negate-literal
+ (undo/undoable "negate literal")
+ (fn [db [_ literal-id]]
+   (update-in db [:program :literals literal-id :negative] not)))
+
+(re-frame/reg-event-db
  ::mouse-move
  (fn [db [_ event-position]]
    (cond

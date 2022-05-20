@@ -36,7 +36,8 @@
        vec))
 
 (defn literal-view-model [highlighted-connection literal-id literal]
-  {:predicate (:predicate literal)
+  {:predicate (str (when (:negative literal) "~")
+                   (:predicate literal))
    :args      (:args literal)
    :highlight (filterv (fn [arg]
                          (some #(= % [literal-id arg])
@@ -145,6 +146,20 @@
                                    args-height
                                    arg-height)}}}))
 
+(defn literal-negate [id layout]
+  [:<>
+   [:rect {:class "rule__negate-bg"
+           :x (- (-> layout :container :size :width) 20)
+           :y 0
+           :height rule-head-height
+           :width 20
+           :on-click #(re-frame/dispatch [::events/negate-literal id])}
+    [:title "Negate literal"]]
+   [:text {:class "rule__negate-label"
+           :x (- (-> layout :container :size :width) 15)
+           :y (/ rule-head-height 2)}
+    "~"]])
+
 (defn literal [{:keys [id local-position]}]
   (let [literal-raw @(re-frame/subscribe [::subs/literal id])
         highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
@@ -165,6 +180,7 @@
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
        :width (->> layout :container :size :width)
        :height (+ rule-head-padding rule-head-font-size rule-head-padding)}]
+     [literal-negate id layout]
      [:<>
       (map-indexed
        (fn [arg-index [arg arg-layout]]

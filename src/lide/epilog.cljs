@@ -3,7 +3,8 @@
    [clojure.string :as string]))
 
 (defn literal-to-epilog [literal]
-  (str (:predicate literal)
+  (str (when (:negative literal) "~")
+       (:predicate literal)
        (when (not-empty (:args literal))
          (str
           "("
