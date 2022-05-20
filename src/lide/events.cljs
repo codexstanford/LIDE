@@ -20,6 +20,15 @@
   (fn [!db val]
     (swap! !db assoc :program val))})
 
+;; Delay effects
+
+(re-frame/reg-fx
+ :timeout
+ (fn [{:keys [event delay-ms]}]
+   (js/setTimeout (fn []
+                    (re-frame/dispatch event))
+                  delay-ms)))
+
 ;; Persistent state
 
 (re-frame/reg-fx
@@ -32,7 +41,15 @@
 (re-frame/reg-event-fx
  ::save
  (fn [cofx _]
-   {:fx [[::set-local-storage ["lide.state" (pr-str (:db cofx))]]]}))
+   {:db (assoc (:db cofx) :show-saved-popup? true)
+    :fx [[::set-local-storage ["lide.state" (pr-str (:db cofx))]]]
+    :timeout {:event [::hide-saved-popup]
+              :delay-ms 2000}}))
+
+(re-frame/reg-event-db
+ ::hide-saved-popup
+ (fn [db _]
+   (dissoc db :show-saved-popup?)))
 
 (re-frame/reg-cofx
  ::saved-state

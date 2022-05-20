@@ -478,8 +478,12 @@
 
 (defn toolbar []
   (let [undos? @(re-frame/subscribe [:undos?])
-        redos? @(re-frame/subscribe [:redos?])]
+        redos? @(re-frame/subscribe [:redos?])
+        show-saved-popup? @(re-frame/subscribe [::subs/show-saved-popup?])]
     [:div {:class "toolbar"}
+     (when show-saved-popup?
+       [:div {:class "toolbar__saved-popup"}
+        "Saved."])
      [:button {:on-click #(re-frame/dispatch [::events/save])}
       "Save"]
      [:button {:on-click #(re-frame/dispatch [:undo])

@@ -5,6 +5,10 @@
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
+ ::show-saved-popup?
+ (fn [db] (:show-saved-popup? db)))
+
+(re-frame/reg-sub
  ::program
  (fn [db]
    (:program db)))
