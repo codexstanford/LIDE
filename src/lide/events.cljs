@@ -158,13 +158,11 @@
  ::edit-head-predicate
  (undo/undoable "edit head predicate")
  (fn [db [_ rule-idx new-predicate]]
-   (update-in db
-              [:program :rules]
-              (fn [rules]
-                (if (string/blank? new-predicate)
-                  ;; TODO Should also delete body literals that don't appear in any other rules
-                  (util/vector-remove rules rule-idx)
-                  (assoc-in rules [rule-idx :head :predicate] new-predicate))))))
+   (let [rule (get-in db [:program :rules rule-idx])]
+     (if (string/blank? new-predicate)
+       ;; TODO Should also delete body literals that don't appear in any other rules
+       (update-in db [:program :rules] #(util/vector-remove % rule-idx))
+       (assoc-in db [:program :literals (:head rule) :predicate] new-predicate)))))
 
 (re-frame/reg-event-db
  ::edit-head-arg
