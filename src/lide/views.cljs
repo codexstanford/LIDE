@@ -18,41 +18,41 @@
     {:x (.-x svg-point)
      :y (.-y svg-point)}))
 
-(defn rule-view-model [rule highlighted-connection]
-  (let [internals (->> rule
-                       :body
-                       (mapcat :args)
-                       distinct ;; internals share a namespace
-                       (remove #(= % :unspecified))
-                       (remove util/ground?)
-                       (remove (fn [internal]
-                                 (some #(= internal %) (-> rule :head :args))))
-                       vec)]
+(defn rule-view-model [highlighted-connection rule-index rule]
+  (let [internals (util/internal-names rule)]
     {:head (:head rule)
      :internals internals
      :highlight (filterv (fn [arg]
-                           (some #(= % [(-> rule :head :predicate) arg])
+                           (some #(= % [rule-index arg])
                                  (vals (select-keys highlighted-connection [:src :dest]))))
                          (concat (-> rule :head :args) internals))}))
 
-(defn rules-view-model [program highlighted-connection]
+(defn rules-view-model [highlighted-connection program]
   ;; TODO support disjunction - we might already have a definition
   (->> (:rules program)
-       (mapv #(util/populate-rule program %))
-       (mapv #(rule-view-model % highlighted-connection))))
+       (map #(util/populate-rule program %))
+       (map-indexed (fn [idx rule]
+                      (rule-view-model highlighted-connection idx rule)))
+       vec))
 
-(defn literal-view-model [literal]
+(defn literal-view-model [highlighted-connection literal-id literal]
   {:predicate (:predicate literal)
-   :args      (:args literal)})
+   :args      (:args literal)
+   :highlight (filterv (fn [arg]
+                         (some #(= % [literal-id arg])
+                               (vals (select-keys highlighted-connection [:src :dest]))))
+                       (:args literal))})
 
-(defn literals-view-model [program]
+(defn literals-view-model [highlighted-connection program]
   (->> (:rules program)
        (mapv
         (fn [ref-rule]
           (mapv
            (fn [body-literal-id]
              (let [body-literal (get (:literals program) body-literal-id)]
-               {body-literal-id (literal-view-model body-literal)}))
+               {body-literal-id (literal-view-model highlighted-connection
+                                                    body-literal-id
+                                                    body-literal)}))
            (:body ref-rule))))
        flatten
        (into {})))
@@ -70,10 +70,14 @@
        (util/compositions program)
        (mapv
         (fn [{:keys [literal-id arg]}]
-          ;; arg from composition should match an arg in rule (or be nil), so we
-          ;; can use it on both ends of the connector
-          {:src [rule-idx arg]
-           :dest [literal-id arg]}))))
+          (let [unhighlighted
+                ;; arg from composition should match an arg in rule (or be nil), so we
+                ;; can use it on both ends of the connector
+                {:src [rule-idx arg]
+                 :dest [literal-id arg]}]
+            (assoc unhighlighted
+                   :highlighted
+                   (= unhighlighted highlighted-connection)))))))
 
 ;; We're looking for head literals that ground body literals from other rules.
 
@@ -144,7 +148,8 @@
 
 (defn literal [{:keys [id local-position]}]
   (let [literal-raw @(re-frame/subscribe [::subs/literal id])
-        literal-model (literal-view-model literal-raw)
+        highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
+        literal-model (literal-view-model highlighted-connection id literal-raw)
         position @(re-frame/subscribe [::subs/literal-position id])
         layout (literal-layout literal-model position)]
     [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-literal (local-position %) id])
@@ -171,7 +176,7 @@
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
            :height (+ rule-head-padding rule-head-font-size rule-head-padding)
-           :class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
+           :display-class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
            :key arg-index}])
        (:args layout))]
      [:text {:class "rule__add-arg"
@@ -248,7 +253,7 @@
   ;; TODO Should get layout data for EIPs from layout object
   (let [rule-raw @(re-frame/subscribe [::subs/populated-rule index])
         highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
-        rule-model (rule-view-model rule-raw highlighted-connection)
+        rule-model (rule-view-model highlighted-connection index rule-raw)
         position @(re-frame/subscribe [::subs/rule-position index])
         layout (rule-layout rule-model position)]
     [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule (local-position %) index])
@@ -275,7 +280,7 @@
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
            :height (+ rule-head-padding rule-head-font-size rule-head-padding)
-           :class (when (some #(= % arg) (:highlight rule-model)) "rule--highlight")
+           :display-class (if (some #(= % arg) (:highlight rule-model)) "rule--highlight" "")
            :key arg-index}])
        (:args layout))]
      [:<>
@@ -329,9 +334,11 @@
         end-literal @(re-frame/subscribe [::subs/literal end-literal-id])
         end-literal-position @(re-frame/subscribe [::subs/literal-position end-literal-id])
         highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
-        start-layout (rule-layout (rule-view-model start-rule highlighted-connection)
+        start-layout (rule-layout (rule-view-model highlighted-connection start-rule-idx start-rule)
                                   start-rule-position)
-        end-layout   (literal-layout (literal-view-model end-literal)
+        end-layout   (literal-layout (literal-view-model highlighted-connection
+                                                         end-literal-id
+                                                         end-literal)
                                      end-literal-position)
         start (socket-position start-layout start-arg {:end :dest})
         end   (socket-position end-layout end-arg {:end :src})]
@@ -353,7 +360,8 @@
 (defn composition-connectors [{:keys [rule-index]}]
   (let [program @(re-frame/subscribe [::subs/program])
         rule @(re-frame/subscribe [::subs/rule rule-index])
-        compositions-model (compositions-view-model program rule-index rule {})]
+        highlighted-conn @(re-frame/subscribe [::subs/highlighted-connection])
+        compositions-model (compositions-view-model program rule-index rule highlighted-conn)]
     (into [:<>] (mapv (fn [cm]
                         [composition-connector cm])
                       compositions-model))))
@@ -406,13 +414,13 @@
             rule-positions (re-frame/subscribe [::subs/rule-positions])
             literal-positions (re-frame/subscribe [::subs/literal-positions])
             highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
-            literals-vm (literals-view-model @program)
+            literals-vm (literals-view-model @highlighted-connection @program)
             literal-layouts (->> literals-vm
                                  (map
                                   (fn [[id literal]]
                                     [id (literal-layout literal (get @literal-positions id))]))
                                  (into {}))
-            rules-vm (rules-view-model @program @highlighted-connection)
+            rules-vm (rules-view-model @highlighted-connection @program)
             rule-layouts (->> rules-vm
                               (map-indexed
                                (fn [idx rule]

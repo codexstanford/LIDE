@@ -66,6 +66,17 @@
                     (ground? b-arg)))
              (map vector (:args a) (:args b)))))
 
+(defn internal-names [rule]
+  (->> rule
+       :body
+       (mapcat :args)
+       distinct ;; internals share a namespace
+       (remove #(= % :unspecified))
+       (remove ground?)
+       (remove (fn [internal]
+                 (some #(= internal %) (-> rule :head :args))))
+       vec))
+
 (defn all-body-literals [program]
   (->> (:rules program)
        (map
@@ -143,14 +154,15 @@
                   :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
                                   (blur %))}]]))))
 
-(defn eip-svg-text [{:keys [value on-blur x y width height]}]
+(defn eip-svg-text [{:keys [value x y display-class]}]
   (let [!editing? (r/atom false)
         start-editing #(reset! !editing? true)
         stop-editing  #(reset! !editing? false)]
-    (fn [{:keys [value update x y width height] :as props}]
+    (fn [{:keys [value x y display-class] :as props}]
       (if @!editing?
         [eip-svg-text-input (assoc props :stop-editing stop-editing)]
-        [:text {:x x
+        [:text {:class display-class
+                :x x
                 :y y
                 :on-click start-editing}
          value]))))
