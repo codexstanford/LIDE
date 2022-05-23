@@ -9,6 +9,7 @@
 (def rule-binding-padding-x 6)
 (def rule-binding-padding-y 3)
 (def rule-body-padding-x 5)
+(def rule-body-literal-gutter 5)
 
 (defn literal-layout [literal position]
   (let [name-height (+ rule-head-padding
@@ -95,7 +96,9 @@
                   (reduce (fn [[body-layouts position] literal]
                             (let [layout (literal-layout literal position)]
                               [(conj body-layouts layout)
-                               (update position :y #(+ % (-> layout :container :size :height)))]))
+                               (update position :y #(+ %
+                                                       (-> layout :container :size :height)
+                                                       rule-body-literal-gutter))]))
                           [[] {:x rule-body-padding-x
                                :y (+ name-height
                                      args-height
@@ -103,7 +106,10 @@
                                      arg-height)}])
                   first)
 
-        body-height (reduce + (map #(-> % :container :size :height) body))
+        body-height (->> body
+                         (map #(-> % :container :size :height))
+                         (interpose rule-body-literal-gutter)
+                         (reduce + 0))
 
         add-body-literal {:position {:y (+ name-height
                                            args-height
