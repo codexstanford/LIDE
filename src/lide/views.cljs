@@ -18,9 +18,15 @@
     {:x (.-x svg-point)
      :y (.-y svg-point)}))
 
+(defn body-literal-view-model [literal]
+  {:predicate (str (when (:negative literal) "~")
+                   (:predicate literal))
+   :args      (:args literal)})
+
 (defn rule-view-model [highlighted-connection rule-index rule]
   (let [internals (util/internal-names rule)]
     {:head (:head rule)
+     :body (mapv body-literal-view-model (:body rule))
      :internals internals
      :highlight (filterv (fn [arg]
                            (some #(= % [rule-index arg])
@@ -160,7 +166,7 @@
            :y (/ rule-head-height 2)}
     "~"]])
 
-(defn literal [{:keys [id local-position]}]
+#_(defn literal [{:keys [id local-position]}]
   (let [literal-raw @(rf/subscribe [::subs/literal id])
         highlighted-connection @(rf/subscribe [::subs/highlighted-connection])
         literal-model (literal-view-model highlighted-connection id literal-raw)
@@ -203,77 +209,55 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
 
-(defn rule-layout [rule position]
-  (let [name-height (+ rule-head-padding
-                       rule-head-font-size
-                       rule-head-padding)
-
-        predicate {:predicate (-> rule :head :predicate)
-                   :position {:x rule-head-padding
-                              :y (/ name-height 2)}
-                   :size     {:width  150
-                              :height name-height}}
-
-        ;; Add Binding is also one arg tall
-        arg-height (+  rule-binding-padding-y
-                       rule-binding-font-size
-                       rule-binding-padding-y)
-        args-y-start (+ name-height
-                        (/ arg-height 2))
-        args (map-indexed
-              (fn [i arg]
-                [arg
-                 {:position {:y (+ args-y-start
-                                   (* i arg-height))}}])
-              (-> rule :head :args))
-        args-height (* arg-height (-> rule :head :args count))
-
-        internals-y-start (+ name-height
-                             args-height
-                             (/ arg-height 2))
-        internals (map-indexed
-                   (fn [i internal]
-                     [internal
-                      {:position {:y (+ internals-y-start
-                                        (* i arg-height))}
-                       :size {:width 150
-                              :height arg-height}}])
-                   (:internals rule))
-        internals-height (* arg-height (->> rule :internals count))
-
-        add-argument {:position {:y (+ name-height
-                                       args-height
-                                       internals-height
-                                       (/ arg-height 2))}}
-
-        add-body-literal {:position {:y (+ name-height
-                                           args-height
-                                           internals-height
-                                           arg-height
-                                           (/ arg-height 2))}}]
-    {:predicate predicate
-     :args (into {} args)
-     :internals (into {} internals)
-     :add-argument add-argument
-     :add-body-literal add-body-literal
-     :container {:position (or position {:x 0 :y 0})
-                 :size {:width  150
-                        :height (+ name-height
-                                   args-height
-                                   arg-height
-                                   internals-height
-                                   arg-height)}}}))
+(defn body-literal [{:keys [id predicate args] :as layout}]
+  (let [_ (println layout)
+        highlighted-connection @(rf/subscribe [::subs/highlighted-connection])]
+    [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
+         :key id}
+     [:rect {:class  "rule__bg"
+             :width  (->> layout :container :size :width)
+             :height (->> layout :container :size :height)}]
+     [util/eip-svg-text
+      {:value (:predicate predicate)
+       :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])
+       :x rule-head-padding
+       :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
+       :width (->> layout :container :size :width)
+       :height (+ rule-head-padding rule-head-font-size rule-head-padding)}]
+     [literal-negate id layout]
+     [:<>
+      (map-indexed
+       (fn [arg-index [arg arg-layout]]
+         [util/eip-svg-text
+          {:value arg
+           :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
+           :x rule-binding-padding-x
+           :y (->> arg-layout :position :y)
+           :width  (->> layout :container :size :width)
+           :height (+ rule-head-padding rule-head-font-size rule-head-padding)
+           ;;:display-class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
+           :key arg-index}])
+       (:args layout))]
+     [:text {:class "rule__add-arg"
+             :x rule-binding-padding-x
+             :y (->> layout :add-argument :position :y)
+             :on-click #(rf/dispatch [::events/add-literal-argument id])}
+      "+ Add argument"]
+     [:rect {:class  "rule__border"
+             :width  (->> layout :container :size :width)
+             :height (->> layout :container :size :height)}]]))
 
 (defn rule [{:keys [index local-position]}]
   ;; TODO Should get layout data for EIPs from layout object
   (let [rule-raw @(rf/subscribe [::subs/populated-rule index])
         highlighted-connection @(rf/subscribe [::subs/highlighted-connection])
         rule-model (rule-view-model highlighted-connection index rule-raw)
-        position @(rf/subscribe [::subs/rule-position index])
-        layout (rule-layout rule-model position)]
+        ;; layout (rule-layout rule-model position)
+        layout @(rf/subscribe [::subs/rule-layout index])
+        position @(rf/subscribe [::subs/rule-position index])]
     [:g {:on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) index])
          :on-click #(rf/dispatch [::events/select-rule index])
-         :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
+         :transform (str "translate(" (:x position) "," (:y position) ")")
          :key index}
      [:rect {:class  "rule__bg"
              :width  (->> layout :container :size :width)
@@ -320,6 +304,11 @@
              :y (->> layout :add-argument :position :y)
              :on-click #(rf/dispatch [::events/add-argument index])}
       "+ Add argument"]
+     [:<>
+      (map
+       (fn [literal-layout]
+         [body-literal literal-layout])
+       (:body layout))]
      [:text {:class "rule__add-arg"
              :x rule-binding-padding-x
              :y (->> layout :add-body-literal :position :y)
@@ -341,7 +330,7 @@
              (/ rule-head-height 2)
              (-> all-names (get arg) :position :y)))}))
 
-(defn composition-connector [connection]
+#_(defn composition-connector [connection]
   (let [[start-rule-idx start-arg] (:src connection)
         [end-literal-id end-arg]   (:dest connection)
         start-rule @(rf/subscribe [::subs/populated-rule start-rule-idx])
@@ -372,7 +361,7 @@
              :on-mouse-over #(rf/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
              :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])}]]))
 
-(defn composition-connectors [{:keys [rule-index]}]
+#_(defn composition-connectors [{:keys [rule-index]}]
   (let [program @(rf/subscribe [::subs/program])
         rule @(rf/subscribe [::subs/rule rule-index])
         highlighted-conn @(rf/subscribe [::subs/highlighted-connection])
@@ -444,7 +433,7 @@
                                     [id (literal-layout literal (get @literal-positions id))]))
                                  (into {}))
             rules-vm (rules-view-model @highlighted-connection @program)
-            rule-layouts (->> rules-vm
+            #_rule-layouts #_(->> rules-vm
                               (map-indexed
                                (fn [idx rule]
                                  [idx (rule-layout rule (get @rule-positions idx))]))
@@ -467,18 +456,18 @@
                                 :local-position local-position
                                 :key    idx}])
                        (:rules @program))
-          (doall
+          #_(doall
            (map (fn [[id _]]
                   [literal {:id id
                             :local-position local-position
                             :key id}])
                 (util/all-body-literals @program)))
-          (map-indexed (fn [rule-idx _]
+          #_(map-indexed (fn [rule-idx _]
                          [composition-connectors
                           {:rule-index rule-idx
                            :key rule-idx}])
                        (:rules @program))
-          (map (fn [vm]
+          #_(map (fn [vm]
                  [grounding-connector
                   {:connection vm
                    :literal-layouts literal-layouts

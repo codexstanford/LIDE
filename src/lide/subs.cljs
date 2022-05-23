@@ -1,8 +1,11 @@
 (ns lide.subs
   (:require
+   [lide.graph :as graph]
    [lide.util :as util]
    [lide.epilog :as epilog]
    [re-frame.core :as rf]))
+
+;; Layer 2
 
 (rf/reg-sub
  ::show-saved-popup?
@@ -38,10 +41,18 @@
 
 (rf/reg-sub
  ::populated-rule
- (fn [_ _]
-   (rf/subscribe [::populated-rules]))
- (fn [rules [_ rule-idx]]
-   (get rules rule-idx)))
+ (fn [[_ rule-idx]]
+   [(rf/subscribe [::program])
+    (rf/subscribe [::rule rule-idx])])
+ (fn [[program rule]]
+   (util/populate-rule program rule)))
+
+(rf/reg-sub
+ ::rule-layout
+ (fn [[_ rule-idx]]
+   (rf/subscribe [::populated-rule rule-idx]))
+ (fn [rule]
+   (graph/rule-layout rule)))
 
 (rf/reg-sub
  ::rule-positions

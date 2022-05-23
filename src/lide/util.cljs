@@ -40,7 +40,9 @@
       (update :head (fn [id]
                       (-> program :literals (get id))))
       (update :body (fn [literals]
-                      (mapv (fn [id] (-> program :literals (get id)))
+                      (mapv (fn [id]
+                              (assoc (-> program :literals (get id))
+                                     :id id))
                             literals)))))
 
 (defn variable? [arg]
