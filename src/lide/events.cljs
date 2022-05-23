@@ -2,7 +2,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.string :as string]
-   [re-frame.core :as re-frame]
+   [re-frame.core :as rf]
    [day8.re-frame.undo :as undo]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [lide.db :as db]
@@ -22,23 +22,23 @@
 
 ;; Delay effects
 
-(re-frame/reg-fx
+(rf/reg-fx
  :timeout
  (fn [{:keys [event delay-ms]}]
    (js/setTimeout (fn []
-                    (re-frame/dispatch event))
+                    (rf/dispatch event))
                   delay-ms)))
 
 ;; Persistent state
 
-(re-frame/reg-fx
+(rf/reg-fx
  ::set-local-storage
  (fn [[key val]]
    (-> js/window
        (.-localStorage)
        (.setItem key val))))
 
-(re-frame/reg-event-fx
+(rf/reg-event-fx
  ::save
  (fn [cofx _]
    {:db (assoc (:db cofx) :show-saved-popup? true)
@@ -46,12 +46,12 @@
     :timeout {:event [::hide-saved-popup]
               :delay-ms 2000}}))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::hide-saved-popup
  (fn [db _]
    (dissoc db :show-saved-popup?)))
 
-(re-frame/reg-cofx
+(rf/reg-cofx
  ::saved-state
  (fn [cofx key]
    (assoc cofx
@@ -60,26 +60,26 @@
               (.getItem "lide.state")
               edn/read-string))))
 
-(re-frame/reg-event-fx
+(rf/reg-event-fx
  ::initialize-db
- [(re-frame/inject-cofx ::saved-state)]
+ [(rf/inject-cofx ::saved-state)]
  (fn [cofx _]
    {:db (or (::saved-state cofx)
             db/default-db)}))
 
 ;; Connections
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::highlight-connection
  (fn [db [_ connection]]
    (assoc db :highlighted-connection connection)))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::stop-connection-highlight
  (fn [db _]
    (dissoc db :highlighted-connection)))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::add-argument
  (undo/undoable "add argument")
  (fn [db [_ rule-idx]]
@@ -89,18 +89,18 @@
                 (fn [args]
                   (conj args "arg"))))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::add-literal-argument
  (undo/undoable "add literal argument")
  (fn [db [_ literal-id]]
    (update-in db [:program :literals literal-id :args] #(conj % "new"))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::start-connect-dest
  (fn [db [_ dest-pred]]
    (assoc db :connecting-dest dest-pred)))
 
-(re-frame/reg-event-fx
+(rf/reg-event-fx
  ::mouse-up
  (fn [cofx [_ position]]
    {:db (-> (:db cofx)
@@ -120,7 +120,7 @@
           :else
           [])}))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::create-rule
  (undo/undoable "create rule")
  (fn [db [_ position]]
@@ -136,7 +136,7 @@
                  (fn [positions]
                    (conj positions [new-idx position])))))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::add-body-literal
  (undo/undoable "add body literal")
  (fn [db [_ rule-idx]]
@@ -145,17 +145,17 @@
          (assoc-in [:program :literals new-literal-id] {:predicate "new" :args []})
          (update-in [:program :rules rule-idx :body] conj new-literal-id)))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::select-rule
  (fn [db [_ rule-idx]]
    (assoc db :selected-rule-index rule-idx)))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::select-literal
  (fn [db [_ literal-id]]
    (assoc db :selected-literal literal-id)))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::edit-literal-predicate
  (undo/undoable "edit literal predicate")
  (fn [db [_ literal-id new-predicate]]
@@ -163,7 +163,7 @@
      (update db :program #(util/remove-literal % literal-id))
      (assoc-in db [:program :literals literal-id :predicate] new-predicate))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::edit-literal-arg
  (undo/undoable "edit literal arg")
  (fn [db [_ literal-id arg-idx new-arg]]
@@ -171,7 +171,7 @@
      (update-in db [:program :literals literal-id :args] #(util/vector-remove % arg-idx))
      (assoc-in db [:program :literals literal-id :args arg-idx] new-arg))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::edit-head-predicate
  (undo/undoable "edit head predicate")
  (fn [db [_ rule-idx new-predicate]]
@@ -181,7 +181,7 @@
        (update-in db [:program :rules] #(util/vector-remove % rule-idx))
        (assoc-in db [:program :literals (:head rule) :predicate] new-predicate)))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::edit-head-arg
  (undo/undoable "edit head arg")
  (fn [db [_ rule-idx arg-idx new-arg]]
@@ -195,13 +195,13 @@
                     (util/vector-remove args arg-idx)
                     (assoc args arg-idx new-arg)))))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::negate-literal
  (undo/undoable "negate literal")
  (fn [db [_ literal-id]]
    (update-in db [:program :literals literal-id :negative] not)))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::mouse-move
  (fn [db [_ event-position]]
    (cond
@@ -255,12 +255,12 @@
 
      :else db)))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::mouse-down-graph-bg
  (fn [db [_ position]]
    (assoc db :mouse-down-graph position)))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::scroll-graph
  (fn [db [_ scroll-event]]
    (let [event-position {:x (-> scroll-event .-nativeEvent .-offsetX)
@@ -278,14 +278,14 @@
      (assoc db :graph-transform (util/dom-matrix-to-vals
                                  (.preMultiplySelf graph-transform zoom-matrix))))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::start-drag-literal
  (fn [db [_ position literal-id]]
    (-> db
        (assoc :dragging-literal literal-id)
        (assoc :node-drag-origin position))))
 
-(re-frame/reg-event-db
+(rf/reg-event-db
  ::start-drag-rule
  (fn [db [_ position rule-id]]
    (-> db

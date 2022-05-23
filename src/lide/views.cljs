@@ -1,7 +1,7 @@
 (ns lide.views
   (:require
    [clojure.string :as string]
-   [re-frame.core :as re-frame]
+   [re-frame.core :as rf]
    [lide.epilog :as epilog]
    [lide.events :as events]
    [lide.subs :as subs]
@@ -153,7 +153,7 @@
            :y 0
            :height rule-head-height
            :width 20
-           :on-click #(re-frame/dispatch [::events/negate-literal id])}
+           :on-click #(rf/dispatch [::events/negate-literal id])}
     [:title "Negate literal"]]
    [:text {:class "rule__negate-label"
            :x (- (-> layout :container :size :width) 15)
@@ -161,13 +161,13 @@
     "~"]])
 
 (defn literal [{:keys [id local-position]}]
-  (let [literal-raw @(re-frame/subscribe [::subs/literal id])
-        highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
+  (let [literal-raw @(rf/subscribe [::subs/literal id])
+        highlighted-connection @(rf/subscribe [::subs/highlighted-connection])
         literal-model (literal-view-model highlighted-connection id literal-raw)
-        position @(re-frame/subscribe [::subs/literal-position id])
+        position @(rf/subscribe [::subs/literal-position id])
         layout (literal-layout literal-model position)]
-    [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-literal (local-position %) id])
-         :on-click #(re-frame/dispatch [::events/select-literal id])
+    [:g {:on-mouse-down #(rf/dispatch [::events/start-drag-literal (local-position %) id])
+         :on-click #(rf/dispatch [::events/select-literal id])
          :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
          :key id}
      [:rect {:class  "rule__bg"
@@ -175,7 +175,7 @@
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
       {:value (:predicate literal-model)
-       :on-blur #(re-frame/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])
+       :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
        :width (->> layout :container :size :width)
@@ -186,7 +186,7 @@
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
           {:value arg
-           :on-blur #(re-frame/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
+           :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
            :x rule-binding-padding-x
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
@@ -197,7 +197,7 @@
      [:text {:class "rule__add-arg"
              :x rule-binding-padding-x
              :y (->> layout :add-argument :position :y)
-             :on-click #(re-frame/dispatch [::events/add-literal-argument id])}
+             :on-click #(rf/dispatch [::events/add-literal-argument id])}
       "+ Add argument"]
      [:rect {:class  "rule__border"
              :width  (->> layout :container :size :width)
@@ -266,13 +266,13 @@
 
 (defn rule [{:keys [index local-position]}]
   ;; TODO Should get layout data for EIPs from layout object
-  (let [rule-raw @(re-frame/subscribe [::subs/populated-rule index])
-        highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
+  (let [rule-raw @(rf/subscribe [::subs/populated-rule index])
+        highlighted-connection @(rf/subscribe [::subs/highlighted-connection])
         rule-model (rule-view-model highlighted-connection index rule-raw)
-        position @(re-frame/subscribe [::subs/rule-position index])
+        position @(rf/subscribe [::subs/rule-position index])
         layout (rule-layout rule-model position)]
-    [:g {:on-mouse-down #(re-frame/dispatch [::events/start-drag-rule (local-position %) index])
-         :on-click #(re-frame/dispatch [::events/select-rule index])
+    [:g {:on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) index])
+         :on-click #(rf/dispatch [::events/select-rule index])
          :transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
          :key index}
      [:rect {:class  "rule__bg"
@@ -280,7 +280,7 @@
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
       {:value (-> rule-model :head :predicate)
-       :on-blur #(re-frame/dispatch [::events/edit-head-predicate index (-> % .-target .-value)])
+       :on-blur #(rf/dispatch [::events/edit-head-predicate index (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
        :width  (->> layout :container :size :width)
@@ -290,7 +290,7 @@
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
           {:value arg
-           :on-blur #(re-frame/dispatch [::events/edit-head-arg index arg-index (-> % .-target .-value)])
+           :on-blur #(rf/dispatch [::events/edit-head-arg index arg-index (-> % .-target .-value)])
            :x rule-binding-padding-x
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
@@ -318,12 +318,12 @@
      [:text {:class "rule__add-arg"
              :x rule-binding-padding-x
              :y (->> layout :add-argument :position :y)
-             :on-click #(re-frame/dispatch [::events/add-argument index])}
+             :on-click #(rf/dispatch [::events/add-argument index])}
       "+ Add argument"]
      [:text {:class "rule__add-arg"
              :x rule-binding-padding-x
              :y (->> layout :add-body-literal :position :y)
-             :on-click #(re-frame/dispatch [::events/add-body-literal index])}
+             :on-click #(rf/dispatch [::events/add-body-literal index])}
       "+ Add subgoal"]
      [:rect {:class  "rule__border"
              :width  (->> layout :container :size :width)
@@ -344,11 +344,11 @@
 (defn composition-connector [connection]
   (let [[start-rule-idx start-arg] (:src connection)
         [end-literal-id end-arg]   (:dest connection)
-        start-rule @(re-frame/subscribe [::subs/populated-rule start-rule-idx])
-        start-rule-position @(re-frame/subscribe [::subs/rule-position start-rule-idx])
-        end-literal @(re-frame/subscribe [::subs/literal end-literal-id])
-        end-literal-position @(re-frame/subscribe [::subs/literal-position end-literal-id])
-        highlighted-connection @(re-frame/subscribe [::subs/highlighted-connection])
+        start-rule @(rf/subscribe [::subs/populated-rule start-rule-idx])
+        start-rule-position @(rf/subscribe [::subs/rule-position start-rule-idx])
+        end-literal @(rf/subscribe [::subs/literal end-literal-id])
+        end-literal-position @(rf/subscribe [::subs/literal-position end-literal-id])
+        highlighted-connection @(rf/subscribe [::subs/highlighted-connection])
         start-layout (rule-layout (rule-view-model highlighted-connection start-rule-idx start-rule)
                                   start-rule-position)
         end-layout   (literal-layout (literal-view-model highlighted-connection
@@ -369,13 +369,13 @@
              :y2 (:y end)
              :stroke "transparent"
              :stroke-width 10
-             :on-mouse-over #(re-frame/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
-             :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])}]]))
+             :on-mouse-over #(rf/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
+             :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])}]]))
 
 (defn composition-connectors [{:keys [rule-index]}]
-  (let [program @(re-frame/subscribe [::subs/program])
-        rule @(re-frame/subscribe [::subs/rule rule-index])
-        highlighted-conn @(re-frame/subscribe [::subs/highlighted-connection])
+  (let [program @(rf/subscribe [::subs/program])
+        rule @(rf/subscribe [::subs/rule rule-index])
+        highlighted-conn @(rf/subscribe [::subs/highlighted-connection])
         compositions-model (compositions-view-model program rule-index rule highlighted-conn)]
     (into [:<>] (mapv (fn [cm]
                         [composition-connector cm])
@@ -403,9 +403,9 @@
                    :y2 (:y end)
                    :stroke "transparent"
                    :stroke-width 10
-                   :on-mouse-over #(re-frame/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
-                   :on-mouse-leave #(re-frame/dispatch [::events/stop-connection-highlight])
-                   :on-click #(re-frame/dispatch [::events/disconnect connection])}]])]
+                   :on-mouse-over #(rf/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
+                   :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])
+                   :on-click #(rf/dispatch [::events/disconnect connection])}]])]
     (if (empty? start-args)
       (draw-connector (socket-position start-layout :unbound {:end :src})
                       (socket-position end-layout   :unbound {:end :dest}))
@@ -420,7 +420,7 @@
         end-args)))))
 
 (defn graph-viewport [{:keys [set-ref]} & children]
-  (let [graph-transform @(re-frame/subscribe [::subs/graph-transform])]
+  (let [graph-transform @(rf/subscribe [::subs/graph-transform])]
     [:g {:ref set-ref
          :class "graph__viewport"
          :transform (when graph-transform
@@ -433,10 +433,10 @@
       (let [local-position (fn [event]
                              (localize-event-to-svg @!svg-viewport event))
 
-            program (re-frame/subscribe [::subs/program])
-            rule-positions (re-frame/subscribe [::subs/rule-positions])
-            literal-positions (re-frame/subscribe [::subs/literal-positions])
-            highlighted-connection (re-frame/subscribe [::subs/highlighted-connection])
+            program (rf/subscribe [::subs/program])
+            rule-positions (rf/subscribe [::subs/rule-positions])
+            literal-positions (rf/subscribe [::subs/literal-positions])
+            highlighted-connection (rf/subscribe [::subs/highlighted-connection])
             literals-vm (literals-view-model @highlighted-connection @program)
             literal-layouts (->> literals-vm
                                  (map
@@ -451,15 +451,15 @@
                               (into {}))
             groundings-vm (groundings-view-model @program)]
         [:svg {:class "graph-panel"
-               :on-mouse-move (goog.functions.throttle #(re-frame/dispatch [::events/mouse-move (local-position %)])
+               :on-mouse-move (goog.functions.throttle #(rf/dispatch [::events/mouse-move (local-position %)])
                                                        25)
-               :on-mouse-up #(re-frame/dispatch [::events/mouse-up (local-position %)])
-               :on-wheel (goog.functions.throttle #(re-frame/dispatch [::events/scroll-graph %])
+               :on-mouse-up #(rf/dispatch [::events/mouse-up (local-position %)])
+               :on-wheel (goog.functions.throttle #(rf/dispatch [::events/scroll-graph %])
                                                   100)}
          [:rect {:class "graph__bg"
                  :height 10000
                  :width  10000
-                 :on-mouse-down #(re-frame/dispatch [::events/mouse-down-graph-bg (local-position %)])}]
+                 :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (local-position %)])}]
          [graph-viewport
           {:set-ref #(reset! !svg-viewport %)}
           (map-indexed (fn [idx]
@@ -487,30 +487,30 @@
                groundings-vm)]]))))
 
 (defn epilog-panel []
-  (let [rules @(re-frame/subscribe [::subs/populated-rules])]
+  (let [rules @(rf/subscribe [::subs/populated-rules])]
     [:div {:class "epilog-inspector"}
      [:pre {:class "code"}
       (string/join "\n\n" (map epilog/rule-to-epilog rules))]]))
 
 (defn toolbar []
-  (let [undos? @(re-frame/subscribe [:undos?])
-        redos? @(re-frame/subscribe [:redos?])
-        show-saved-popup? @(re-frame/subscribe [::subs/show-saved-popup?])]
+  (let [undos? @(rf/subscribe [:undos?])
+        redos? @(rf/subscribe [:redos?])
+        show-saved-popup? @(rf/subscribe [::subs/show-saved-popup?])]
     [:div {:class "toolbar"}
      (when show-saved-popup?
        [:div {:class "toolbar__saved-popup"}
         "Saved."])
-     [:button {:on-click #(re-frame/dispatch [::events/save])}
+     [:button {:on-click #(rf/dispatch [::events/save])}
       "Save"]
-     [:button {:on-click #(re-frame/dispatch [:undo])
+     [:button {:on-click #(rf/dispatch [:undo])
                :disabled (not undos?)}
       "Undo"]
-     [:button {:on-click #(re-frame/dispatch [:redo])
+     [:button {:on-click #(rf/dispatch [:redo])
                :disabled (not redos?)}
       "Redo"]]))
 
 (defn main-panel []
-  (when @(re-frame/subscribe [::subs/program])
+  (when @(rf/subscribe [::subs/program])
     [:div {:id "app-container"}
      [:div {:class "work-viewport"}
       [program-graph]
