@@ -269,14 +269,23 @@
 
 (defn socket-position [rule-layout literal-id {:keys [end]}]
   {:x (+ (-> rule-layout :container :position :x)
-         (if (= end :dest)
+         (cond
+           (and (= end :dest) (not= literal-id :unbound))
+           (- (-> rule-layout :container :size :width) 5)
+
+           (and (= end :dest) (= literal-id :unbound))
            (-> rule-layout :container :size :width)
+
+           (and (= end :start) (not= literal-id :unbound))
+           5
+
+           :else
            0))
    :y (+ (-> rule-layout :container :position :y)
          (/ rule-head-height 2)
          (if (= literal-id :unbound)
            0
-           (get-in rule-layout [:body literal-id :position :y])))})
+           (get-in rule-layout [:body literal-id :container :position :y])))})
 
 #_(defn composition-connector [connection]
   (let [[start-rule-idx start-arg] (:src connection)
