@@ -20,6 +20,13 @@
 (defn vector-remove [vec idx]
   (into (subvec vec 0 idx) (subvec vec (inc idx))))
 
+(defn hash-to-hsl [s]
+  (->> s
+       (. js/lide hashString s)
+       (#(* % 360))
+       (#(. js/Math floor %))
+       (#(str "hsl(" % ",100%,30%)"))))
+
 ;; DOM transform matrix stuff
 
 (defn dom-matrix-to-vals [dm]
@@ -163,14 +170,14 @@
                   :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
                                   (blur %))}]]))))
 
-(defn eip-svg-text [{:keys [value x y display-class]}]
+(defn eip-svg-text [{:keys [value x y display-style]}]
   (let [!editing? (r/atom false)
         start-editing #(reset! !editing? true)
         stop-editing  #(reset! !editing? false)]
-    (fn [{:keys [value x y display-class] :as props}]
+    (fn [{:keys [value x y display-style] :as props}]
       (if @!editing?
         [eip-svg-text-input (assoc props :stop-editing stop-editing)]
-        [:text {:class display-class
+        [:text {:style display-style
                 :x x
                 :y y
                 :on-click start-editing}

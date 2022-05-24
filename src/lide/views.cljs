@@ -184,7 +184,7 @@
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
            :height (+ rule-head-padding rule-head-font-size rule-head-padding)
-           ;;:display-class (when (some #(= % arg) (:highlight literal-model)) "rule--highlight")
+           :display-style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
            :key arg-index}])
        (:args layout))]
      [:text {:class "rule__add-arg"
@@ -228,7 +228,7 @@
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
            :height (+ rule-head-padding rule-head-font-size rule-head-padding)
-           :display-class (if (some #(= % arg) (:highlight rule-model)) "rule--highlight" "")
+           :display-style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
            :key arg-index}])
        (:args layout))]
      [:<>
