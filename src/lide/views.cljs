@@ -103,6 +103,22 @@
                                    arg-height)}}}))
 
 (defn literal-collapse [id layout]
+  (let [symbol  (if (:collapsed layout) "+" "-")
+        tooltip (if (:collapsed layout) "Expand literal" "Collapse literal")]
+    [:<>
+     [:rect {:class "rule__button-bg"
+             :x (- (-> layout :container :size :width) 20)
+             :y 0
+             :height rule-head-height
+             :width 20
+             :on-click #(rf/dispatch [::events/toggle-collapse-literal id])}
+      [:title tooltip]]
+     [:text {:class "rule__button-label"
+             :x (- (-> layout :container :size :width) 15)
+             :y (/ rule-head-height 2)}
+      symbol]]))
+
+(defn literal-negate [id layout]
   [:<>
    [:rect {:class "rule__button-bg"
            :x (- (-> layout :container :size :width) 40)
@@ -110,23 +126,9 @@
            :height rule-head-height
            :width 20
            :on-click #(rf/dispatch [::events/negate-literal id])}
-    [:title "Collapse literal"]]
-   [:text {:class "rule__button-label"
-           :x (- (-> layout :container :size :width) 15)
-           :y (/ rule-head-height 2)}
-    "-"]])
-
-(defn literal-negate [id layout]
-  [:<>
-   [:rect {:class "rule__button-bg"
-           :x (- (-> layout :container :size :width) 20)
-           :y 0
-           :height rule-head-height
-           :width 20
-           :on-click #(rf/dispatch [::events/negate-literal id])}
     [:title "Negate literal"]]
    [:text {:class "rule__button-label"
-           :x (- (-> layout :container :size :width) 15)
+           :x (- (-> layout :container :size :width) 35)
            :y (/ rule-head-height 2)}
     "~"]])
 
@@ -173,7 +175,36 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
 
-(defn body-literal [{:keys [layout]}]
+(defn body-literal-collapsed [{:keys [layout]}]
+  (let [id (:id layout)]
+    [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")}
+     [:rect {:class  "rule__bg"
+             :width  (->> layout :container :size :width)
+             :height (->> layout :container :size :height)}]
+     [:text
+      {:x rule-head-padding
+       :y (/ (->> layout :container :size :height) 2)
+       :width (->> layout :container :size :width)
+       :height (->> layout :container :size :height)}
+      (-> layout :predicate :predicate)]
+     [:<>
+      (map-indexed
+       (fn [arg-index [arg arg-layout]]
+         [:text
+          {:x (->> arg-layout :position :x)
+           :y (->> arg-layout :position :y)
+           :width  (->> arg-layout :size :width)
+           :height (->> layout :container :size :height)
+           :style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
+           :key arg-index}
+          arg])
+       (:args layout))]
+     [literal-collapse id layout]
+     [:rect {:class  "rule__border"
+             :width  (->> layout :container :size :width)
+             :height (->> layout :container :size :height)}]]))
+
+(defn body-literal-uncollapsed [{:keys [layout]}]
   (let [id (:id layout)
         highlighted-connection @(rf/subscribe [::subs/highlighted-connection])]
     [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")}
@@ -188,6 +219,7 @@
        :width (->> layout :container :size :width)
        :height (+ rule-head-padding rule-head-font-size rule-head-padding)}]
      [literal-negate id layout]
+     [literal-collapse id layout]
      [:<>
       (map-indexed
        (fn [arg-index [arg arg-layout]]
@@ -209,6 +241,11 @@
      [:rect {:class  "rule__border"
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
+
+(defn body-literal [{:keys [layout] :as props}]
+  (if (:collapsed layout)
+    [body-literal-collapsed   props]
+    [body-literal-uncollapsed props]))
 
 (defn rule [{:keys [index local-position]}]
   ;; TODO Should get layout data for EIPs from layout object

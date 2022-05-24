@@ -19,9 +19,7 @@
   "Get the width of a text element containing `s` rendered into #graph-svg."
   (let [svg (. js/document getElementById "graph-svg")]
     (if (nil? svg)
-      (do
-        (println "nil svg")
-        0)
+      0
       (let [text-element (. js/document createElementNS svg-ns "text")
             _ (. text-element setAttributeNS nil "class" "width-test-text")
             _ (. text-element setAttributeNS nil "font-size" font-size)
@@ -35,15 +33,42 @@
   (str (when (:negative literal) "~")
        (:predicate literal)))
 
-(defn literal-layout-collapsed [container-width position literal]
-  {:collapsed true
-   :id (:id literal)
-   :predicate {:predicate (literal-label literal)}
-   :args {}
-   :container {:position {}
-               :size {}}})
+(defn literal-layout-collapsed [min-width position literal]
+  (let [height (+ rule-head-font-size (* 2 rule-head-padding))
 
-(defn literal-layout [min-width position literal]
+        label (literal-label literal)
+        label-width (get-text-width rule-head-font-size label)
+
+        args (->> (:args literal)
+                  (reduce
+                   (fn [[arg-layouts position] arg]
+                     (let [arg-width (get-text-width rule-head-font-size arg)]
+                       [(assoc arg-layouts
+                               arg
+                               {:position position
+                                :size {:height height
+                                       :width arg-width}})
+                        (update position :x #(+ % arg-width))]))
+                   [{} {:x label-width
+                        :y (/ height 2)}])
+                  first)
+
+        args-width (->> args
+                        vals
+                        (map #(-> % :size :width))
+                        (reduce + 0))]
+    {:collapsed true
+     :id (:id literal)
+     :predicate {:predicate label
+                 :size {:width label-width}}
+     :args args
+     :container {:position position
+                 :size {:height height
+                        :width  (max min-width
+                                     (+ label-width (* 2 rule-binding-padding-x))
+                                     (+ label-width args-width))}}}))
+
+(defn literal-layout-uncollapsed [min-width position literal]
   (let [label (literal-label literal)
         label-width (get-text-width rule-head-font-size label)
 
@@ -83,6 +108,11 @@
                         :height (+ name-height
                                    args-height
                                    arg-height)}}}))
+
+(defn literal-layout [min-width position literal]
+  (if (:collapsed literal)
+    (literal-layout-collapsed   min-width position literal)
+    (literal-layout-uncollapsed min-width position literal)))
 
 (defn rule-layout [rule]
   (let [label (-> rule :head :predicate)

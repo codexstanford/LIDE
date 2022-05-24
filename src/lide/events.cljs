@@ -156,6 +156,11 @@
    (assoc db :selected-literal literal-id)))
 
 (rf/reg-event-db
+ ::toggle-collapse-literal
+ (fn [db [_ literal-id]]
+   (update-in db [:program :literals literal-id :collapsed] not)))
+
+(rf/reg-event-db
  ::edit-literal-predicate
  (undo/undoable "edit literal predicate")
  (fn [db [_ literal-id new-predicate]]
