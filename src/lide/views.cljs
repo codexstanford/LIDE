@@ -159,15 +159,15 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
 
-(defn body-literal [{:keys [id predicate args] :as layout}]
-  (let [highlighted-connection @(rf/subscribe [::subs/highlighted-connection])]
-    [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
-         :key id}
+(defn body-literal [{:keys [layout]}]
+  (let [id (:id layout)
+        highlighted-connection @(rf/subscribe [::subs/highlighted-connection])]
+    [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")}
      [:rect {:class  "rule__bg"
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
-      {:value (:predicate predicate)
+      {:value (-> layout :predicate :predicate)
        :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])
        :x rule-head-padding
        :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
@@ -255,8 +255,10 @@
       "+ Add argument"]
      [:<>
       (map
-       (fn [[_ literal-layout]]
-         [body-literal literal-layout])
+       (fn [[id literal-layout]]
+         [body-literal
+          {:layout literal-layout
+           :key id}])
        (:body layout))]
      [:text {:class "rule__add-arg"
              :x rule-binding-padding-x
