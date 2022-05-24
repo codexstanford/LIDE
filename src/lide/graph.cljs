@@ -23,9 +23,9 @@
                    :size     {:width  150
                               :height name-height}}
 
-        arg-height (+  rule-binding-padding-y
-                       rule-binding-font-size
-                       rule-binding-padding-y)
+        arg-height (+ rule-binding-padding-y
+                      rule-binding-font-size
+                      rule-binding-padding-y)
         args-y-start (+ name-height
                         (/ arg-height 2))
         args (map-indexed
