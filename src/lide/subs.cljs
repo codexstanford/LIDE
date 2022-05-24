@@ -5,8 +5,6 @@
    [lide.epilog :as epilog]
    [re-frame.core :as rf]))
 
-;; Layer 2
-
 (rf/reg-sub
  ::show-saved-popup?
  (fn [db] (:show-saved-popup? db)))
@@ -48,11 +46,19 @@
    (util/populate-rule program rule)))
 
 (rf/reg-sub
+ ::matches
+ (fn [_ _]
+   (rf/subscribe [::program]))
+ (fn [program _]
+   (util/all-matches program)))
+
+(rf/reg-sub
  ::rule-layout
  (fn [[_ rule-idx]]
-   (rf/subscribe [::populated-rule rule-idx]))
- (fn [rule]
-   (graph/rule-layout rule)))
+   [(rf/subscribe [::populated-rule rule-idx])
+    (rf/subscribe [::rule-position rule-idx])])
+ (fn [[rule position]]
+   (assoc-in (graph/rule-layout rule) [:container :position] position)))
 
 (rf/reg-sub
  ::rule-positions

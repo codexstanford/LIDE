@@ -103,30 +103,24 @@
        flatten
        (into {})))
 
-(defn compositions [program rule]
-  (->> (:body rule)
-       (map
-        (fn [body-literal-id]
-          (let [body-literal (get (:literals program) body-literal-id)]
-            (->> (:args body-literal)
-                 (mapv
-                  (fn [arg]
-                    (when (and (not= arg :unspecified)
-                               ;; Ground args aren't relevant here because there's
-                               ;; no unification to be done with them
-                               (not (ground? arg)))
-                      {:literal-id body-literal-id
-                       :arg        arg})))
-                 ((fn [comps]
-                    ;; We want there to always be at least one composition returned, so
-                    ;; that we can draw at least one edge. When arg is :unbound, we'll just
-                    ;; draw a line to the entire literal.
-                    (if (empty? comps)
-                      [{:literal-id body-literal-id
-                        :arg        :unbound}]
-                      comps)))))))
-       flatten
-       (remove nil?)))
+(defn all-matches [program]
+  "Find head literals that match with body literals from other rules."
+  (->> (:rules program)
+       (map-indexed
+        (fn [rule-idx rule]
+          (->> (:body rule)
+               (mapv
+                (fn [body-literal-id]
+                  (let [body-literal (get (:literals program) body-literal-id)]
+                    (->> (:rules program)
+                         (map-indexed (fn [idx rule] [idx rule]))
+                         (filter (fn [[_ grounding-rule]]
+                                   (matches? body-literal (get (:literals program)
+                                                               (:head grounding-rule)))))
+                         (map (fn [[grounding-rule-idx grounding-rule]]
+                                {:src  grounding-rule-idx
+                                 :dest [rule-idx body-literal-id]})))))))))
+       flatten))
 
 (defn remove-literal [program literal-id]
   (-> program

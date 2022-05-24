@@ -50,20 +50,6 @@
                                (vals (select-keys highlighted-connection [:src :dest]))))
                        (:args literal))})
 
-(defn literals-view-model [highlighted-connection program]
-  (->> (:rules program)
-       (mapv
-        (fn [ref-rule]
-          (mapv
-           (fn [body-literal-id]
-             (let [body-literal (get (:literals program) body-literal-id)]
-               {body-literal-id (literal-view-model highlighted-connection
-                                                    body-literal-id
-                                                    body-literal)}))
-           (:body ref-rule))))
-       flatten
-       (into {})))
-
 (defn filter-by-head [head-literal program]
   (->> program
        (filter (fn [[id rule]]
@@ -71,42 +57,6 @@
                     (-> head-literal :predicate))))
        ;; TODO filter by args as well?
        (into {})))
-
-(defn compositions-view-model [program rule-idx rule highlighted-connection]
-  (->> rule
-       (util/compositions program)
-       (mapv
-        (fn [{:keys [literal-id arg]}]
-          (let [unhighlighted
-                ;; arg from composition should match an arg in rule (or be nil), so we
-                ;; can use it on both ends of the connector
-                {:src [rule-idx arg]
-                 :dest [literal-id arg]}]
-            (assoc unhighlighted
-                   :highlighted
-                   (= unhighlighted highlighted-connection)))))))
-
-(defn groundings-view-model [program]
-  "Find head literals that match with body literals from other rules."
-  (->> (:rules program)
-       (map-indexed
-        (fn [rule-idx rule]
-          (->> (:body rule)
-               (mapv
-                (fn [body-literal-id]
-                  (let [body-literal (get (:literals program) body-literal-id)]
-                    (->> (:rules program)
-                         (map-indexed (fn [idx rule] [idx rule]))
-                         (filter (fn [[_ grounding-rule]]
-                                   (util/matches? body-literal (get (:literals program)
-                                                                    (:head grounding-rule)))))
-                         (map (fn [[grounding-rule-idx grounding-rule]]
-                                {:src  [grounding-rule-idx (->> grounding-rule
-                                                                :head
-                                                                (get (:literals program))
-                                                                :args)]
-                                 :dest [body-literal-id (:args body-literal)]})))))))))
-       flatten))
 
 (def rule-head-font-size 18)
 (def rule-head-padding 6)
@@ -210,8 +160,7 @@
              :height (->> layout :container :size :height)}]]))
 
 (defn body-literal [{:keys [id predicate args] :as layout}]
-  (let [_ (println layout)
-        highlighted-connection @(rf/subscribe [::subs/highlighted-connection])]
+  (let [highlighted-connection @(rf/subscribe [::subs/highlighted-connection])]
     [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")
          :key id}
      [:rect {:class  "rule__bg"
@@ -306,7 +255,7 @@
       "+ Add argument"]
      [:<>
       (map
-       (fn [literal-layout]
+       (fn [[_ literal-layout]]
          [body-literal literal-layout])
        (:body layout))]
      [:text {:class "rule__add-arg"
@@ -318,17 +267,16 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
 
-(defn socket-position [layout arg {:keys [end]}]
-  (let [all-names (merge (:args layout)
-                         (:internals layout))]
-    {:x (+ (-> layout :container :position :x)
-           (if (= end :dest)
-             (-> layout :container :size :width)
-             0))
-     :y (+ (-> layout :container :position :y)
-           (if (= arg :unbound)
-             (/ rule-head-height 2)
-             (-> all-names (get arg) :position :y)))}))
+(defn socket-position [rule-layout literal-id {:keys [end]}]
+  {:x (+ (-> rule-layout :container :position :x)
+         (if (= end :dest)
+           (-> rule-layout :container :size :width)
+           0))
+   :y (+ (-> rule-layout :container :position :y)
+         (/ rule-head-height 2)
+         (if (= literal-id :unbound)
+           0
+           (get-in rule-layout [:body literal-id :position :y])))})
 
 #_(defn composition-connector [connection]
   (let [[start-rule-idx start-arg] (:src connection)
@@ -370,12 +318,10 @@
                         [composition-connector cm])
                       compositions-model))))
 
-(defn grounding-connector [{:keys [connection literal-layouts rule-layouts]}]
-  ;; n.b. We expect start-args and end-args to have the same length.
-  (let [[start-rule-idx start-args] (:src connection)
-        [end-literal-id end-args]   (:dest connection)
-        start-layout (get rule-layouts start-rule-idx)
-        end-layout   (get literal-layouts end-literal-id)
+(defn match-connector [{:keys [connection]}]
+  (let [[end-rule-idx end-literal-id] (:dest connection)
+        start-layout @(rf/subscribe [::subs/rule-layout (:src connection)])
+        end-layout   @(rf/subscribe [::subs/rule-layout end-rule-idx])
 
         draw-connector
         (fn [start end]
@@ -384,7 +330,6 @@
                    :y1 (:y start)
                    :x2 (:x end)
                    :y2 (:y end)
-                   :stroke-dasharray "5,5"
                    :stroke (if (:highlighted connection) "green" "black")}]
            [:line {:x1 (:x start)
                    :y1 (:y start)
@@ -395,18 +340,8 @@
                    :on-mouse-over #(rf/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
                    :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])
                    :on-click #(rf/dispatch [::events/disconnect connection])}]])]
-    (if (empty? start-args)
-      (draw-connector (socket-position start-layout :unbound {:end :src})
-                      (socket-position end-layout   :unbound {:end :dest}))
-      (into
-       [:<>]
-       (mapv
-        (fn [start-arg end-arg]
-          (let [start (socket-position start-layout start-arg {:end :src})
-                end (socket-position end-layout end-arg {:end :dest})]
-            (draw-connector start end)))
-        start-args
-        end-args)))))
+    (draw-connector (socket-position start-layout :unbound {:end :src})
+                    (socket-position end-layout end-literal-id {:end :dest}))))
 
 (defn graph-viewport [{:keys [set-ref]} & children]
   (let [graph-transform @(rf/subscribe [::subs/graph-transform])]
@@ -426,19 +361,13 @@
             rule-positions (rf/subscribe [::subs/rule-positions])
             literal-positions (rf/subscribe [::subs/literal-positions])
             highlighted-connection (rf/subscribe [::subs/highlighted-connection])
-            literals-vm (literals-view-model @highlighted-connection @program)
-            literal-layouts (->> literals-vm
-                                 (map
-                                  (fn [[id literal]]
-                                    [id (literal-layout literal (get @literal-positions id))]))
-                                 (into {}))
             rules-vm (rules-view-model @highlighted-connection @program)
             #_rule-layouts #_(->> rules-vm
                               (map-indexed
                                (fn [idx rule]
                                  [idx (rule-layout rule (get @rule-positions idx))]))
                               (into {}))
-            groundings-vm (groundings-view-model @program)]
+            matches @(rf/subscribe [::subs/matches])]
         [:svg {:class "graph-panel"
                :on-mouse-move (goog.functions.throttle #(rf/dispatch [::events/mouse-move (local-position %)])
                                                        25)
@@ -467,13 +396,11 @@
                           {:rule-index rule-idx
                            :key rule-idx}])
                        (:rules @program))
-          #_(map (fn [vm]
-                 [grounding-connector
-                  {:connection vm
-                   :literal-layouts literal-layouts
-                   :rule-layouts rule-layouts
-                   :key (str vm)}])
-               groundings-vm)]]))))
+          (map (fn [match]
+                 [match-connector
+                  {:connection match
+                   :key (str match)}])
+               matches)]]))))
 
 (defn epilog-panel []
   (let [rules @(rf/subscribe [::subs/populated-rules])]

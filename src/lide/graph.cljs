@@ -95,11 +95,11 @@
         body (->> (:body rule)
                   (reduce (fn [[body-layouts position] literal]
                             (let [layout (literal-layout literal position)]
-                              [(conj body-layouts layout)
+                              [(assoc body-layouts (:id literal) layout)
                                (update position :y #(+ %
                                                        (-> layout :container :size :height)
                                                        rule-body-literal-gutter))]))
-                          [[] {:x rule-body-padding-x
+                          [{} {:x rule-body-padding-x
                                :y (+ name-height
                                      args-height
                                      internals-height
@@ -107,6 +107,7 @@
                   first)
 
         body-height (->> body
+                         vals
                          (map #(-> % :container :size :height))
                          (interpose rule-body-literal-gutter)
                          (reduce + 0))
