@@ -9,10 +9,12 @@
    ))
 
 (defn center-position [{:keys [position size]}]
+  "Find the center point of a square at `position` with `size`."
   {:x (+ (:x position) (/ (:width size) 2))
    :y (+ (:y position) (/ (:height size) 2))})
 
 (defn localize-event-to-svg [^js svg event]
+  "Find the coordinates of `event` in `svg`'s local coordinate space."
   (let [dom-point (js/DOMPoint. (.-clientX event) (.-clientY event))
         svg-point (.matrixTransform dom-point (.inverse (.getScreenCTM svg)))]
     {:x (.-x svg-point)
@@ -199,7 +201,12 @@
              :height (->> layout :container :size :height)}]]))
 
 (defn socket-position [rule-layout literal-id {:keys [end]}]
+  "Find the XY location where a connector should terminate on a particular rule
+  and, optionally, body literal."
   {:x (+ (-> rule-layout :container :position :x)
+         ;; Two concerns here: `end` being :start or :dest determines which side
+         ;; of the rule the socket is on, and if `literal-id` is non-nil the
+         ;; socket is slightly inset.
          (cond
            (and (= end :dest) (not= literal-id :unbound))
            (- (-> rule-layout :container :size :width) 5)
@@ -219,31 +226,33 @@
            (get-in rule-layout [:body literal-id :container :position :y])))})
 
 (defn match-connector [{:keys [connection]}]
+  "Draw a line connecting :src and :dest of `connection`."
   (let [[end-rule-idx end-literal-id] (:dest connection)
         start-layout @(rf/subscribe [::subs/rule-layout (:src connection)])
         end-layout   @(rf/subscribe [::subs/rule-layout end-rule-idx])
-
-        draw-connector
-        (fn [start end]
-          [:<>
-           [:line {:x1 (:x start)
-                   :y1 (:y start)
-                   :x2 (:x end)
-                   :y2 (:y end)
-                   :stroke (if (:highlighted connection) "green" "black")}]
-           [:line {:x1 (:x start)
-                   :y1 (:y start)
-                   :x2 (:x end)
-                   :y2 (:y end)
-                   :stroke "transparent"
-                   :stroke-width 10
-                   :on-mouse-over #(rf/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
-                   :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])
-                   :on-click #(rf/dispatch [::events/disconnect connection])}]])]
-    (draw-connector (socket-position start-layout :unbound {:end :src})
-                    (socket-position end-layout end-literal-id {:end :dest}))))
+        start (socket-position start-layout :unbound {:end :src})
+        end   (socket-position end-layout end-literal-id {:end :dest})]
+    [:<>
+     [:line {:x1 (:x start)
+             :y1 (:y start)
+             :x2 (:x end)
+             :y2 (:y end)
+             :stroke (if (:highlighted connection) "green" "black")}]
+     [:line {:x1 (:x start)
+             :y1 (:y start)
+             :x2 (:x end)
+             :y2 (:y end)
+             :stroke "transparent"
+             :stroke-width 10
+             :on-mouse-over #(rf/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
+             :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])
+             :on-click #(rf/dispatch [::events/disconnect connection])}]]))
 
 (defn graph-viewport [{:keys [set-ref]} & children]
+  "Draw an SVG group to contain the program graph.
+
+  Using a group is useful because we can apply scale/translation
+  transformations to the entire graph at once."
   (let [graph-transform @(rf/subscribe [::subs/graph-transform])]
     [:g {:ref set-ref
          :class "graph__viewport"

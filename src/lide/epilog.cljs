@@ -1,4 +1,5 @@
 (ns lide.epilog
+  "Convert logic program constructs to their Epilog representations."
   (:require
    [clojure.string :as string]))
 

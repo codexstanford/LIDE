@@ -6,6 +6,7 @@
 ;; General utilities
 
 (defn map-vals [f m]
+  "Map `f` over the values of `m`, keeping the same keys."
   (into (empty m) (for [[k v] m] [k (f v)])))
 
 (defn first-indexed [pred coll]
@@ -18,6 +19,7 @@
        first))
 
 (defn vector-remove [vec idx]
+  "Remove the element at `idx` from `vec`."
   (into (subvec vec 0 idx) (subvec vec (inc idx))))
 
 (defn hash-to-hsl [s]
@@ -43,6 +45,7 @@
 ;; Rule/program utilities
 
 (defn populate-rule [program rule]
+  "Retrieve the actual values from `program` pointed to by the IDs in `rule`."
   (-> rule
       (update :head (fn [id]
                       (-> program :literals (get id))))
