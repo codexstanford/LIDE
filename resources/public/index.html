@@ -76,10 +76,6 @@
         dominant-baseline: middle;
       }
 
-      .width-test-text {
-        visibility: hidden;
-      }
-
       .graph__bg {
         fill: #eee;
       }
@@ -119,6 +115,10 @@
         box-sizing: border-box;
         width: 100%;
       }
+
+      #width-test-svg {
+        visibility: hidden;
+      }
     </style>
   </head>
   <body>
@@ -126,6 +126,7 @@
       lide is a JavaScript app. Please enable JavaScript to continue.
     </noscript>
     <div id="app"></div>
+    <svg id="width-test-svg"></svg>
     <script>
       window.lide = (function () {
         const xmur3 = str => {

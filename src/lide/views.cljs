@@ -430,23 +430,18 @@
                                  [idx (rule-layout rule (get @rule-positions idx))]))
                               (into {}))
             matches @(rf/subscribe [::subs/matches])]
-        [:svg {:class "graph-panel"
-               :id "graph-svg"
-               :on-mouse-move (goog.functions.throttle #(rf/dispatch [::events/mouse-move (local-position %)])
-                                                       25)
-               :on-mouse-up #(rf/dispatch [::events/mouse-up (local-position %)])
-               :on-wheel (goog.functions.throttle #(rf/dispatch [::events/scroll-graph %])
-                                                  100)}
-         [:rect {:class "graph__bg"
-                 :height 10000
-                 :width  10000
-                 :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (local-position %)])}]
-         ;; This is a bit sneaky. The program graph isn't included in the
-         ;; initial render (when @program is nil), but the parent SVG is. This
-         ;; is important because on the next render, when the graph is included,
-         ;; it relies on the parent SVG already existing (so it can calculate
-         ;; text element widths).
-         (when @program
+        (when @program
+          [:svg {:class "graph-panel"
+                 :id "graph-svg"
+                 :on-mouse-move (goog.functions.throttle #(rf/dispatch [::events/mouse-move (local-position %)])
+                                                         25)
+                 :on-mouse-up #(rf/dispatch [::events/mouse-up (local-position %)])
+                 :on-wheel (goog.functions.throttle #(rf/dispatch [::events/scroll-graph %])
+                                                    100)}
+           [:rect {:class "graph__bg"
+                   :height 10000
+                   :width  10000
+                   :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (local-position %)])}]
            [graph-viewport
             {:set-ref #(reset! !svg-viewport %)}
             (map-indexed (fn [idx]
@@ -469,7 +464,7 @@
                    [match-connector
                     {:connection match
                      :key (str match)}])
-                 matches)])]))))
+                 matches)]])))))
 
 (defn epilog-panel []
   (let [rules @(rf/subscribe [::subs/populated-rules])]

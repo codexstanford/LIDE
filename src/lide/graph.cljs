@@ -16,12 +16,11 @@
 (def rule-body-literal-gutter 5)
 
 (defn get-text-width [font-size s]
-  "Get the width of a text element containing `s` rendered into #graph-svg."
-  (let [svg (. js/document getElementById "graph-svg")]
+  "Get the width of a text element containing `s` rendered into #width-test-svg."
+  (let [svg (. js/document getElementById "width-test-svg")]
     (if (nil? svg)
       0
       (let [text-element (. js/document createElementNS svg-ns "text")
-            _ (. text-element setAttributeNS nil "class" "width-test-text")
             _ (. text-element setAttributeNS nil "font-size" font-size)
             _ (. text-element appendChild (. js/document createTextNode s))
             _ (. svg appendChild text-element)
