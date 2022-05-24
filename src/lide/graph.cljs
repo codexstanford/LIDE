@@ -16,7 +16,8 @@
                        rule-head-font-size
                        rule-head-padding)
 
-        predicate {:predicate (:predicate literal)
+        predicate {:predicate (str (when (:negative literal) "~")
+                                   (:predicate literal))
                    :position {:x rule-head-padding
                               :y (/ name-height 2)}
                    :size     {:width  150
