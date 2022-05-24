@@ -47,11 +47,3 @@
 
      :graph-transform
      (util/dom-matrix-to-vals (js/DOMMatrix.))}))
-
-(defn find-head [db predicate]
-  (->> db
-       :program
-       :rules
-       (filter #(= predicate (-> % :head :predicate)))
-       first
-       :head))
