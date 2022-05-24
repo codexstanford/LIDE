@@ -1,6 +1,10 @@
-(ns lide.graph)
+(ns lide.graph
+  (:require
+   [lide.util :as util]))
 
-(def rule-container-width 150)
+(def svg-ns "http://www.w3.org/2000/svg")
+
+(def rule-container-min-width 150)
 (def rule-head-font-size 18)
 (def rule-head-padding 6)
 (def rule-head-height (+ rule-head-font-size
@@ -11,16 +15,46 @@
 (def rule-body-padding-x 5)
 (def rule-body-literal-gutter 5)
 
-(defn literal-layout [literal position]
-  (let [name-height (+ rule-head-padding
+(defn get-text-width [font-size s]
+  "Get the width of a text element containing `s` rendered into #graph-svg."
+  (let [svg (. js/document getElementById "graph-svg")]
+    (if (nil? svg)
+      (do
+        (println "nil svg")
+        0)
+      (let [text-element (. js/document createElementNS svg-ns "text")
+            _ (. text-element setAttributeNS nil "class" "width-test-text")
+            _ (. text-element setAttributeNS nil "font-size" font-size)
+            _ (. text-element appendChild (. js/document createTextNode s))
+            _ (. svg appendChild text-element)
+            width (. text-element getComputedTextLength)
+            _ (. text-element remove)]
+        width))))
+
+(defn literal-label [literal]
+  (str (when (:negative literal) "~")
+       (:predicate literal)))
+
+(defn literal-layout-collapsed [container-width position literal]
+  {:collapsed true
+   :id (:id literal)
+   :predicate {:predicate (literal-label literal)}
+   :args {}
+   :container {:position {}
+               :size {}}})
+
+(defn literal-layout [min-width position literal]
+  (let [label (literal-label literal)
+        label-width (get-text-width rule-head-font-size label)
+
+        name-height (+ rule-head-padding
                        rule-head-font-size
                        rule-head-padding)
 
-        predicate {:predicate (str (when (:negative literal) "~")
-                                   (:predicate literal))
+        predicate {:predicate label
                    :position {:x rule-head-padding
                               :y (/ name-height 2)}
-                   :size     {:width  150
+                   :size     {:width label-width
                               :height name-height}}
 
         arg-height (+ rule-binding-padding-y
@@ -44,21 +78,24 @@
      :args (into {} args)
      :add-argument add-argument
      :container {:position (or position {:x 0 :y 0})
-                 :size {:width  (- rule-container-width
-                                   (* 2 rule-body-padding-x))
+                 :size {:width  (max min-width
+                                     (+ label-width (* 2 rule-binding-padding-x)))
                         :height (+ name-height
                                    args-height
                                    arg-height)}}}))
 
 (defn rule-layout [rule]
-  (let [name-height (+ rule-head-padding
+  (let [label (-> rule :head :predicate)
+        label-width (get-text-width rule-head-font-size label)
+
+        name-height (+ rule-head-padding
                        rule-head-font-size
                        rule-head-padding)
 
-        predicate {:predicate (-> rule :head :predicate)
+        predicate {:predicate label
                    :position {:x rule-head-padding
                               :y (/ name-height 2)}
-                   :size     {:width  150
+                   :size     {:width  label-width
                               :height name-height}}
 
         ;; Add Binding is also one arg tall
@@ -93,20 +130,29 @@
                                        internals-height
                                        (/ arg-height 2))}}
 
-        body (->> (:body rule)
-                  (reduce (fn [[body-layouts position] literal]
-                            (let [layout (literal-layout literal position)]
-                              [(assoc body-layouts (:id literal) layout)
-                               (update position :y #(+ %
-                                                       (-> layout :container :size :height)
-                                                       rule-body-literal-gutter))]))
-                          [{} {:x rule-body-padding-x
-                               :y (+ name-height
-                                     args-height
-                                     internals-height
-                                     arg-height)}])
-                  first)
-
+        literal-min-width (max label-width
+                               (- rule-container-min-width (* 2 rule-binding-padding-x)))
+        body-unset-width (->> (:body rule)
+                              (reduce (fn [[body-layouts position] literal]
+                                        (let [layout (literal-layout literal-min-width position literal)]
+                                          [(assoc body-layouts (:id literal) layout)
+                                           (update position :y #(+ %
+                                                                   (-> layout :container :size :height)
+                                                                   rule-body-literal-gutter))]))
+                                      [{} {:x rule-body-padding-x
+                                           :y (+ name-height
+                                                 args-height
+                                                 internals-height
+                                                 arg-height)}])
+                              first)
+        max-body-width (or (->> body-unset-width
+                                vals
+                                (map #(-> % :container :size :width))
+                                (apply max))
+                           0)
+        body (util/map-vals (fn [literal]
+                              (assoc-in literal [:container :size :width] max-body-width))
+                   body-unset-width)
         body-height (->> body
                          vals
                          (map #(-> % :container :size :height))
@@ -125,7 +171,9 @@
      :add-argument add-argument
      :body body
      :add-body-literal add-body-literal
-     :container {:size {:width  150
+     :container {:size {:width  (max rule-container-min-width
+                                     (+ label-width (* 2 rule-head-padding))
+                                     (+ max-body-width (* 2 rule-head-padding)))
                         :height (+ name-height
                                    args-height
                                    arg-height

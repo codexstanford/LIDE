@@ -102,16 +102,30 @@
                                    args-height
                                    arg-height)}}}))
 
+(defn literal-collapse [id layout]
+  [:<>
+   [:rect {:class "rule__button-bg"
+           :x (- (-> layout :container :size :width) 40)
+           :y 0
+           :height rule-head-height
+           :width 20
+           :on-click #(rf/dispatch [::events/negate-literal id])}
+    [:title "Collapse literal"]]
+   [:text {:class "rule__button-label"
+           :x (- (-> layout :container :size :width) 15)
+           :y (/ rule-head-height 2)}
+    "-"]])
+
 (defn literal-negate [id layout]
   [:<>
-   [:rect {:class "rule__negate-bg"
+   [:rect {:class "rule__button-bg"
            :x (- (-> layout :container :size :width) 20)
            :y 0
            :height rule-head-height
            :width 20
            :on-click #(rf/dispatch [::events/negate-literal id])}
     [:title "Negate literal"]]
-   [:text {:class "rule__negate-label"
+   [:text {:class "rule__button-label"
            :x (- (-> layout :container :size :width) 15)
            :y (/ rule-head-height 2)}
     "~"]])
@@ -380,6 +394,7 @@
                               (into {}))
             matches @(rf/subscribe [::subs/matches])]
         [:svg {:class "graph-panel"
+               :id "graph-svg"
                :on-mouse-move (goog.functions.throttle #(rf/dispatch [::events/mouse-move (local-position %)])
                                                        25)
                :on-mouse-up #(rf/dispatch [::events/mouse-up (local-position %)])
@@ -389,29 +404,35 @@
                  :height 10000
                  :width  10000
                  :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (local-position %)])}]
-         [graph-viewport
-          {:set-ref #(reset! !svg-viewport %)}
-          (map-indexed (fn [idx]
-                         [rule {:index  idx
+         ;; This is a bit sneaky. The program graph isn't included in the
+         ;; initial render (when @program is nil), but the parent SVG is. This
+         ;; is important because on the next render, when the graph is included,
+         ;; it relies on the parent SVG already existing (so it can calculate
+         ;; text element widths).
+         (when @program
+           [graph-viewport
+            {:set-ref #(reset! !svg-viewport %)}
+            (map-indexed (fn [idx]
+                           [rule {:index  idx
+                                  :local-position local-position
+                                  :key    idx}])
+                         (:rules @program))
+            #_(doall
+               (map (fn [[id _]]
+                      [literal {:id id
                                 :local-position local-position
-                                :key    idx}])
-                       (:rules @program))
-          #_(doall
-           (map (fn [[id _]]
-                  [literal {:id id
-                            :local-position local-position
-                            :key id}])
-                (util/all-body-literals @program)))
-          #_(map-indexed (fn [rule-idx _]
-                         [composition-connectors
-                          {:rule-index rule-idx
-                           :key rule-idx}])
-                       (:rules @program))
-          (map (fn [match]
-                 [match-connector
-                  {:connection match
-                   :key (str match)}])
-               matches)]]))))
+                                :key id}])
+                    (util/all-body-literals @program)))
+            #_(map-indexed (fn [rule-idx _]
+                             [composition-connectors
+                              {:rule-index rule-idx
+                               :key rule-idx}])
+                           (:rules @program))
+            (map (fn [match]
+                   [match-connector
+                    {:connection match
+                     :key (str match)}])
+                 matches)])]))))
 
 (defn epilog-panel []
   (let [rules @(rf/subscribe [::subs/populated-rules])]
@@ -437,10 +458,9 @@
       "Redo"]]))
 
 (defn main-panel []
-  (when @(rf/subscribe [::subs/program])
-    [:div {:id "app-container"}
-     [:div {:class "work-viewport"}
-      [program-graph]
-      [:div {:class "inspectors"}
-       [epilog-panel]]]
-     [toolbar]]))
+  [:div {:id "app-container"}
+   [:div {:class "work-viewport"}
+    [program-graph]
+    [:div {:class "inspectors"}
+     [epilog-panel]]]
+   [toolbar]])

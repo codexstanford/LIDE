@@ -38,7 +38,7 @@
        {:head exclusion-4-3i-id
         :body [skydiving-id]}]}
 
-     :literal-positions
+     :collapsed-literals
      {}
 
      :rule-positions
