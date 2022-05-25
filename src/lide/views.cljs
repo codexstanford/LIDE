@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [lide.epilog :as epilog]
    [lide.events :as events]
+   [lide.graph :as graph]
    [lide.subs :as subs]
    [lide.util :as util]
    ))
@@ -20,14 +21,6 @@
     {:x (.-x svg-point)
      :y (.-y svg-point)}))
 
-(def rule-head-font-size 18)
-(def rule-head-padding 6)
-(def rule-head-height (+ rule-head-font-size
-                         (* 2 rule-head-padding)))
-(def rule-binding-font-size 16)
-(def rule-binding-padding-x 6)
-(def rule-binding-padding-y 3)
-
 (defn literal-collapse [id layout]
   (let [symbol  (if (:collapsed layout) "+" "-")
         tooltip (if (:collapsed layout) "Expand literal" "Collapse literal")]
@@ -35,13 +28,13 @@
      [:rect {:class "rule__button-bg"
              :x (- (-> layout :container :size :width) 20)
              :y 0
-             :height rule-head-height
+             :height graph/rule-head-height
              :width 20
              :on-click #(rf/dispatch [::events/toggle-collapse-literal id])}
       [:title tooltip]]
      [:text {:class "rule__button-label"
              :x (- (-> layout :container :size :width) 15)
-             :y (/ rule-head-height 2)}
+             :y (/ graph/rule-head-height 2)}
       symbol]]))
 
 (defn literal-negate [id layout]
@@ -49,13 +42,13 @@
    [:rect {:class "rule__button-bg"
            :x (- (-> layout :container :size :width) 40)
            :y 0
-           :height rule-head-height
+           :height graph/rule-head-height
            :width 20
            :on-click #(rf/dispatch [::events/negate-literal id])}
     [:title "Negate literal"]]
    [:text {:class "rule__button-label"
            :x (- (-> layout :container :size :width) 35)
-           :y (/ rule-head-height 2)}
+           :y (/ graph/rule-head-height 2)}
     "~"]])
 
 (defn body-literal-collapsed [{:keys [layout]}]
@@ -65,7 +58,7 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]
      [:text
-      {:x rule-head-padding
+      {:x graph/rule-head-padding
        :y (/ (->> layout :container :size :height) 2)
        :width (->> layout :container :size :width)
        :height (->> layout :container :size :height)}
@@ -97,10 +90,10 @@
      [util/eip-svg-text
       {:value (-> layout :predicate :predicate)
        :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])
-       :x rule-head-padding
-       :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
+       :x graph/rule-head-padding
+       :y (/ (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding) 2)
        :width (->> layout :container :size :width)
-       :height (+ rule-head-padding rule-head-font-size rule-head-padding)}]
+       :height (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding)}]
      [literal-negate id layout]
      [literal-collapse id layout]
      [:<>
@@ -109,15 +102,15 @@
          [util/eip-svg-text
           {:value arg
            :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
-           :x rule-binding-padding-x
+           :x graph/rule-binding-padding-x
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
-           :height (+ rule-head-padding rule-head-font-size rule-head-padding)
+           :height (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding)
            :display-style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
            :key arg-index}])
        (:args layout))]
      [:text {:class "rule__add-arg"
-             :x rule-binding-padding-x
+             :x graph/rule-binding-padding-x
              :y (->> layout :add-argument :position :y)
              :on-click #(rf/dispatch [::events/add-literal-argument id])}
       "+ Add argument"]
@@ -146,20 +139,20 @@
      [util/eip-svg-text
       {:value (-> rule-raw :head :predicate)
        :on-blur #(rf/dispatch [::events/edit-head-predicate index (-> % .-target .-value)])
-       :x rule-head-padding
-       :y (/ (+ rule-head-padding rule-head-font-size rule-head-padding) 2)
+       :x graph/rule-head-padding
+       :y (/ (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding) 2)
        :width  (->> layout :container :size :width)
-       :height (+ rule-head-padding rule-head-font-size rule-head-padding)}]
+       :height (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding)}]
      [:<>
       (map-indexed
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
           {:value arg
            :on-blur #(rf/dispatch [::events/edit-head-arg index arg-index (-> % .-target .-value)])
-           :x rule-binding-padding-x
+           :x graph/rule-binding-padding-x
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
-           :height (+ rule-head-padding rule-head-font-size rule-head-padding)
+           :height (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding)
            :display-style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
            :key arg-index}])
        (:args layout))]
@@ -175,12 +168,12 @@
             :width (-> layout :container :size :width)
             :height (-> arg-layout :size :height) }]
           [:text
-           {:x rule-binding-padding-x
+           {:x graph/rule-binding-padding-x
             :y (->> arg-layout :position :y)}
            arg]])
        (:internals layout))]
      [:text {:class "rule__add-arg"
-             :x rule-binding-padding-x
+             :x graph/rule-binding-padding-x
              :y (->> layout :add-argument :position :y)
              :on-click #(rf/dispatch [::events/add-argument index])}
       "+ Add argument"]
@@ -192,7 +185,7 @@
            :key id}])
        (:body layout))]
      [:text {:class "rule__add-arg"
-             :x rule-binding-padding-x
+             :x graph/rule-binding-padding-x
              :y (->> layout :add-body-literal :position :y)
              :on-click #(rf/dispatch [::events/add-body-literal index])}
       "+ Add subgoal"]
@@ -220,7 +213,7 @@
            :else
            0))
    :y (+ (-> rule-layout :container :position :y)
-         (/ rule-head-height 2)
+         (/ graph/rule-head-height 2)
          (if (= literal-id :unbound)
            0
            (get-in rule-layout [:body literal-id :container :position :y])))})
