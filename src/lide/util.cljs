@@ -27,7 +27,7 @@
        (. js/lide hashString s)
        (#(* % 360))
        (#(. js/Math floor %))
-       (#(str "hsl(" % ",100%,30%)"))))
+       (#(str "hsl(" % ",100%,33%)"))))
 
 ;; DOM transform matrix stuff
 
