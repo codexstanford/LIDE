@@ -8,6 +8,7 @@
       html, body, #app, #app-container {
         height: 100%;
         margin: 0;
+        overflow: hidden;
       }
 
       #app-container {
@@ -87,7 +88,9 @@
       .rule__border {
         pointer-events: none;
         fill: transparent;
-        stroke: black;
+        vector-effect: non-scaling-stroke;
+        shape-rendering: crispedges;
+        stroke: #666;
       }
 
       .rule--highlight {
@@ -96,6 +99,7 @@
 
       .rule__add-arg {
         cursor: pointer;
+        fill: #555;
       }
 
       .rule__internal-bg {
@@ -109,6 +113,7 @@
 
       .rule__button-label {
         pointer-events: none;
+        fill: #555;
       }
 
       .eip-svg-text__input {
