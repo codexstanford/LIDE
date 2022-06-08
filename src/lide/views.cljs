@@ -189,6 +189,11 @@
              :y (->> layout :add-body-literal :position :y)
              :on-click #(rf/dispatch [::events/add-body-literal index])}
       "+ Add subgoal"]
+     [:text {:class "rule__add-arg"
+             :x graph/rule-binding-padding-x
+             :y (->> layout :add-defeat :position :y)
+             :on-click #(rf/dispatch [::events/add-defeat index])}
+      "+ Add override"]
      [:rect {:class  "rule__border"
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
@@ -238,8 +243,40 @@
              :stroke "transparent"
              :stroke-width 10
              :on-mouse-over #(rf/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
-             :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])
-             :on-click #(rf/dispatch [::events/disconnect connection])}]]))
+             :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])}]]))
+
+(defn defeat-connector [{:keys [defeat]}]
+  "Draw a line connecting the defeated and defeater rules from `defeat`."
+  (let [{:keys [defeated defeater]} defeat
+        start-layout @(rf/subscribe [::subs/rule-layout defeater])
+        end-layout   @(rf/subscribe [::subs/rule-layout defeated])
+        start (socket-position start-layout :unbound {:end :src})
+        end   (socket-position end-layout :unbound {:end :dest})]
+    [:<>
+     [:line {:x1 (:x start)
+             :y1 (:y start)
+             :x2 (:x end)
+             :y2 (:y end)
+             :stroke "red"}]
+     [:line {:x1 (:x start)
+             :y1 (:y start)
+             :x2 (:x end)
+             :y2 (:y end)
+             :stroke "transparent"
+             :stroke-width 10
+             :on-click #(rf/dispatch [::events/remove-defeat defeat])}]]))
+
+(defn defeat-connector-pending [{:keys [mouse-position]}]
+  "Draw a line emanating from `defeater` while we select another rule to defeat."
+  (let [defeater-id @(rf/subscribe [::subs/defeating-rule-pending])
+        defeater-layout @(rf/subscribe [::subs/rule-layout defeater-id])
+        start (socket-position defeater-layout :unbound {:end :src})]
+    (when defeater-id
+      [:line {:class "defeat-connector"
+              :x1 (:x start)
+              :y1 (:y start)
+              :x2 (:x mouse-position)
+              :y2 (:y mouse-position)}])))
 
 (defn graph-viewport [{:keys [set-ref]} & children]
   "Draw an SVG group to contain the program graph.
@@ -260,7 +297,9 @@
                              (localize-event-to-svg @!svg-viewport event))
 
             program @(rf/subscribe [::subs/program])
-            matches @(rf/subscribe [::subs/matches])]
+            matches @(rf/subscribe [::subs/matches])
+            defeatings @(rf/subscribe [::subs/defeatings])
+            mouse-position @(rf/subscribe [::subs/mouse-position])]
         (when program
           [:svg {:class "graph-panel"
                  :id "graph-svg"
@@ -284,13 +323,28 @@
                    [match-connector
                     {:connection match
                      :key (str match)}])
-                 matches)]])))))
+                 matches)
+            (map (fn [defeat]
+                   [defeat-connector
+                    {:defeat defeat
+                     :key (str defeat)}])
+                 defeatings)
+            [defeat-connector-pending {:key "defeat-pending"
+                                       :mouse-position mouse-position}]]])))))
 
 (defn epilog-panel []
-  (let [rules @(rf/subscribe [::subs/populated-rules])]
+  (let [rules @(rf/subscribe [::subs/populated-rules])
+        defeatings @(rf/subscribe [::subs/defeatings])]
     [:div {:class "epilog-inspector"}
      [:pre {:class "code"}
-      (string/join "\n\n" (map epilog/rule-to-epilog rules))]]))
+      (string/join "\n\n" (map-indexed
+                           (fn [idx rule]
+                             (epilog/rule-to-epilog
+                              rule
+                              (->> defeatings
+                                   (filter #(= idx (:defeated %)))
+                                   (mapv #(get rules (:defeater %))))))
+                           rules))]]))
 
 (defn toolbar []
   (let [undos? @(rf/subscribe [:undos?])

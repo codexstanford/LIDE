@@ -36,7 +36,10 @@
                partial-day-id
                exclusion-id]}
        {:head exclusion-4-3i-id
-        :body [skydiving-id]}]}
+        :body [skydiving-id]}]
+
+      :defeatings
+      #{}}
 
      :collapsed-literals
      {}

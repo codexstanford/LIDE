@@ -64,8 +64,9 @@
  ::initialize-db
  [(rf/inject-cofx ::saved-state)]
  (fn [cofx _]
-   {:db (or (::saved-state cofx)
-            db/default-db)}))
+   {:db (-> (or (::saved-state cofx)
+                db/default-db)
+            (assoc-in [:program :defeatings] #{}))}))
 
 ;; Connections
 
@@ -94,11 +95,6 @@
  (undo/undoable "add literal argument")
  (fn [db [_ literal-id]]
    (update-in db [:program :literals literal-id :args] #(conj % "new"))))
-
-(rf/reg-event-db
- ::start-connect-dest
- (fn [db [_ dest-pred]]
-   (assoc db :connecting-dest dest-pred)))
 
 (rf/reg-event-fx
  ::mouse-up
@@ -210,7 +206,7 @@
  ::mouse-move
  (fn [db [_ event-position]]
    (cond
-     (contains? db :connecting-dest)
+     (contains? db :defeating-rule-pending)
      (assoc db :mouse-position event-position)
 
      ;; XXX There's a bug here that I haven't quite figured out: When zoomed way
@@ -296,3 +292,29 @@
    (-> db
        (assoc :dragging-rule rule-id)
        (assoc :node-drag-origin position))))
+
+;; Defeasibility
+
+;; TODO Figure out undo for the two-stage process of adding defeats
+
+(rf/reg-event-db
+ ::add-defeat
+ (fn [db [_ rule-id]]
+   (let [defeating-rule-id (:defeating-rule-pending db)]
+     (cond
+       (nil? defeating-rule-id)
+       (assoc db :defeating-rule-pending rule-id)
+
+       (= defeating-rule-id rule-id)
+       (dissoc db :defeating-rule-pending)
+
+       :else
+       (-> db
+           (update-in [:program :defeatings] #(conj % {:defeated rule-id
+                                                       :defeater defeating-rule-id}))
+           (dissoc :defeating-rule-pending))))))
+
+(rf/reg-event-db
+ ::remove-defeat
+ (fn [db [_ defeat]]
+   (update db [:program :defeatings] #(disj % defeat))))

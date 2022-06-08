@@ -53,6 +53,16 @@
    (util/all-matches program)))
 
 (rf/reg-sub
+ ::defeatings
+ (fn [db]
+   (-> db :program :defeatings)))
+
+(rf/reg-sub
+ ::defeating-rule-pending
+ (fn [db]
+   (-> db :defeating-rule-pending)))
+
+(rf/reg-sub
  ::rule-layout
  (fn [[_ rule-idx]]
    [(rf/subscribe [::populated-rule rule-idx])

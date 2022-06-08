@@ -191,15 +191,24 @@
         add-body-literal {:position {:y (+ name-height
                                            args-height
                                            internals-height
-                                           arg-height
                                            body-height
-                                           (/ arg-height 2))}}]
+                                           arg-height
+                                           (/ arg-height 2))}}
+
+        add-defeat {:position {:y (+ name-height
+                                     args-height
+                                     internals-height
+                                     arg-height
+                                     arg-height
+                                     body-height
+                                     (/ arg-height 2))}}]
     {:predicate predicate
      :args (into {} args)
      :internals (into {} internals)
      :add-argument add-argument
      :body body
      :add-body-literal add-body-literal
+     :add-defeat add-defeat
      :container {:size {:width  (max rule-container-min-width
                                      (+ label-width (* 2 rule-head-padding))
                                      (+ max-body-width (* 2 rule-head-padding)))
@@ -207,5 +216,6 @@
                                    args-height
                                    arg-height
                                    internals-height
+                                   body-height
                                    arg-height
-                                   body-height)}}}))
+                                   arg-height)}}}))

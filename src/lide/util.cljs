@@ -53,7 +53,8 @@
                       (mapv (fn [id]
                               (assoc (-> program :literals (get id))
                                      :id id))
-                            literals)))))
+                            literals)))
+      (assoc :head-id (:head rule))))
 
 (defn variable? [arg]
   "True if `arg` is a string starting with an upper-case letter."

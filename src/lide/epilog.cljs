@@ -21,10 +21,16 @@
                         (get 1)))
           ")"))))
 
-(defn rule-to-epilog [rule]
+(defn rule-to-epilog [rule defeating-rules]
   (let [head (literal-to-epilog (:head rule))
         body (when (seq (:body rule))
-               (string/join " &\n  " (map literal-to-epilog (:body rule))))]
+               (string/join " &\n  " (map literal-to-epilog (:body rule))))
+        defeaters (when (seq defeating-rules)
+                    (string/join "&\n  ~" (map #(literal-to-epilog (:head %)) defeating-rules)))]
     (str head
-         (when body
-           (str " :-\n  " body)))))
+         (when (or body (seq defeaters))
+           (str " :-\n  "))
+         body
+         (when (and body (seq defeaters))
+           (str " &\n  ~"))
+         defeaters)))
