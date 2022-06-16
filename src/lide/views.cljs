@@ -338,8 +338,7 @@
         defeatings @(rf/subscribe [::subs/defeatings])]
     [:div {:class "epilog-inspector"}
      [:pre {:class "code"}
-      "epilog"
-      #_(->> rules
+      (->> rules
            (map
             (fn [[id rule]]
               (epilog/rule-to-epilog

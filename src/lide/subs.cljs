@@ -41,8 +41,8 @@
  (fn [program _]
    (->> (:rules program)
         (map (fn [[id rule]]
-               (util/populate-rule program (assoc rule :id id))))
-        vec)))
+               [id (util/populate-rule program (assoc rule :id id))]))
+        (into {}))))
 
 (rf/reg-sub
  ::populated-rule
