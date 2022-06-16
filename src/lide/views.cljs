@@ -335,9 +335,11 @@
 
 (defn epilog-panel []
   (let [rules @(rf/subscribe [::subs/populated-rules])
-        defeatings @(rf/subscribe [::subs/defeatings])]
+        defeatings @(rf/subscribe [::subs/defeatings])
+        facts @(rf/subscribe [::subs/facts])]
     [:div {:class "epilog-inspector"}
      [:pre {:class "code"}
+      "#########\n# Rules #\n#########\n\n"
       (->> rules
            (map
             (fn [[id rule]]
@@ -346,6 +348,12 @@
                (->> defeatings
                     (filter #(= id (:defeated %)))
                     (mapv #(get rules (:defeater %)))))))
+           (string/join "\n\n"))
+      "\n\n#########\n# Facts #\n#########\n\n"
+      (->> facts
+           (map
+            (fn [[id fact]]
+              (epilog/fact-to-epilog id fact)))
            (string/join "\n\n"))]]))
 
 (defn toolbar []

@@ -34,3 +34,9 @@
          (when (and body (seq defeaters))
            (str " &\n  ~"))
          defeaters)))
+
+(defn fact-to-epilog [id attributes]
+  (->> attributes
+       (map (fn [[name attr]]
+              (str name "(" id ", " (:value attr) ")")))
+       (string/join "\n")))

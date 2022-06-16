@@ -70,6 +70,11 @@
    (-> db :defeating-rule-pending)))
 
 (rf/reg-sub
+ ::facts
+ (fn [db]
+   (-> db :program :facts)))
+
+(rf/reg-sub
  ::rule-layout
  (fn [[_ rule-id]]
    [(rf/subscribe [::populated-rule rule-id])
