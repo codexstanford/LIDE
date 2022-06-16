@@ -123,22 +123,23 @@
     [body-literal-collapsed   props]
     [body-literal-uncollapsed props]))
 
-(defn rule [{:keys [index local-position]}]
+(defn rule [{:keys [id local-position]}]
   ;; TODO Should get layout data for EIPs from layout object
-  (let [rule-raw @(rf/subscribe [::subs/populated-rule index])
+  (let [rule-raw @(rf/subscribe [::subs/populated-rule id])
         highlighted-connection @(rf/subscribe [::subs/highlighted-connection])
-        layout @(rf/subscribe [::subs/rule-layout index])
-        position @(rf/subscribe [::subs/rule-position index])]
-    [:g {:on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) index])
-         :on-click #(rf/dispatch [::events/select-rule index])
-         :transform (str "translate(" (:x position) "," (:y position) ")")
-         :key index}
+        layout @(rf/subscribe [::subs/rule-layout id])]
+    [:g {:on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) id])
+         :on-click #(rf/dispatch [::events/select-rule id])
+         :transform (str "translate("
+                         (-> layout :container :position :x) ","
+                         (-> layout :container :position :y) ")")
+         :key id}
      [:rect {:class  "rule__bg"
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]
      [util/eip-svg-text
       {:value (-> rule-raw :head :predicate)
-       :on-blur #(rf/dispatch [::events/edit-head-predicate index (-> % .-target .-value)])
+       :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])
        :x graph/rule-head-padding
        :y (/ (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding) 2)
        :width  (->> layout :container :size :width)
@@ -148,7 +149,7 @@
        (fn [arg-index [arg arg-layout]]
          [util/eip-svg-text
           {:value arg
-           :on-blur #(rf/dispatch [::events/edit-head-arg index arg-index (-> % .-target .-value)])
+           :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
            :x graph/rule-binding-padding-x
            :y (->> arg-layout :position :y)
            :width  (->> layout :container :size :width)
@@ -175,24 +176,24 @@
      [:text {:class "rule__add-arg"
              :x graph/rule-binding-padding-x
              :y (->> layout :add-argument :position :y)
-             :on-click #(rf/dispatch [::events/add-argument index])}
+             :on-click #(rf/dispatch [::events/add-argument id])}
       "+ Add argument"]
      [:<>
       (map
-       (fn [[id literal-layout]]
+       (fn [[literal-id literal-layout]]
          [body-literal
           {:layout literal-layout
-           :key id}])
+           :key literal-id}])
        (:body layout))]
      [:text {:class "rule__add-arg"
              :x graph/rule-binding-padding-x
              :y (->> layout :add-body-literal :position :y)
-             :on-click #(rf/dispatch [::events/add-body-literal index])}
+             :on-click #(rf/dispatch [::events/add-body-literal id])}
       "+ Add subgoal"]
      [:text {:class "rule__add-arg"
              :x graph/rule-binding-padding-x
              :y (->> layout :add-defeat :position :y)
-             :on-click #(rf/dispatch [::events/add-defeat index])}
+             :on-click #(rf/dispatch [::events/add-defeat id])}
       "+ Add override"]
      [:rect {:class  "rule__border"
              :width  (->> layout :container :size :width)
@@ -225,9 +226,9 @@
 
 (defn match-connector [{:keys [connection]}]
   "Draw a line connecting :src and :dest of `connection`."
-  (let [[end-rule-idx end-literal-id] (:dest connection)
+  (let [[end-rule-id end-literal-id] (:dest connection)
         start-layout @(rf/subscribe [::subs/rule-layout (:src connection)])
-        end-layout   @(rf/subscribe [::subs/rule-layout end-rule-idx])
+        end-layout   @(rf/subscribe [::subs/rule-layout end-rule-id])
         start (socket-position start-layout :unbound {:end :src})
         end   (socket-position end-layout end-literal-id {:end :dest})]
     [:<>
@@ -314,11 +315,11 @@
                    :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (local-position %)])}]
            [graph-viewport
             {:set-ref #(reset! !svg-viewport %)}
-            (map-indexed (fn [idx]
-                           [rule {:index  idx
-                                  :local-position local-position
-                                  :key    idx}])
-                         (:rules program))
+            (map (fn [[id _]]
+                   [rule {:id  id
+                          :local-position local-position
+                          :key    id}])
+                 (:rules program))
             (map (fn [match]
                    [match-connector
                     {:connection match
@@ -337,14 +338,16 @@
         defeatings @(rf/subscribe [::subs/defeatings])]
     [:div {:class "epilog-inspector"}
      [:pre {:class "code"}
-      (string/join "\n\n" (map-indexed
-                           (fn [idx rule]
-                             (epilog/rule-to-epilog
-                              rule
-                              (->> defeatings
-                                   (filter #(= idx (:defeated %)))
-                                   (mapv #(get rules (:defeater %))))))
-                           rules))]]))
+      "epilog"
+      #_(->> rules
+           (map
+            (fn [[id rule]]
+              (epilog/rule-to-epilog
+               rule
+               (->> defeatings
+                    (filter #(= id (:defeated %)))
+                    (mapv #(get rules (:defeater %)))))))
+           (string/join "\n\n"))]]))
 
 (defn toolbar []
   (let [undos? @(rf/subscribe [:undos?])

@@ -3,14 +3,20 @@
    [lide.util :as util]))
 
 (def default-db
-  (let [claim-pay-id (random-uuid)
+  (let [;; Literal IDs
+        claim-pay-id (random-uuid)
         claim-decline-id (random-uuid)
         plan-in-effect-id (random-uuid)
         partial-day-id (random-uuid)
         exclusion-id (random-uuid)
         exclusion-4-3i-id (random-uuid)
         skydiving-id (random-uuid)
-        overlap-id (random-uuid)]
+        overlap-id (random-uuid)
+
+        ;; Rule IDs
+        claim-pay-rule-id (random-uuid)
+        plan-in-effect-rule-id (random-uuid)
+        skydiving-rule-id (random-uuid)]
     {:program
      {:literals
       (into
@@ -31,22 +37,31 @@
                        :args ["C" "skydiving"]}]])
 
       :rules
-      [{:head claim-pay-id
-        :body [plan-in-effect-id
-               partial-day-id
-               exclusion-id]}
-       {:head exclusion-4-3i-id
-        :body [skydiving-id]}]
+      (into
+       {}
+       [[claim-pay-rule-id
+         {:head claim-pay-id
+          :body [plan-in-effect-id]}]
+        [plan-in-effect-rule-id
+         {:head plan-in-effect-id
+          :body []}]
+        [skydiving-rule-id
+         {:head exclusion-4-3i-id
+          :body [skydiving-id]}]])
 
+      ;; These individual defeater/defeated relationships together define a
+      ;; superiority relation in the manner of Nute's Defeasible Logic.
       :defeatings
-      #{}}
+      #{{:defeater skydiving-rule-id :defeated claim-pay-rule-id}}}
 
-     :collapsed-literals
+    :collapsed-literals
+    {}
+
+    :rule-positions
+    (into
      {}
+     [[claim-pay-rule-id {:x 10, :y 10}]
+      [plan-in-effect-rule-id {:x 453, :y 278}]])
 
-     :rule-positions
-     {0 {:x 10, :y 10}
-      1 {:x 453, :y 278}}
-
-     :graph-transform
-     (util/dom-matrix-to-vals (js/DOMMatrix.))}))
+    :graph-transform
+    (util/dom-matrix-to-vals (js/DOMMatrix.))}))

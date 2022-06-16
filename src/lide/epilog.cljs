@@ -26,7 +26,7 @@
         body (when (seq (:body rule))
                (string/join " &\n  " (map literal-to-epilog (:body rule))))
         defeaters (when (seq defeating-rules)
-                    (string/join "&\n  ~" (map #(literal-to-epilog (:head %)) defeating-rules)))]
+                    (string/join " &\n  ~" (map #(literal-to-epilog (:head %)) defeating-rules)))]
     (str head
          (when (or body (seq defeaters))
            (str " :-\n  "))

@@ -53,8 +53,7 @@
                       (mapv (fn [id]
                               (assoc (-> program :literals (get id))
                                      :id id))
-                            literals)))
-      (assoc :head-id (:head rule))))
+                            literals)))))
 
 (defn variable? [arg]
   "True if `arg` is a string starting with an upper-case letter."
@@ -117,20 +116,20 @@
 (defn all-matches [program]
   "Find head literals that match with body literals from other rules."
   (->> (:rules program)
-       (map-indexed
-        (fn [rule-idx rule]
+       (map
+        (fn [[rule-id rule]]
           (->> (:body rule)
                (mapv
                 (fn [body-literal-id]
                   (let [body-literal (get (:literals program) body-literal-id)]
                     (->> (:rules program)
-                         (map-indexed (fn [idx rule] [idx rule]))
+                         (map (fn [[id rule]] [id rule]))
                          (filter (fn [[_ grounding-rule]]
                                    (matches? body-literal (get (:literals program)
                                                                (:head grounding-rule)))))
-                         (map (fn [[grounding-rule-idx grounding-rule]]
-                                {:src  grounding-rule-idx
-                                 :dest [rule-idx body-literal-id]})))))))))
+                         (map (fn [[grounding-rule-id grounding-rule]]
+                                {:src  grounding-rule-id
+                                 :dest [rule-id body-literal-id]})))))))))
        flatten))
 
 (defn remove-literal [program literal-id]

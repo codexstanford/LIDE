@@ -64,9 +64,10 @@
  ::initialize-db
  [(rf/inject-cofx ::saved-state)]
  (fn [cofx _]
-   {:db (-> (or (::saved-state cofx)
+   {:db (-> #_(or (::saved-state cofx)
                 db/default-db)
-            (assoc-in [:program :defeatings] #{}))}))
+            db/default-db
+            (update-in [:program :defeatings] #(or % #{})))}))
 
 ;; Connections
 
@@ -83,8 +84,8 @@
 (rf/reg-event-db
  ::add-argument
  (undo/undoable "add argument")
- (fn [db [_ rule-idx]]
-   (let [head-id (get-in db [:program :rules rule-idx :head])]
+ (fn [db [_ rule-id]]
+   (let [head-id (get-in db [:program :rules rule-id :head])]
      (update-in db
                 [:program :literals head-id :args]
                 (fn [args]
@@ -121,30 +122,27 @@
  (undo/undoable "create rule")
  (fn [db [_ position]]
    (let [new-head-id (random-uuid)
-         new-idx (-> db :program :rules count)]
+         new-rule-id (random-uuid)]
      (-> db
          (assoc-in [:program :literals new-head-id]
                    {:predicate "new" :args []})
-         (update-in [:program :rules]
-                    (fn [rules]
-                      (conj rules {:head new-head-id})))
-         (update :rule-positions
-                 (fn [positions]
-                   (conj positions [new-idx position])))))))
+         (assoc-in [:program :rules new-rule-id]
+                   {:head new-head-id})
+         (assoc-in [:rule-positions new-rule-id] position)))))
 
 (rf/reg-event-db
  ::add-body-literal
  (undo/undoable "add body literal")
- (fn [db [_ rule-idx]]
+ (fn [db [_ rule-id]]
    (let [new-literal-id (random-uuid)]
      (-> db
          (assoc-in [:program :literals new-literal-id] {:predicate "new" :args []})
-         (update-in [:program :rules rule-idx :body] conj new-literal-id)))))
+         (update-in [:program :rules rule-id :body] conj new-literal-id)))))
 
 (rf/reg-event-db
  ::select-rule
- (fn [db [_ rule-idx]]
-   (assoc db :selected-rule-index rule-idx)))
+ (fn [db [_ rule-id]]
+   (assoc db :selected-rule-id rule-id)))
 
 (rf/reg-event-db
  ::select-literal
@@ -175,18 +173,18 @@
 (rf/reg-event-db
  ::edit-head-predicate
  (undo/undoable "edit head predicate")
- (fn [db [_ rule-idx new-predicate]]
-   (let [rule (get-in db [:program :rules rule-idx])]
+ (fn [db [_ rule-id new-predicate]]
+   (let [rule (get-in db [:program :rules rule-id])]
      (if (string/blank? new-predicate)
        ;; TODO Should also delete body literals that don't appear in any other rules
-       (update-in db [:program :rules] #(util/vector-remove % rule-idx))
+       (update-in db [:program :rules] #(util/vector-remove % rule-id))
        (assoc-in db [:program :literals (:head rule) :predicate] new-predicate)))))
 
 (rf/reg-event-db
  ::edit-head-arg
  (undo/undoable "edit head arg")
- (fn [db [_ rule-idx arg-idx new-arg]]
-   (let [rule (get-in db [:program :rules rule-idx])]
+ (fn [db [_ rule-id arg-idx new-arg]]
+   (let [rule (get-in db [:program :rules rule-id])]
      (update-in db
                 [:program :literals (:head rule) :args]
                 (fn [args]

@@ -22,12 +22,17 @@
 (rf/reg-sub
  ::rules
  (fn [db]
-   (-> db :program :rules)))
+   (->> (get-in db [:program :rules])
+        (map (fn [[id rule]]
+               (assoc rule :id id)))
+        (into {}))))
 
 (rf/reg-sub
  ::rule
- (fn [db [_ idx]]
-   (get-in db [:program :rules idx])))
+ (fn [db [_ id]]
+   (-> db
+       (get-in [:program :rules id])
+       (assoc :id id))))
 
 (rf/reg-sub
  ::populated-rules
@@ -35,13 +40,15 @@
    (rf/subscribe [::program]))
  (fn [program _]
    (->> (:rules program)
-        (mapv #(util/populate-rule program %)))))
+        (map (fn [[id rule]]
+               (util/populate-rule program (assoc rule :id id))))
+        vec)))
 
 (rf/reg-sub
  ::populated-rule
- (fn [[_ rule-idx]]
+ (fn [[_ rule-id]]
    [(rf/subscribe [::program])
-    (rf/subscribe [::rule rule-idx])])
+    (rf/subscribe [::rule rule-id])])
  (fn [[program rule]]
    (util/populate-rule program rule)))
 
@@ -64,9 +71,9 @@
 
 (rf/reg-sub
  ::rule-layout
- (fn [[_ rule-idx]]
-   [(rf/subscribe [::populated-rule rule-idx])
-    (rf/subscribe [::rule-position rule-idx])])
+ (fn [[_ rule-id]]
+   [(rf/subscribe [::populated-rule rule-id])
+    (rf/subscribe [::rule-position rule-id])])
  (fn [[rule position]]
    (assoc-in (graph/rule-layout rule) [:container :position] position)))
 
@@ -77,8 +84,8 @@
 
 (rf/reg-sub
  ::rule-position
- (fn [db [_ rule-idx]]
-   (get-in db [:rule-positions rule-idx])))
+ (fn [db [_ rule-id]]
+   (get-in db [:rule-positions rule-id] {:x 0 :y 0})))
 
 (rf/reg-sub
  ::literal-positions
@@ -91,17 +98,17 @@
    (get-in db [:literal-positions literal-id])))
 
 (rf/reg-sub
- ::selected-rule-index
+ ::selected-rule-id
  (fn [db]
-   (:selected-rule-index db)))
+   (:selected-rule-id db)))
 
 (rf/reg-sub
  ::selected-rule
  (fn [_ _]
    [(rf/subscribe [::rules])
-    (rf/subscribe [::selected-rule-index])])
- (fn [[rules rule-idx]]
-   (get rules rule-idx)))
+    (rf/subscribe [::selected-rule-id])])
+ (fn [[rules rule-id]]
+   (get rules rule-id)))
 
 (rf/reg-sub
  ::highlighted-connection
