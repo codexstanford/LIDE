@@ -219,3 +219,12 @@
                                    body-height
                                    arg-height
                                    arg-height)}}}))
+
+(defn fact-layout [position element]
+  "Compute useful information about the layout of a fact.
+
+  The fact in question is already rendered as `element`, and we're just reading
+  data from there."
+  {:container {:position position
+               :size {}}
+   :attributes [{:position {}}]})

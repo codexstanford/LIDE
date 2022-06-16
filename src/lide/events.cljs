@@ -128,7 +128,7 @@
                    {:predicate "new" :args []})
          (assoc-in [:program :rules new-rule-id]
                    {:head new-head-id :body []})
-         (assoc-in [:rule-positions new-rule-id] position)))))
+         (assoc-in [:positions :rule new-rule-id] position)))))
 
 (rf/reg-event-db
  ::add-body-literal
@@ -245,7 +245,7 @@
            dragging-rule-pred (-> db :dragging-rule :head :predicate)]
        (-> db
            (assoc :dragged true)
-           (update-in [:rule-positions (:dragging-rule db)]
+           (update-in [:positions :rule (:dragging-rule db)]
                       (fn [position]
                         (-> position
                             (update :x #(+ % dx))
@@ -316,3 +316,10 @@
  ::remove-defeat
  (fn [db [_ defeat]]
    (update db [:program :defeatings] #(disj % defeat))))
+
+;; Size feedback
+
+(rf/reg-event-db
+ ::rendered
+ (fn [db [_ path element]]
+   (update-in db (concat [:sizes] path) {:height 100 :width 100} #_(size element))))

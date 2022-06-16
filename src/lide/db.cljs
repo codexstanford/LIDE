@@ -75,12 +75,14 @@
      :collapsed-literals
      {}
 
-     :rule-positions
-     (into
-      {}
-      [[claim-pay-rule-id {:x 0, :y 0}]
-       [plan-in-effect-rule-id  {:x 316, :y 222}]
-       [skydiving-rule-id {:x 331, :y -57}]])
+     :positions
+     {:rule (into
+             {}
+             [[claim-pay-rule-id {:x 0, :y 0}]
+              [plan-in-effect-rule-id  {:x 316, :y 222}]
+              [skydiving-rule-id {:x 331, :y -57}]])
+
+      :fact {}}
 
      :graph-transform
      (util/dom-matrix-to-vals (js/DOMMatrix.))}))

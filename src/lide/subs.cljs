@@ -85,12 +85,12 @@
 (rf/reg-sub
  ::rule-positions
  (fn [db]
-   (:rule-positions db)))
+   (-> db :positions :rule)))
 
 (rf/reg-sub
  ::rule-position
  (fn [db [_ rule-id]]
-   (get-in db [:rule-positions rule-id] {:x 0 :y 0})))
+   (get-in db [:positions :rule rule-id] {:x 0 :y 0})))
 
 (rf/reg-sub
  ::literal-positions
@@ -101,6 +101,26 @@
  ::literal-position
  (fn [db [_ literal-id]]
    (get-in db [:literal-positions literal-id])))
+
+(rf/reg-sub
+ ::position
+ (fn [db [_ path]]
+   (get-in db (concat [:positions] path))))
+
+(rf/reg-sub
+ ::rendered
+ (fn [db [_ path]]
+   (get-in db (concat [:rendered] path))))
+
+#_(rf/reg-sub
+ ::layout
+ (fn [[_ type id]]
+   [type
+    (rf/subscribe [::position [type id]])
+    (rf/subscribe [::rendered [type id]])])
+ (fn [[type position rendered]]
+   (condp = type
+     :fact (graph/fact-layout position rendered))))
 
 (rf/reg-sub
  ::selected-rule-id

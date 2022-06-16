@@ -199,6 +199,10 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
 
+(defn fact [fact-id]
+  [:div
+   {:ref #(rf/dispatch [::events/rendered [:facts fact-id] %])}])
+
 (defn socket-position [rule-layout literal-id {:keys [end]}]
   "Find the XY location where a connector should terminate on a particular rule
   and, optionally, body literal."
