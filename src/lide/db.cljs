@@ -22,19 +22,19 @@
       (into
        {}
        [[claim-pay-id  {:predicate "claim.recommendation"
-                        :args ["C" "pay"]}]
+                        :args ["Claim" "pay"]}]
         [claim-decline-id {:predicate "claim.recommendation"
-                           :args ["C" "decline"]}]
+                           :args ["Claim" "decline"]}]
         [plan-in-effect-id {:predicate "plan_in_effect"
-                            :args ["C"]}]
+                            :args ["Claim"]}]
         [partial-day-id {:predicate "partial_day"
-                         :args ["C"]}]
+                         :args ["Claim"]}]
         [exclusion-id {:predicate "exclusion"
-                       :args ["C" "E"]}]
+                       :args ["Claim" "E"]}]
         [exclusion-4-3i-id {:predicate "exclusion"
-                            :args ["C" "4.3i"]}]
+                            :args ["Claim" "4.3i"]}]
         [skydiving-id {:predicate "claim.activity"
-                       :args ["C" "skydiving"]}]])
+                       :args ["Claim" "skydiving"]}]])
 
       :rules
       (into
@@ -50,7 +50,13 @@
           :body [skydiving-id]}]])
 
       ;; These individual defeater/defeated relationships together define a
-      ;; superiority relation in the manner of Nute's Defeasible Logic.
+      ;; superiority relation in the manner of Nute's Defeasible Logic (NDL).
+      ;; NDL also maintains a distinction between strict and defeasible rules,
+      ;; but here I'm just treating all rules as defeasible. I don't mean to
+      ;; commit completely to these semantics, and particularly I may compile
+      ;; certain things to strict rules at some point, as an implementation
+      ;; detail. It does seem... fine... to always treat contract provisions as
+      ;; defeasible, but I want to think about it a bit more.
       :defeatings
       #{{:defeater skydiving-rule-id :defeated claim-pay-rule-id}}}
 
