@@ -127,7 +127,7 @@
          (assoc-in [:program :literals new-head-id]
                    {:predicate "new" :args []})
          (assoc-in [:program :rules new-rule-id]
-                   {:head new-head-id})
+                   {:head new-head-id :body []})
          (assoc-in [:rule-positions new-rule-id] position)))))
 
 (rf/reg-event-db
