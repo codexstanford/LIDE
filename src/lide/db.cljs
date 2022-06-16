@@ -7,6 +7,7 @@
         claim-pay-id (random-uuid)
         claim-decline-id (random-uuid)
         plan-in-effect-id (random-uuid)
+        plan-in-effect-head-id (random-uuid)
         partial-day-id (random-uuid)
         exclusion-id (random-uuid)
         exclusion-4-3i-id (random-uuid)
@@ -27,6 +28,8 @@
                            :args ["Claim" "decline"]}]
         [plan-in-effect-id {:predicate "plan_in_effect"
                             :args ["Claim"]}]
+        [plan-in-effect-head-id {:predicate "plan_in_effect"
+                                 :args ["Claim"]}]
         [partial-day-id {:predicate "partial_day"
                          :args ["Claim"]}]
         [exclusion-id {:predicate "exclusion"
@@ -43,7 +46,7 @@
          {:head claim-pay-id
           :body [plan-in-effect-id]}]
         [plan-in-effect-rule-id
-         {:head plan-in-effect-id
+         {:head plan-in-effect-head-id
           :body []}]
         [skydiving-rule-id
          {:head exclusion-4-3i-id
