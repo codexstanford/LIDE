@@ -61,16 +61,26 @@
       ;; detail. It does seem... fine... to always treat contract provisions as
       ;; defeasible, but I want to think about it a bit more.
       :defeatings
-      #{{:defeater skydiving-rule-id :defeated claim-pay-rule-id}}}
+      #{{:defeater skydiving-rule-id :defeated claim-pay-rule-id}}
 
-    :collapsed-literals
-    {}
+      ;; Facts consist of an ID and a set of key-value pairs, defining a set of
+      ;; simple object-attribute relations.
+      ;; TODO Allow top-level primitive facts
+      :facts
+      {"claim1" {"hospitalization" {:type :subobject
+                                    :value "hospitalization1"}}
+       "hospitalization1" {"duration" {:type :primitive
+                                       :value (* 60 60 24)}}}}
 
-    :rule-positions
-    (into
+     :collapsed-literals
      {}
-     [[claim-pay-rule-id {:x 10, :y 10}]
-      [plan-in-effect-rule-id {:x 453, :y 278}]])
 
-    :graph-transform
-    (util/dom-matrix-to-vals (js/DOMMatrix.))}))
+     :rule-positions
+     (into
+      {}
+      [[claim-pay-rule-id {:x 0, :y 0}]
+       [plan-in-effect-rule-id  {:x 316, :y 222}]
+       [skydiving-rule-id {:x 331, :y -57}]])
+
+     :graph-transform
+     (util/dom-matrix-to-vals (js/DOMMatrix.))}))
