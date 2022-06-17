@@ -42,7 +42,12 @@
  ::save
  (fn [cofx _]
    {:db (assoc (:db cofx) :show-saved-popup? true)
-    :fx [[::set-local-storage ["lide.state" (pr-str (:db cofx))]]]
+    :fx [[::set-local-storage ["lide.state" (-> (:db cofx)
+                                                (select-keys [:program
+                                                              :positions
+                                                              :collapsed-literals
+                                                              :graph-transform])
+                                                pr-str)]]]
     :timeout {:event [::hide-saved-popup]
               :delay-ms 2000}}))
 
@@ -64,10 +69,12 @@
  ::initialize-db
  [(rf/inject-cofx ::saved-state)]
  (fn [cofx _]
-   {:db (-> #_(or (::saved-state cofx)
+   {:db (-> (or (::saved-state cofx)
                 db/default-db)
-            db/default-db
-            (update-in [:program :defeatings] #(or % #{})))}))
+            ;; Add some values to make sure we have a viable DB (who knows what was saved)
+            ;; TODO Handle this more robustly
+            (update-in [:program :defeatings] #(or % #{}))
+            (update :graph-transform #(or % (util/dom-matrix-to-vals (js/DOMMatrix.)))))}))
 
 ;; Connections
 
