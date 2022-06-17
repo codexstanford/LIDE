@@ -3,6 +3,7 @@
    [lide.graph :as graph]
    [lide.util :as util]
    [lide.epilog :as epilog]
+   [reagent.core :as r]
    [re-frame.core :as rf]))
 
 (rf/reg-sub
@@ -53,11 +54,11 @@
    (util/populate-rule program rule)))
 
 (rf/reg-sub
- ::matches
+ ::rule-matches
  (fn [_ _]
    (rf/subscribe [::program]))
  (fn [program _]
-   (util/all-matches program)))
+   (util/find-rule-matches program)))
 
 (rf/reg-sub
  ::defeatings
@@ -73,6 +74,13 @@
  ::facts
  (fn [db]
    (-> db :program :facts)))
+
+(rf/reg-sub
+ ::fact
+ (fn [db [_ id]]
+   (-> db
+       (get-in [:program :facts id])
+       (assoc :id id))))
 
 (rf/reg-sub
  ::rule-layout
@@ -104,8 +112,8 @@
 
 (rf/reg-sub
  ::position
- (fn [db [_ path]]
-   (get-in db (concat [:positions] path) {:x 0 :y 0})))
+ (fn [db [_ entity-type entity-id]]
+   (get-in db (conj [:positions] entity-type entity-id) {:x 0 :y 0})))
 
 (rf/reg-sub
  ::selected-rule-id
@@ -139,3 +147,20 @@
  ::graph-transform
  (fn [db]
    (:graph-transform db)))
+
+(rf/reg-sub
+  ::rendered
+  (fn [db [_ entity-type entity-id]]
+    (get-in db (conj [:rendered] entity-type entity-id))))
+
+(rf/reg-sub
+ ::layout
+ (fn [[_ type id]]
+   [#_type
+    (rf/subscribe [::position type id])
+    (rf/subscribe [::rendered type id])])
+ (fn [[#_type position rendered]]
+   (when rendered
+     (graph/fact-layout position rendered)
+     #_(case type
+       :fact ))))

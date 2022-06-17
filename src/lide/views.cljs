@@ -199,9 +199,68 @@
              :width  (->> layout :container :size :width)
              :height (->> layout :container :size :height)}]]))
 
-(defn fact [fact-id]
-  [:div
-   {:ref #(rf/dispatch [::events/rendered [:facts fact-id] %])}])
+(defn fact [{:keys [id localize-position]}]
+  (let [fact @(rf/subscribe [::subs/fact id])
+        position @(rf/subscribe [::subs/position :fact id])]
+    [:foreignObject
+     {:width 1
+      :height 1
+      :style {"overflow" "visible"}
+      :transform (str "translate(" (:x position) ", " (:y position) ")")}
+     [:div
+      {:class "fact__wrapper"
+       :on-mouse-down #(rf/dispatch [::events/start-drag-fact (localize-position %) id])}
+      [:div
+       {:class "fact"
+        :ref #(rf/dispatch [::events/rendered :fact id %])}
+       [:div (:name fact)]
+       [:div {:class "fact__attributes"}
+        (map
+         (fn [[attr-name attr-value]]
+           [:div {:class "fact__attribute"
+                  :data-attribute-name attr-name
+                  :key attr-name}
+            [:div {:class "fact__attribute-cell"}
+             attr-name]
+            [:div {:class "fact__attribute-cell"}
+             (condp = (:type attr-value)
+               :primitive (:value attr-value)
+               :subobject [:div {:class "fact__subobject-socket"}])]])
+         (:attributes fact))]]]]))
+
+(defn subobject-connector [{:keys [fact-id attribute-name subobject-id]}]
+  (let [fact-layout @(rf/subscribe [::subs/layout :fact fact-id])
+        subobject-layout @(rf/subscribe [::subs/layout :fact subobject-id])
+        attribute-layout (get-in fact-layout [:attributes attribute-name])
+        ;; TODO Fix magic numbers, just need to get more information from layout
+        start (merge-with +
+                          (-> fact-layout :container :position)
+                          (-> attribute-layout :position)
+                          {:y (/ (-> attribute-layout :size :height) 2)}
+                          {:x (-> fact-layout :container :size :width)}
+                          {:x -15})
+        end (merge-with +
+                        (-> subobject-layout :container :position)
+                        {:y 15})]
+    [:line {:x1 (:x start)
+            :y1 (:y start)
+            :x2 (:x end)
+            :y2 (:y end)
+            :stroke "black"}]))
+
+(defn subobject-connectors [{:keys [fact-id]}]
+  (let [fact @(rf/subscribe [::subs/fact fact-id])
+        layout @(rf/subscribe [::subs/layout :fact fact-id])]
+    [:<>
+     (->> (:attributes fact)
+          (mapv
+           (fn [[attr-name attr-val]]
+             (when (= :subobject (:type attr-val))
+               [subobject-connector {:fact-id fact-id
+                                     :attribute-name attr-name
+                                     :subobject-id (:value attr-val)
+                                     :key fact-id}])))
+          (remove nil?))]))
 
 (defn socket-position [rule-layout literal-id {:keys [end]}]
   "Find the XY location where a connector should terminate on a particular rule
@@ -228,7 +287,7 @@
            0
            (get-in rule-layout [:body literal-id :container :position :y])))})
 
-(defn match-connector [{:keys [connection]}]
+(defn rule-match-connector [{:keys [connection]}]
   "Draw a line connecting :src and :dest of `connection`."
   (let [[end-rule-id end-literal-id] (:dest connection)
         start-layout @(rf/subscribe [::subs/rule-layout (:src connection)])
@@ -267,6 +326,7 @@
              :y1 (:y start)
              :x2 (:x end)
              :y2 (:y end)
+             :class "defeat-connector__clickable"
              :stroke "transparent"
              :stroke-width 10
              :on-click #(rf/dispatch [::events/remove-defeat defeat])}]]))
@@ -302,7 +362,7 @@
                              (localize-event-to-svg @!svg-viewport event))
 
             program @(rf/subscribe [::subs/program])
-            matches @(rf/subscribe [::subs/matches])
+            rule-matches @(rf/subscribe [::subs/rule-matches])
             defeatings @(rf/subscribe [::subs/defeatings])
             mouse-position @(rf/subscribe [::subs/mouse-position])]
         (when program
@@ -320,15 +380,21 @@
            [graph-viewport
             {:set-ref #(reset! !svg-viewport %)}
             (map (fn [[id _]]
+                   [:<> {:key id}
+                    [fact {:id id
+                           :localize-position local-position}]
+                    [subobject-connectors {:fact-id id}]])
+                 (:facts program))
+            (map (fn [[id _]]
                    [rule {:id  id
                           :local-position local-position
                           :key    id}])
                  (:rules program))
             (map (fn [match]
-                   [match-connector
+                   [rule-match-connector
                     {:connection match
                      :key (str match)}])
-                 matches)
+                 rule-matches)
             (map (fn [defeat]
                    [defeat-connector
                     {:defeat defeat
@@ -357,7 +423,7 @@
       (->> facts
            (map
             (fn [[id fact]]
-              (epilog/fact-to-epilog id fact)))
+              (epilog/fact-to-epilog facts id fact)))
            (string/join "\n\n"))]]))
 
 (defn toolbar []

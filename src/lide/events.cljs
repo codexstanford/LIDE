@@ -110,6 +110,7 @@
    {:db (-> (:db cofx)
             (dissoc :dragged)
             (dissoc :dragging-rule)
+            (dissoc :dragging-fact)
             (dissoc :dragging-literal)
             (dissoc :node-drag-origin)
             (dissoc :mouse-down-graph))
@@ -230,20 +231,6 @@
            (assoc :graph-transform (util/dom-matrix-to-vals
                                     (.preMultiplySelf graph-transform translate-matrix)))))
 
-     (contains? db :dragging-literal)
-     (let [dx (- (-> event-position :x)
-                 (-> db :node-drag-origin :x))
-           dy (- (-> event-position :y)
-                 (-> db :node-drag-origin :y))]
-       (-> db
-           (assoc :dragged true)
-           (update-in [:literal-positions (:dragging-literal db)]
-                      (fn [position]
-                        (-> position
-                            (update :x #(+ % dx))
-                            (update :y #(+ % dy)))))
-           (assoc :node-drag-origin event-position)))
-
      (contains? db :dragging-rule)
      (let [dx (- (-> event-position :x)
                  (-> db :node-drag-origin :x))
@@ -253,6 +240,20 @@
        (-> db
            (assoc :dragged true)
            (update-in [:positions :rule (:dragging-rule db)]
+                      (fn [position]
+                        (-> position
+                            (update :x #(+ % dx))
+                            (update :y #(+ % dy)))))
+           (assoc :node-drag-origin event-position)))
+
+     (contains? db :dragging-fact)
+     (let [dx (- (-> event-position :x)
+                 (-> db :node-drag-origin :x))
+           dy (- (-> event-position :y)
+                 (-> db :node-drag-origin :y))]
+       (-> db
+           (assoc :dragged true)
+           (update-in [:positions :fact (:dragging-fact db)]
                       (fn [position]
                         (-> position
                             (update :x #(+ % dx))
@@ -285,17 +286,17 @@
                                  (.preMultiplySelf graph-transform zoom-matrix))))))
 
 (rf/reg-event-db
- ::start-drag-literal
- (fn [db [_ position literal-id]]
-   (-> db
-       (assoc :dragging-literal literal-id)
-       (assoc :node-drag-origin position))))
-
-(rf/reg-event-db
  ::start-drag-rule
  (fn [db [_ position rule-id]]
    (-> db
        (assoc :dragging-rule rule-id)
+       (assoc :node-drag-origin position))))
+
+(rf/reg-event-db
+ ::start-drag-fact
+ (fn [db [_ position fact-id]]
+   (-> db
+       (assoc :dragging-fact fact-id)
        (assoc :node-drag-origin position))))
 
 ;; Defeasibility
@@ -323,3 +324,10 @@
  ::remove-defeat
  (fn [db [_ defeat]]
    (update-in db [:program :defeatings] #(disj % defeat))))
+
+;; Size feedback
+
+(rf/reg-event-db
+ ::rendered
+ (fn [db [_ entity-type entity-id element]]
+   (assoc-in db (conj [:rendered] entity-type entity-id) element)))

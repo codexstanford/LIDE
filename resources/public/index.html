@@ -116,10 +116,50 @@
         fill: #555;
       }
 
+      .fact__wrapper {
+        display: flex;
+      }
+
+      .fact {
+        position: relative; /* need this to calculate offsetTop for attributes */
+        display: flex;
+        flex-direction: column;
+        padding: 5px;
+        border: 1px solid #666;
+        border-radius: 4px;
+        background-color: white;
+        user-select: none;
+      }
+
+      .fact__attributes {
+        display: table; /* can't do a real table because then offsetTop doesn't work */
+      }
+
+      .fact__attribute {
+        display: table-row;
+        vertical-align: top;
+      }
+
+      .fact__attribute-cell {
+        display: table-cell;
+      }
+
+      .fact__subobject-socket::before {
+        content: "●";
+      }
+
+      .fact__subobject-socket {
+        text-align: right;
+      }
+
       .defeat-connector {
         pointer-events: none;
         stroke: red;
         fill: red;
+      }
+
+      .defeat-connector__clickable {
+        cursor: pointer;
       }
 
       .eip-svg-text__input {

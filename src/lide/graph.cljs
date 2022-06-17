@@ -221,10 +221,26 @@
                                    arg-height)}}}))
 
 (defn fact-layout [position element]
-  "Compute useful information about the layout of a fact.
+  "Compute useful information about the layout of a rendered fact.
 
   The fact in question is already rendered as `element`, and we're just reading
   data from there."
-  {:container {:position position
-               :size {}}
-   :attributes [{:position {}}]})
+  (let [root-position {:x (.-offsetLeft element)
+                       :y (.-offsetTop  element)}]
+    ;; n.b. Container position isn't decided here, just passed in. Positions are
+    ;; figured separately because they're user-writable - here we're mostly just
+    ;; figuring out what the rendering engine did for us.
+    {:container {:position position
+                 :size {:width  (.-offsetWidth  element)
+                        :height (.-offsetHeight element)}}
+     :attributes (->> (.querySelectorAll element ".fact__attribute")
+                      (map
+                       (fn [attr-elem]
+                         [(.getAttribute attr-elem "data-attribute-name")
+                          ;; We want the relative position of the attribute row,
+                          ;; so subtract the position of the root element.
+                          {:position {:x (- (.-offsetLeft attr-elem) (:x root-position))
+                                      :y (- (.-offsetTop  attr-elem) (:y root-position))}
+                           :size {:width  (.-offsetWidth  attr-elem)
+                                  :height (.-offsetHeight attr-elem)}}]))
+                      (into {}))}))

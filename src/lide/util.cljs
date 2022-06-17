@@ -113,7 +113,7 @@
        flatten
        (into {})))
 
-(defn all-matches [program]
+(defn find-rule-matches [program]
   "Find head literals that match with body literals from other rules."
   (->> (:rules program)
        (map

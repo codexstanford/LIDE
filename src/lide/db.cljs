@@ -17,13 +17,17 @@
         ;; Rule IDs
         claim-pay-rule-id (random-uuid)
         plan-in-effect-rule-id (random-uuid)
-        skydiving-rule-id (random-uuid)]
+        skydiving-rule-id (random-uuid)
+
+        ;; Fact IDs
+        claim-id (random-uuid)
+        hospitalization-id (random-uuid)]
     {:program
      {:literals
       (into
        {}
-       [[claim-pay-id  {:predicate "claim.recommendation"
-                        :args ["Claim" "pay"]}]
+       [[claim-pay-id  {:predicate "recommend_pay"
+                        :args ["Claim"]}]
         [claim-decline-id {:predicate "claim.recommendation"
                            :args ["Claim" "decline"]}]
         [plan-in-effect-id {:predicate "plan_in_effect"
@@ -36,7 +40,7 @@
                        :args ["Claim" "E"]}]
         [exclusion-4-3i-id {:predicate "exclusion"
                             :args ["Claim" "4.3i"]}]
-        [skydiving-id {:predicate "claim.activity"
+        [skydiving-id {:predicate "activity"
                        :args ["Claim" "skydiving"]}]])
 
       :rules
@@ -63,14 +67,18 @@
       :defeatings
       #{{:defeater skydiving-rule-id :defeated claim-pay-rule-id}}
 
-      ;; Facts consist of an ID and a set of key-value pairs, defining a set of
+      ;; Facts consist of a name and a set of key-value pairs, defining a set of
       ;; simple object-attribute relations.
       ;; TODO Allow top-level primitive facts
       :facts
-      {"claim1" {"hospitalization" {:type :subobject
-                                    :value "hospitalization1"}}
-       "hospitalization1" {"duration" {:type :primitive
-                                       :value (* 60 60 24)}}}}
+      {claim-id {:name "claim1"
+                 :attributes {"hospitalization" {:type :subobject
+                                                 :value hospitalization-id}
+                              "activity" {:type :primitive
+                                          :value "skydiving"}}}
+       hospitalization-id {:name "hospitalization1"
+                           :attributes {"duration" {:type :primitive
+                                                    :value (* 60 60 24)}}}}}
 
      :collapsed-literals
      {}
@@ -82,7 +90,4 @@
               [plan-in-effect-rule-id  {:x 316, :y 222}]
               [skydiving-rule-id {:x 331, :y -57}]])
 
-      :fact {}}
-
-     :graph-transform
-     (util/dom-matrix-to-vals (js/DOMMatrix.))}))
+      :fact {}}}))
