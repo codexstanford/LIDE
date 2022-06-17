@@ -177,7 +177,7 @@
    (let [rule (get-in db [:program :rules rule-id])]
      (if (string/blank? new-predicate)
        ;; TODO Should also delete body literals that don't appear in any other rules
-       (update-in db [:program :rules] #(util/vector-remove % rule-id))
+       (update-in db [:program :rules] #(dissoc % rule-id))
        (assoc-in db [:program :literals (:head rule) :predicate] new-predicate)))))
 
 (rf/reg-event-db
