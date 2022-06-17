@@ -139,7 +139,7 @@
       ;; Remove references to the literal in rules
       (update :rules
               (fn [rules]
-                (mapv
+                (map-vals
                  (fn [rule]
                    (update rule
                            :body
