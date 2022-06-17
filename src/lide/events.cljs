@@ -316,10 +316,3 @@
  ::remove-defeat
  (fn [db [_ defeat]]
    (update db [:program :defeatings] #(disj % defeat))))
-
-;; Size feedback
-
-(rf/reg-event-db
- ::rendered
- (fn [db [_ path element]]
-   (update-in db (concat [:sizes] path) {:height 100 :width 100} #_(size element))))

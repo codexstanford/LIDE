@@ -105,22 +105,7 @@
 (rf/reg-sub
  ::position
  (fn [db [_ path]]
-   (get-in db (concat [:positions] path))))
-
-(rf/reg-sub
- ::rendered
- (fn [db [_ path]]
-   (get-in db (concat [:rendered] path))))
-
-#_(rf/reg-sub
- ::layout
- (fn [[_ type id]]
-   [type
-    (rf/subscribe [::position [type id]])
-    (rf/subscribe [::rendered [type id]])])
- (fn [[type position rendered]]
-   (condp = type
-     :fact (graph/fact-layout position rendered))))
+   (get-in db (concat [:positions] path) {:x 0 :y 0})))
 
 (rf/reg-sub
  ::selected-rule-id
