@@ -315,4 +315,4 @@
 (rf/reg-event-db
  ::remove-defeat
  (fn [db [_ defeat]]
-   (update db [:program :defeatings] #(disj % defeat))))
+   (update-in db [:program :defeatings] #(disj % defeat))))
