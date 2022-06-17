@@ -35,8 +35,13 @@
            (str " &\n  ~"))
          defeaters)))
 
-(defn fact-to-epilog [id attributes]
+(defn attribute-value-to-string [facts {:keys [type value]}]
+  (condp = type
+    :primitive value
+    :subobject (-> facts (get value) :name)))
+
+(defn fact-to-epilog [facts id {:keys [name attributes]}]
   (->> attributes
-       (map (fn [[name attr]]
-              (str name "(" id ", " (:value attr) ")")))
+       (map (fn [[k v]]
+              (str k "(" name  ", " (attribute-value-to-string facts v) ")")))
        (string/join "\n")))
