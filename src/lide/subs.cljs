@@ -174,11 +174,10 @@
 (rf/reg-sub
  ::layout
  (fn [[_ type id]]
-   [#_type
+   [(atom type)
     (rf/subscribe [::position type id])
     (rf/subscribe [::rendered type id])])
- (fn [[#_type position rendered]]
+ (fn [[type position rendered]]
    (when rendered
-     (graph/fact-layout position rendered)
-     #_(case type
-       :fact ))))
+     (case type
+       :fact (graph/fact-layout position rendered)))))
