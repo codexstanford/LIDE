@@ -325,7 +325,7 @@
  (fn [db [_ defeat]]
    (update-in db [:program :defeatings] #(disj % defeat))))
 
-;; Size feedback
+;; Rendered element feedback (see subs.cljs for details)
 
 (rf/reg-event-db
  ::rendered

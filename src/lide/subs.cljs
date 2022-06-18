@@ -111,11 +111,6 @@
    (get-in db [:literal-positions literal-id])))
 
 (rf/reg-sub
- ::position
- (fn [db [_ entity-type entity-id]]
-   (get-in db (conj [:positions] entity-type entity-id) {:x 0 :y 0})))
-
-(rf/reg-sub
  ::selected-rule-id
  (fn [db]
    (:selected-rule-id db)))
@@ -147,6 +142,29 @@
  ::graph-transform
  (fn [db]
    (:graph-transform db)))
+
+;; Position/layout
+
+;; Rendering gets a bit complex here. Some graph nodes are rendered into
+;; foreignObjects, which is a) nice because we get to use HTML instead of SVG,
+;; but b) not nice because we don't know ahead of time where everything is going
+;; to end up, and we need to know precise positions of things to draw
+;; connectors.
+;;
+;; So, we do a two-stage rendering process as follows:
+;;  - Render into a foreignObject
+;;  - Using :ref, dispatch an event with a reference to the rendered element
+;;  - Subscribe to the value of this rendered element (is this safe?) and read
+;;    precise layout information from it to compute ::layout.
+;;
+;; ::layout also depends on the node's position, which can be changed by the
+;; user, and is handled separately. It's important to keep reads and writes
+;; strictly partitioned to avoid layout thrashing.
+
+(rf/reg-sub
+ ::position
+ (fn [db [_ entity-type entity-id]]
+   (get-in db (conj [:positions] entity-type entity-id) {:x 0 :y 0})))
 
 (rf/reg-sub
   ::rendered
