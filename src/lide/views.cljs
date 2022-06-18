@@ -125,11 +125,11 @@
 
 (defn body-literal-html [{:keys [id]}]
   (let [literal @(rf/subscribe [::subs/literal id])]
-    [:div
+    [:div {:class "body-literal"}
      [util/eip-plain-text
       {:value (:predicate literal)
        :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
-     [:div "is true of..."]
+     [:div {:class "rule__tutor"} "is true of..."]
      [:<>
       (map-indexed
        (fn [arg-index arg]
@@ -139,7 +139,8 @@
            :style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
            :key arg}])
        (:args literal))]
-     [:div {:on-click #(rf/dispatch [::events/add-literal-argument id])}
+     [:div {:class "button-add"
+            :on-click #(rf/dispatch [::events/add-literal-argument id])}
       "+ and..."]]))
 
 (defn rule-html [{:keys [id local-position]}]
@@ -155,7 +156,7 @@
        [util/eip-plain-text
         {:value (-> rule :head :predicate)
          :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]
-       [:div "is true of..."]
+       [:div {:class "rule__tutor"} "is true of..."]
        [:<>
         (map-indexed
          (fn [arg-index arg]
@@ -166,17 +167,17 @@
              :style (when (util/variable? arg) {"color" (util/hash-to-hsl arg)})
              :key arg-index}])
          (-> rule :head :args))]
-       [:div {:class "rule__add-arg"
+       [:div {:class "rule__add-arg button-add"
               :on-click #(rf/dispatch [::events/add-argument id])}
         "+ and..."]
-       [:div "when..."]
+       [:div {:class "rule__tutor"} "when..."]
        [:<>
         (map
          (fn [literal]
            [body-literal-html {:id (:id literal)
                                :key (:id literal)}])
          (:body rule))]
-       [:div {:class "rule__add-arg"
+       [:div {:class "rule__add-arg button-add"
               :on-click #(rf/dispatch [::events/add-body-literal id])}
         "+ and..."]]]]))
 
