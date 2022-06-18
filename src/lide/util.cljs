@@ -185,3 +185,17 @@
                 :y y
                 :on-click start-editing}
          value]))))
+
+(defn eip-plain-text [{:keys [value on-blur] :as props}]
+  (let [!value (r/atom value)
+        !input (r/atom nil)]
+    (fn [{:keys [value on-blur]}]
+      [:input (merge
+               props
+               {:ref #(reset! !input %)
+                :class "eip-plain-text"
+                :value @!value
+                :on-change #(reset! !value (-> % .-target .-value))
+                :on-blur on-blur
+                :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
+                                (.blur @!input))})])))

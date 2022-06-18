@@ -81,6 +81,24 @@
         fill: #eee;
       }
 
+      .rule__wrapper {
+        display: flex;
+      }
+
+      .rule {
+        position: relative; /* need this to calculate offsetTop for attributes */
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #666;
+        border-radius: 4px;
+        background-color: white;
+        user-select: none;
+      }
+
+      .rule__head-predicate {
+        padding: 5px;
+      }
+
       .rule__bg {
         fill: white;
       }
@@ -165,6 +183,11 @@
       .eip-svg-text__input {
         box-sizing: border-box;
         width: 100%;
+      }
+
+      .eip-plain-text {
+        border: 0;
+        padding: 5px;
       }
 
       #width-test-svg {

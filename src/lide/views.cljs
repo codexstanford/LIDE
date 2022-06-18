@@ -123,6 +123,63 @@
     [body-literal-collapsed   props]
     [body-literal-uncollapsed props]))
 
+(defn body-literal-html [{:keys [id]}]
+  (let [literal @(rf/subscribe [::subs/literal id])]
+    [:div
+     [util/eip-plain-text
+      {:value (:predicate literal)
+       :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
+     [:div "is true of..."]
+     [:<>
+      (map-indexed
+       (fn [arg-index arg]
+         [util/eip-plain-text
+          {:value arg
+           :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
+           :style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
+           :key arg}])
+       (:args literal))]
+     [:div {:on-click #(rf/dispatch [::events/add-literal-argument id])}
+      "+ and..."]]))
+
+(defn rule-html [{:keys [id local-position]}]
+  (let [rule @(rf/subscribe [::subs/populated-rule id])
+        position @(rf/subscribe [::subs/position :rule id])]
+    [:foreignObject {:width 1
+                     :height 1
+                     :style {"overflow" "visible"}
+                     :transform (str "translate(" (:x position) ", " (:y position) ")")}
+     [:div {:class "rule__wrapper"
+            :on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) id])}
+      [:div {:class "rule"}
+       [util/eip-plain-text
+        {:value (-> rule :head :predicate)
+         :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]
+       [:div "is true of..."]
+       [:<>
+        (map-indexed
+         (fn [arg-index arg]
+           [util/eip-plain-text
+            {:value arg
+             :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
+             ;; XXX style isn't updating properly on change
+             :style (when (util/variable? arg) {"color" (util/hash-to-hsl arg)})
+             :key arg-index}])
+         (-> rule :head :args))]
+       [:div {:class "rule__add-arg"
+              :on-click #(rf/dispatch [::events/add-argument id])}
+        "+ and..."]
+       [:div "when..."]
+       [:<>
+        (map
+         (fn [literal]
+           [body-literal-html {:id (:id literal)
+                               :key (:id literal)}])
+         (:body rule))]
+       [:div {:class "rule__add-arg"
+              :on-click #(rf/dispatch [::events/add-body-literal id])}
+        "+ and..."]]]]))
+
 (defn rule [{:keys [id local-position]}]
   ;; TODO Should get layout data for EIPs from layout object
   (let [rule-raw @(rf/subscribe [::subs/populated-rule id])
@@ -202,11 +259,10 @@
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
         position @(rf/subscribe [::subs/position :fact id])]
-    [:foreignObject
-     {:width 1
-      :height 1
-      :style {"overflow" "visible"}
-      :transform (str "translate(" (:x position) ", " (:y position) ")")}
+    [:foreignObject {:width 1
+                     :height 1
+                     :style {"overflow" "visible"}
+                     :transform (str "translate(" (:x position) ", " (:y position) ")")}
      [:div
       {:class "fact__wrapper"
        :on-mouse-down #(rf/dispatch [::events/start-drag-fact (localize-position %) id])}
@@ -386,9 +442,12 @@
                     [subobject-connectors {:fact-id id}]])
                  (:facts program))
             (map (fn [[id _]]
-                   [rule {:id  id
-                          :local-position local-position
-                          :key    id}])
+                   [rule-html {:id  id
+                               :local-position local-position
+                               :key    id}]
+                   #_[rule {:id  id
+                            :local-position local-position
+                            :key    id}])
                  (:rules program))
             (map (fn [match]
                    [rule-match-connector
