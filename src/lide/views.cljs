@@ -21,6 +21,9 @@
     {:x (.-x svg-point)
      :y (.-y svg-point)}))
 
+(defn socket []
+  [:div {:class "socket"}])
+
 (defn literal-collapse [id layout]
   (let [symbol  (if (:collapsed layout) "+" "-")
         tooltip (if (:collapsed layout) "Expand literal" "Collapse literal")]
@@ -127,9 +130,12 @@
   (let [literal @(rf/subscribe [::subs/literal id])]
     [:div {:class "body-literal"
            :data-literal-id id}
-     [util/eip-plain-text
-      {:value (:predicate literal)
-       :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
+     [:div {:class "body-literal__predicate"}
+      [socket]
+      [util/eip-plain-text
+       {:value (:predicate literal)
+        :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
+      [socket]]
      [:div {:class "rule__tutor"} "is true of..."]
      [:<>
       (map-indexed
@@ -155,9 +161,12 @@
             :on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) id])}
       [:div {:class "rule"
              :ref #(rf/dispatch [::events/rendered :rule id %])}
-       [util/eip-plain-text
-        {:value (-> rule :head :predicate)
-         :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]
+       [:div {:class "rule__head-predicate"}
+        [socket]
+        [util/eip-plain-text
+         {:value (-> rule :head :predicate)
+          :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]
+        [socket]]
        [:div {:class "rule__tutor"} "is true of..."]
        [:<>
         (map-indexed
@@ -208,7 +217,7 @@
             [:div {:class "fact__attribute-cell"}
              (condp = (:type attr-value)
                :primitive (:value attr-value)
-               :subobject [:div {:class "fact__subobject-socket"}])]])
+               :subobject [socket])]])
          (:attributes fact))]]]]))
 
 (defn subobject-connector [{:keys [fact-id attribute-name subobject-id]}]
@@ -250,26 +259,26 @@
   and, optionally, body literal."
   (merge-with +
               (-> rule-layout :container :position)
+              ;; XXX more magic numbers here
               {:x (cond
                     ;; Two concerns here: `end` being :start or :dest determines
                     ;; which side of the rule the socket is on, and if
                     ;; `literal-id` is non-nil the socket is slightly inset.
                     (and (= end :dest) (not= literal-id :unbound))
-                    (- (-> rule-layout :container :size :width) 5)
+                    (- (-> rule-layout :container :size :width) 20)
 
                     (and (= end :dest) (= literal-id :unbound))
-                    (-> rule-layout :container :size :width)
+                    (- (-> rule-layout :container :size :width) 9)
 
                     (and (= end :start) (not= literal-id :unbound))
-                    5
+                    10
 
                     :else
-                    0)
-               :y (+ (if (= literal-id :unbound)
-                       0
-                       (get-in rule-layout [:body literal-id :position :y]))
-                     ;; XXX magic number
-                     10)}))
+                    10)
+               :y (if (= literal-id :unbound)
+                    0
+                    (get-in rule-layout [:body literal-id :position :y]))}
+              {:y 10}))
 
 (defn rule-match-connector [{:keys [connection]}]
   "Draw a line connecting :src and :dest of `connection`."

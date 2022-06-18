@@ -81,6 +81,10 @@
         fill: #eee;
       }
 
+      .socket::before {
+        content: "●";
+      }
+
       .button-add {
         margin: 0 5px;
       }
@@ -106,7 +110,12 @@
       }
 
       .rule__head-predicate {
-        padding: 5px;
+        display: flex;
+        padding: 0 5px;
+      }
+
+      .rule__head-predicate .eip-plain-text {
+        flex-grow: 1;
       }
 
       .rule__bg {
@@ -149,6 +158,15 @@
         margin: 0 5px;
       }
 
+      .body-literal__predicate {
+        display: flex;
+        padding: 0 5px;
+      }
+
+      .body-literal__predicate .eip-plain-text {
+        flex-grow: 1;
+      }
+
       .fact__wrapper {
         display: flex;
       }
@@ -177,11 +195,7 @@
         display: table-cell;
       }
 
-      .fact__subobject-socket::before {
-        content: "●";
-      }
-
-      .fact__subobject-socket {
+      .fact__attribute-cell .socket {
         text-align: right;
       }
 
