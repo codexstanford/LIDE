@@ -125,7 +125,8 @@
 
 (defn body-literal-html [{:keys [id]}]
   (let [literal @(rf/subscribe [::subs/literal id])]
-    [:div {:class "body-literal"}
+    [:div {:class "body-literal"
+           :data-literal-id id}
      [util/eip-plain-text
       {:value (:predicate literal)
        :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
@@ -143,7 +144,7 @@
             :on-click #(rf/dispatch [::events/add-literal-argument id])}
       "+ and..."]]))
 
-(defn rule-html [{:keys [id local-position]}]
+(defn rule [{:keys [id local-position]}]
   (let [rule @(rf/subscribe [::subs/populated-rule id])
         position @(rf/subscribe [::subs/position :rule id])]
     [:foreignObject {:width 1
@@ -152,7 +153,8 @@
                      :transform (str "translate(" (:x position) ", " (:y position) ")")}
      [:div {:class "rule__wrapper"
             :on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) id])}
-      [:div {:class "rule"}
+      [:div {:class "rule"
+             :ref #(rf/dispatch [::events/rendered :rule id %])}
        [util/eip-plain-text
         {:value (-> rule :head :predicate)
          :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]
@@ -180,82 +182,6 @@
        [:div {:class "rule__add-arg button-add"
               :on-click #(rf/dispatch [::events/add-body-literal id])}
         "+ and..."]]]]))
-
-(defn rule [{:keys [id local-position]}]
-  ;; TODO Should get layout data for EIPs from layout object
-  (let [rule-raw @(rf/subscribe [::subs/populated-rule id])
-        highlighted-connection @(rf/subscribe [::subs/highlighted-connection])
-        layout @(rf/subscribe [::subs/rule-layout id])]
-    [:g {:on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) id])
-         :on-click #(rf/dispatch [::events/select-rule id])
-         :transform (str "translate("
-                         (-> layout :container :position :x) ","
-                         (-> layout :container :position :y) ")")
-         :key id}
-     [:rect {:class  "rule__bg"
-             :width  (->> layout :container :size :width)
-             :height (->> layout :container :size :height)}]
-     [util/eip-svg-text
-      {:value (-> rule-raw :head :predicate)
-       :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])
-       :x graph/rule-head-padding
-       :y (/ (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding) 2)
-       :width  (->> layout :container :size :width)
-       :height (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding)}]
-     [:<>
-      (map-indexed
-       (fn [arg-index [arg arg-layout]]
-         [util/eip-svg-text
-          {:value arg
-           :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
-           :x graph/rule-binding-padding-x
-           :y (->> arg-layout :position :y)
-           :width  (->> layout :container :size :width)
-           :height (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding)
-           :display-style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
-           :key arg-index}])
-       (:args layout))]
-     [:<>
-      (map-indexed
-       (fn [arg-index [arg arg-layout]]
-         [:<> {:key arg-index}
-          [:rect
-           {:class "rule__internal-bg"
-            :x 0
-            :y (- (-> arg-layout :position :y)
-                  (/ (-> arg-layout :size :height) 2))
-            :width (-> layout :container :size :width)
-            :height (-> arg-layout :size :height) }]
-          [:text
-           {:x graph/rule-binding-padding-x
-            :y (->> arg-layout :position :y)}
-           arg]])
-       (:internals layout))]
-     [:text {:class "rule__add-arg"
-             :x graph/rule-binding-padding-x
-             :y (->> layout :add-argument :position :y)
-             :on-click #(rf/dispatch [::events/add-argument id])}
-      "+ Add argument"]
-     [:<>
-      (map
-       (fn [[literal-id literal-layout]]
-         [body-literal
-          {:layout literal-layout
-           :key literal-id}])
-       (:body layout))]
-     [:text {:class "rule__add-arg"
-             :x graph/rule-binding-padding-x
-             :y (->> layout :add-body-literal :position :y)
-             :on-click #(rf/dispatch [::events/add-body-literal id])}
-      "+ Add subgoal"]
-     [:text {:class "rule__add-arg"
-             :x graph/rule-binding-padding-x
-             :y (->> layout :add-defeat :position :y)
-             :on-click #(rf/dispatch [::events/add-defeat id])}
-      "+ Add override"]
-     [:rect {:class  "rule__border"
-             :width  (->> layout :container :size :width)
-             :height (->> layout :container :size :height)}]]))
 
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
@@ -322,33 +248,34 @@
 (defn socket-position [rule-layout literal-id {:keys [end]}]
   "Find the XY location where a connector should terminate on a particular rule
   and, optionally, body literal."
-  {:x (+ (-> rule-layout :container :position :x)
-         ;; Two concerns here: `end` being :start or :dest determines which side
-         ;; of the rule the socket is on, and if `literal-id` is non-nil the
-         ;; socket is slightly inset.
-         (cond
-           (and (= end :dest) (not= literal-id :unbound))
-           (- (-> rule-layout :container :size :width) 5)
+  (merge-with +
+              (-> rule-layout :container :position)
+              {:x (cond
+                    ;; Two concerns here: `end` being :start or :dest determines
+                    ;; which side of the rule the socket is on, and if
+                    ;; `literal-id` is non-nil the socket is slightly inset.
+                    (and (= end :dest) (not= literal-id :unbound))
+                    (- (-> rule-layout :container :size :width) 5)
 
-           (and (= end :dest) (= literal-id :unbound))
-           (-> rule-layout :container :size :width)
+                    (and (= end :dest) (= literal-id :unbound))
+                    (-> rule-layout :container :size :width)
 
-           (and (= end :start) (not= literal-id :unbound))
-           5
+                    (and (= end :start) (not= literal-id :unbound))
+                    5
 
-           :else
-           0))
-   :y (+ (-> rule-layout :container :position :y)
-         (/ graph/rule-head-height 2)
-         (if (= literal-id :unbound)
-           0
-           (get-in rule-layout [:body literal-id :container :position :y])))})
+                    :else
+                    0)
+               :y (+ (if (= literal-id :unbound)
+                       0
+                       (get-in rule-layout [:body literal-id :position :y]))
+                     ;; XXX magic number
+                     10)}))
 
 (defn rule-match-connector [{:keys [connection]}]
   "Draw a line connecting :src and :dest of `connection`."
   (let [[end-rule-id end-literal-id] (:dest connection)
-        start-layout @(rf/subscribe [::subs/rule-layout (:src connection)])
-        end-layout   @(rf/subscribe [::subs/rule-layout end-rule-id])
+        start-layout @(rf/subscribe [::subs/layout :rule (:src connection)])
+        end-layout   @(rf/subscribe [::subs/layout :rule end-rule-id])
         start (socket-position start-layout :unbound {:end :src})
         end   (socket-position end-layout end-literal-id {:end :dest})]
     [:<>
@@ -369,8 +296,8 @@
 (defn defeat-connector [{:keys [defeat]}]
   "Draw a line connecting the defeated and defeater rules from `defeat`."
   (let [{:keys [defeated defeater]} defeat
-        start-layout @(rf/subscribe [::subs/rule-layout defeater])
-        end-layout   @(rf/subscribe [::subs/rule-layout defeated])
+        start-layout @(rf/subscribe [::subs/layout :rule defeater])
+        end-layout   @(rf/subscribe [::subs/layout :rule defeated])
         start (socket-position start-layout :unbound {:end :src})
         end   (socket-position end-layout :unbound {:end :dest})]
     [:<>
@@ -391,7 +318,7 @@
 (defn defeat-connector-pending [{:keys [mouse-position]}]
   "Draw a line emanating from `defeater` while we select another rule to defeat."
   (let [defeater-id @(rf/subscribe [::subs/defeating-rule-pending])
-        defeater-layout @(rf/subscribe [::subs/rule-layout defeater-id])
+        defeater-layout @(rf/subscribe [::subs/layout :rule defeater-id])
         start (socket-position defeater-layout :unbound {:end :src})]
     (when defeater-id
       [:line {:class "defeat-connector"
@@ -443,12 +370,9 @@
                     [subobject-connectors {:fact-id id}]])
                  (:facts program))
             (map (fn [[id _]]
-                   [rule-html {:id  id
-                               :local-position local-position
-                               :key    id}]
-                   #_[rule {:id  id
-                            :local-position local-position
-                            :key    id}])
+                   [rule {:id  id
+                          :local-position local-position
+                          :key    id}])
                  (:rules program))
             (map (fn [match]
                    [rule-match-connector

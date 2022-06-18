@@ -83,24 +83,6 @@
        (assoc :id id))))
 
 (rf/reg-sub
- ::rule-layout
- (fn [[_ rule-id]]
-   [(rf/subscribe [::populated-rule rule-id])
-    (rf/subscribe [::rule-position rule-id])])
- (fn [[rule position]]
-   (assoc-in (graph/rule-layout rule) [:container :position] position)))
-
-(rf/reg-sub
- ::rule-positions
- (fn [db]
-   (-> db :positions :rule)))
-
-(rf/reg-sub
- ::rule-position
- (fn [db [_ rule-id]]
-   (get-in db [:positions :rule rule-id] {:x 0 :y 0})))
-
-(rf/reg-sub
  ::literal-positions
  (fn [db]
    (:literal-positions db)))
@@ -180,4 +162,5 @@
  (fn [[type position rendered]]
    (when rendered
      (case type
+       :rule (graph/rule-layout position rendered)
        :fact (graph/fact-layout position rendered)))))

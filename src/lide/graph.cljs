@@ -113,123 +113,36 @@
     (literal-layout-collapsed   min-width position literal)
     (literal-layout-uncollapsed min-width position literal)))
 
-(defn rule-layout [rule]
-  (let [label (-> rule :head :predicate)
-        label-width (get-text-width rule-head-font-size label)
+;; Layout information
+;;
+;; For some components of the graph, rather than describing their layout ahead
+;; of time and rendering them with pure SVG, we render them into foreignObjects
+;; and then read back the resulting layout. These are the functions that extract
+;; layout information from rendered components.
+;;
+;; See subs.cljs for a description of the rendering process.
 
-        name-height (+ rule-head-padding
-                       rule-head-font-size
-                       rule-head-padding)
-
-        predicate {:predicate label
-                   :position {:x rule-head-padding
-                              :y (/ name-height 2)}
-                   :size     {:width  label-width
-                              :height name-height}}
-
-        ;; Add Binding is also one arg tall
-        arg-height (+  rule-binding-padding-y
-                       rule-binding-font-size
-                       rule-binding-padding-y)
-        args-y-start (+ name-height
-                        (/ arg-height 2))
-        args (map-indexed
-              (fn [i arg]
-                [arg
-                 {:position {:y (+ args-y-start
-                                   (* i arg-height))}}])
-              (-> rule :head :args))
-        args-height (* arg-height (-> rule :head :args count))
-
-        internals-y-start (+ name-height
-                             args-height
-                             (/ arg-height 2))
-        internals (map-indexed
-                   (fn [i internal]
-                     [internal
-                      {:position {:y (+ internals-y-start
-                                        (* i arg-height))}
-                       :size {:width 150
-                              :height arg-height}}])
-                   (:internals rule))
-        internals-height (* arg-height (->> rule :internals count))
-
-        add-argument {:position {:y (+ name-height
-                                       args-height
-                                       internals-height
-                                       (/ arg-height 2))}}
-
-        literal-min-width (max label-width
-                               (- rule-container-min-width (* 2 rule-binding-padding-x)))
-        body-unset-width (->> (:body rule)
-                              (reduce (fn [[body-layouts position] literal]
-                                        (let [layout (literal-layout literal-min-width position literal)]
-                                          [(assoc body-layouts (:id literal) layout)
-                                           (update position :y #(+ %
-                                                                   (-> layout :container :size :height)
-                                                                   rule-body-literal-gutter))]))
-                                      [{} {:x rule-body-padding-x
-                                           :y (+ name-height
-                                                 args-height
-                                                 internals-height
-                                                 arg-height)}])
-                              first)
-        max-body-width (or (->> body-unset-width
-                                vals
-                                (map #(-> % :container :size :width))
-                                (apply max))
-                           0)
-        body (util/map-vals (fn [literal]
-                              (assoc-in literal [:container :size :width] max-body-width))
-                   body-unset-width)
-        body-height (->> body
-                         vals
-                         (map #(-> % :container :size :height))
-                         (interpose rule-body-literal-gutter)
-                         (reduce + 0))
-
-        add-body-literal {:position {:y (+ name-height
-                                           args-height
-                                           internals-height
-                                           body-height
-                                           arg-height
-                                           (/ arg-height 2))}}
-
-        add-defeat {:position {:y (+ name-height
-                                     args-height
-                                     internals-height
-                                     arg-height
-                                     arg-height
-                                     body-height
-                                     (/ arg-height 2))}}]
-    {:predicate predicate
-     :args (into {} args)
-     :internals (into {} internals)
-     :add-argument add-argument
-     :body body
-     :add-body-literal add-body-literal
-     :add-defeat add-defeat
-     :container {:size {:width  (max rule-container-min-width
-                                     (+ label-width (* 2 rule-head-padding))
-                                     (+ max-body-width (* 2 rule-head-padding)))
-                        :height (+ name-height
-                                   args-height
-                                   arg-height
-                                   internals-height
-                                   body-height
-                                   arg-height
-                                   arg-height)}}}))
-
-(defn fact-layout [position element]
-  "Compute useful information about the layout of a rendered fact.
-
-  The fact in question is already rendered as `element`, and we're just reading
-  data from there."
+(defn rule-layout [position element]
   (let [root-position {:x (.-offsetLeft element)
                        :y (.-offsetTop  element)}]
-    ;; n.b. Container position isn't decided here, just passed in. Positions are
-    ;; figured separately because they're user-writable - here we're mostly just
-    ;; figuring out what the rendering engine did for us.
+    {:container {:position position
+                 :size {:width  (.-offsetWidth  element)
+                        :height (.-offsetHeight element)}}
+     :body (->> (.querySelectorAll element ".body-literal")
+                (map
+                 (fn [literal-elem]
+                   [(uuid (.getAttribute literal-elem "data-literal-id"))
+                    ;; We want the relative position of the attribute row,
+                    ;; so subtract the position of the root element.
+                    {:position {:x (- (.-offsetLeft literal-elem) (:x root-position))
+                                :y (- (.-offsetTop  literal-elem) (:y root-position))}
+                     :size {:width  (.-offsetWidth  literal-elem)
+                            :height (.-offsetHeight literal-elem)}}]))
+                (into {}))}))
+
+(defn fact-layout [position element]
+  (let [root-position {:x (.-offsetLeft element)
+                       :y (.-offsetTop  element)}]
     {:container {:position position
                  :size {:width  (.-offsetWidth  element)
                         :height (.-offsetHeight element)}}
@@ -237,8 +150,6 @@
                       (map
                        (fn [attr-elem]
                          [(.getAttribute attr-elem "data-attribute-name")
-                          ;; We want the relative position of the attribute row,
-                          ;; so subtract the position of the root element.
                           {:position {:x (- (.-offsetLeft attr-elem) (:x root-position))
                                       :y (- (.-offsetTop  attr-elem) (:y root-position))}
                            :size {:width  (.-offsetWidth  attr-elem)
