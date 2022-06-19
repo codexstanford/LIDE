@@ -9,6 +9,13 @@
    [lide.util :as util]
    ))
 
+;; General purpose escape/cancel handler
+
+(rf/reg-event-db
+ ::escape
+ (fn [db _]
+   (dissoc db :defeated-selecting-defeater)))
+
 ;; Undo/redo config
 
 (undo/undo-config!
