@@ -215,16 +215,16 @@
       [:div
        {:class "fact"
         :ref #(rf/dispatch [::events/rendered :fact id %])}
-       [:div (:name fact)]
+       [:div {:class "fact__name"} (:name fact)]
        [:div {:class "fact__attributes"}
         (map
          (fn [[attr-name attr-value]]
            [:div {:class "fact__attribute"
                   :data-attribute-name attr-name
                   :key attr-name}
-            [:div {:class "fact__attribute-cell"}
+            [:div {:class "fact__attribute-name fact__attribute-cell"}
              attr-name]
-            [:div {:class "fact__attribute-cell"}
+            [:div {:class "fact__attribute-value fact__attribute-cell"}
              (condp = (:type attr-value)
                :primitive (:value attr-value)
                :subobject [socket])]])

@@ -158,6 +158,7 @@
       .body-literal {
         border: 1px solid #666;
         margin: 0 5px;
+        border-radius: 4px;
       }
 
       .body-literal__predicate {
@@ -184,6 +185,10 @@
         user-select: none;
       }
 
+      .fact__name {
+        font-weight: bold;
+      }
+
       .fact__attributes {
         display: table; /* can't do a real table because then offsetTop doesn't work */
       }
@@ -195,6 +200,14 @@
 
       .fact__attribute-cell {
         display: table-cell;
+      }
+
+      .fact__attribute-name {
+        padding-right: 8px;
+      }
+
+      .fact__attribute-value {
+        font-weight: bold;
       }
 
       .fact__attribute-cell .socket {
