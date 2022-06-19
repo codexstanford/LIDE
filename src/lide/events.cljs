@@ -212,7 +212,7 @@
  ::mouse-move
  (fn [db [_ event-position]]
    (cond
-     (contains? db :defeating-rule-pending)
+     (contains? db :defeated-selecting-defeater)
      (assoc db :mouse-position event-position)
 
      ;; XXX There's a bug here that I haven't quite figured out: When zoomed way
@@ -304,21 +304,27 @@
 ;; TODO Figure out undo for the two-stage process of adding defeats
 
 (rf/reg-event-db
- ::add-defeat
- (fn [db [_ rule-id]]
-   (let [defeating-rule-id (:defeating-rule-pending db)]
-     (cond
-       (nil? defeating-rule-id)
-       (assoc db :defeating-rule-pending rule-id)
+ ::defeated-selecting-defeater
+ (fn [db [_ defeated-id]]
+   (assoc db :defeated-selecting-defeater defeated-id)))
 
-       (= defeating-rule-id rule-id)
-       (dissoc db :defeating-rule-pending)
+(rf/reg-event-db
+ ::select-defeater
+ (fn [db [_ defeater-id]]
+   (let [defeated-id (:defeated-selecting-defeater db)]
+     (cond
+       (nil? defeated-id)
+       db
+
+       ;; Odd thing to do, probably interpret it as a cancel
+       (= defeated-id defeater-id)
+       (dissoc db :defeated-selecting-defeater)
 
        :else
        (-> db
-           (update-in [:program :defeatings] #(conj % {:defeated rule-id
-                                                       :defeater defeating-rule-id}))
-           (dissoc :defeating-rule-pending))))))
+           (update-in [:program :defeatings] #(conj % {:defeated defeated-id
+                                                       :defeater defeater-id}))
+           (dissoc :defeated-selecting-defeater))))))
 
 (rf/reg-event-db
  ::remove-defeat

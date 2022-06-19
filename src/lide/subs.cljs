@@ -66,9 +66,9 @@
    (-> db :program :defeatings)))
 
 (rf/reg-sub
- ::defeating-rule-pending
+ ::defeated-selecting-defeater
  (fn [db]
-   (-> db :defeating-rule-pending)))
+   (-> db :defeated-selecting-defeater)))
 
 (rf/reg-sub
  ::facts

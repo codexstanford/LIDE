@@ -21,8 +21,8 @@
     {:x (.-x svg-point)
      :y (.-y svg-point)}))
 
-(defn socket []
-  [:div {:class "socket"}])
+(defn socket [props]
+  [:div (merge props {:class "socket"})])
 
 (defn literal-collapse [id layout]
   (let [symbol  (if (:collapsed layout) "+" "-")
@@ -131,7 +131,6 @@
     [:div {:class "body-literal"
            :data-literal-id id}
      [:div {:class "body-literal__predicate"}
-      [socket]
       [util/eip-plain-text
        {:value (:predicate literal)
         :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
@@ -162,7 +161,7 @@
       [:div {:class "rule"
              :ref #(rf/dispatch [::events/rendered :rule id %])}
        [:div {:class "rule__head-predicate"}
-        [socket]
+        [socket {:on-click #(rf/dispatch [::events/select-defeater id])}]
         [util/eip-plain-text
          {:value (-> rule :head :predicate)
           :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]
@@ -200,7 +199,10 @@
            "+ and..."]]
          [:div {:class "rule__add-arg button-add"
                 :on-click #(rf/dispatch [::events/add-body-literal id])}
-          "+ when..."])]]]))
+          "+ when..."])
+       [:div {:class "rule__add-arg button-add"
+              :on-click #(rf/dispatch [::events/defeated-selecting-defeater id])}
+        "+ unless..."]]]]))
 
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
@@ -335,11 +337,11 @@
              :on-click #(rf/dispatch [::events/remove-defeat defeat])}]]))
 
 (defn defeat-connector-pending [{:keys [mouse-position]}]
-  "Draw a line emanating from `defeater` while we select another rule to defeat."
-  (let [defeater-id @(rf/subscribe [::subs/defeating-rule-pending])
-        defeater-layout @(rf/subscribe [::subs/layout :rule defeater-id])
-        start (socket-position defeater-layout :unbound {:end :src})]
-    (when defeater-id
+  "Draw a line emanating from the defeated rule while we select another rule to be defeater."
+  (let [defeated-id @(rf/subscribe [::subs/defeated-selecting-defeater])
+        defeated-layout @(rf/subscribe [::subs/layout :rule defeated-id])
+        start (socket-position defeated-layout :unbound {:end :dest})]
+    (when defeated-id
       [:line {:class "defeat-connector"
               :x1 (:x start)
               :y1 (:y start)
