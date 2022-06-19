@@ -195,6 +195,7 @@
                {:ref #(reset! !input %)
                 :class "eip-plain-text"
                 :value @!value
+                :on-focus #(.select @!input)
                 :on-change #(reset! !value (-> % .-target .-value))
                 :on-blur on-blur
                 :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
