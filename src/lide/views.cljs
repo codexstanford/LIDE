@@ -135,19 +135,24 @@
        {:value (:predicate literal)
         :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
       [socket]]
-     [:div {:class "rule__tutor"} "is true of..."]
-     [:<>
-      (map-indexed
-       (fn [arg-index arg]
-         [util/eip-plain-text
-          {:value arg
-           :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
-           :style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
-           :key arg}])
-       (:args literal))]
-     [:div {:class "button-add"
-            :on-click #(rf/dispatch [::events/add-literal-argument id])}
-      "+ and..."]]))
+     (if (seq (:args literal))
+       [:<>
+        [:div {:class "rule__tutor"} "is true of..."]
+        (map-indexed
+         (fn [arg-index arg]
+           [util/eip-plain-text
+            {:value arg
+             :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
+             :style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
+             :key arg}])
+         (:args literal))
+        [:div {:class "button-add"
+               :on-click #(rf/dispatch [::events/add-literal-argument id])}
+         "+ and..."]]
+
+       [:div {:class "button-add"
+              :on-click #(rf/dispatch [::events/add-literal-argument id])}
+        "+ is true of..."])]))
 
 (defn rule [{:keys [id local-position]}]
   (let [rule @(rf/subscribe [::subs/populated-rule id])
