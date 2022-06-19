@@ -167,30 +167,40 @@
          {:value (-> rule :head :predicate)
           :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]
         [socket]]
-       [:div {:class "rule__tutor"} "is true of..."]
-       [:<>
-        (map-indexed
-         (fn [arg-index arg]
-           [util/eip-plain-text
-            {:value arg
-             :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
-             ;; XXX style isn't updating properly on change
-             :style (when (util/variable? arg) {"color" (util/hash-to-hsl arg)})
-             :key arg-index}])
-         (-> rule :head :args))]
-       [:div {:class "rule__add-arg button-add"
-              :on-click #(rf/dispatch [::events/add-argument id])}
-        "+ and..."]
-       [:div {:class "rule__tutor"} "when..."]
-       [:<>
-        (map
-         (fn [literal]
-           [body-literal-html {:id (:id literal)
-                               :key (:id literal)}])
-         (:body rule))]
-       [:div {:class "rule__add-arg button-add"
-              :on-click #(rf/dispatch [::events/add-body-literal id])}
-        "+ and..."]]]]))
+       (if (seq (-> rule :head :args))
+         [:<>
+          [:div {:class "rule__tutor"} "is true of..."]
+          [:<>
+           (map-indexed
+            (fn [arg-index arg]
+              [util/eip-plain-text
+               {:value arg
+                :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
+                ;; XXX style isn't updating properly on change
+                :style (when (util/variable? arg) {"color" (util/hash-to-hsl arg)})
+                :key arg-index}])
+            (-> rule :head :args))]
+          [:div {:class "rule__add-arg button-add"
+                 :on-click #(rf/dispatch [::events/add-argument id])}
+           "+ and..."]]
+         [:div {:class "rule__add-arg button-add"
+                :on-click #(rf/dispatch [::events/add-argument id])}
+          "+ is true of..."])
+       (if (seq (:body rule))
+         [:<>
+          [:div {:class "rule__tutor"} "when..."]
+          [:<>
+           (map
+            (fn [literal]
+              [body-literal-html {:id (:id literal)
+                                  :key (:id literal)}])
+            (:body rule))]
+          [:div {:class "rule__add-arg button-add"
+                 :on-click #(rf/dispatch [::events/add-body-literal id])}
+           "+ and..."]]
+         [:div {:class "rule__add-arg button-add"
+                :on-click #(rf/dispatch [::events/add-body-literal id])}
+          "+ when..."])]]]))
 
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
