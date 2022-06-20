@@ -57,11 +57,13 @@
 
 (defn variable? [arg]
   "True if `arg` is a string starting with an upper-case letter."
-  (let [first-char (subs arg 0 1)
-        first-char-alpha (apply str (re-seq #"[a-zA-Z]" first-char))]
-    (= first-char
-       first-char-alpha
-       (string/upper-case first-char))))
+  (if (string/blank? arg)
+      false
+      (let [first-char (subs arg 0 1)
+            first-char-alpha (apply str (re-seq #"[a-zA-Z]" first-char))]
+        (= first-char
+           first-char-alpha
+           (string/upper-case first-char)))))
 
 (defn ground? [arg]
   (not (variable? arg)))
@@ -186,10 +188,12 @@
                 :on-click start-editing}
          value]))))
 
-(defn eip-plain-text [{:keys [value on-blur] :as props}]
+(defn eip-plain-text [{:keys [value on-blur style]}]
   (let [!value (r/atom value)
         !input (r/atom nil)]
-    (fn [{:keys [value on-blur]}]
+    (fn [{:keys [value on-blur style]
+          :or {style (constantly {})}
+          :as props}]
       [:input (merge
                props
                {:ref #(reset! !input %)
@@ -197,6 +201,12 @@
                 :value @!value
                 :on-focus #(.select @!input)
                 :on-change #(reset! !value (-> % .-target .-value))
-                :on-blur on-blur
                 :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
-                                (.blur @!input))})])))
+                                (.blur @!input))
+                :style (when @!value (style @!value))})])))
+
+(defn style-arg [arg]
+  "Hash `arg` to a color if it's a variable and return an appropriate style map."
+  (if (variable? arg)
+    {"color" (hash-to-hsl arg)}
+    {}))

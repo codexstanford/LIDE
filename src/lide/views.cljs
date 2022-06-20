@@ -74,7 +74,7 @@
            :y (->> arg-layout :position :y)
            :width  (->> arg-layout :size :width)
            :height (->> layout :container :size :height)
-           :style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
+           :style util/style-arg
            :key arg-index}
           arg])
        (:args layout))]
@@ -143,7 +143,7 @@
            [util/eip-plain-text
             {:value arg
              :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
-             :style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
+             :style util/style-arg
              :key arg}])
          (:args literal))
         [:div {:class "button-add"
@@ -180,8 +180,7 @@
               [util/eip-plain-text
                {:value arg
                 :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
-                ;; XXX style isn't updating properly on change
-                :style (when (util/variable? arg) {"color" (util/hash-to-hsl arg)})
+                :style util/style-arg
                 :key arg-index}])
             (-> rule :head :args))]
           [:div {:class "rule__add-arg button-add"
