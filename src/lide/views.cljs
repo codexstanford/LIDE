@@ -282,7 +282,7 @@
                     ;; which side of the rule the socket is on, and if
                     ;; `literal-id` is non-nil the socket is slightly inset.
                     (and (= end :dest) (not= literal-id :unbound))
-                    (- (-> rule-layout :container :size :width) 20)
+                    (- (-> rule-layout :container :size :width) 17)
 
                     (and (= end :dest) (= literal-id :unbound))
                     (- (-> rule-layout :container :size :width) 9)
