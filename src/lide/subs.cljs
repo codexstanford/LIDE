@@ -135,9 +135,12 @@
 ;;
 ;; So, we do a two-stage rendering process as follows:
 ;;  - Render into a foreignObject
-;;  - Using :ref, dispatch an event with a reference to the rendered element
-;;  - Subscribe to the value of this rendered element (is this safe?) and read
-;;    precise layout information from it to compute ::layout.
+;;  - Using :ref, keep track of the actual rendered element we're interested in
+;;  - Using component-did-{mount,update}, dispatch an event every time the
+;;    component rerenders and store that element (plus a generation number, to
+;;    make re-frame detect inequality) in app-db
+;;  - Subscribe to the value of this rendered element/generation pair and read
+;;    precise layout information from the element to compute ::layout.
 ;;
 ;; ::layout also depends on the node's position, which can be changed by the
 ;; user, and is handled separately. It's important to keep reads and writes
@@ -159,8 +162,8 @@
    [(atom type)
     (rf/subscribe [::position type id])
     (rf/subscribe [::rendered type id])])
- (fn [[type position rendered]]
-   (when rendered
+ (fn [[type position {:keys [element _]}]]
+   (when element
      (case type
-       :rule (graph/rule-layout position rendered)
-       :fact (graph/fact-layout position rendered)))))
+       :rule (graph/rule-layout position element)
+       :fact (graph/fact-layout position element)))))

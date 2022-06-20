@@ -342,5 +342,6 @@
 
 (rf/reg-event-db
  ::rendered
- (fn [db [_ entity-type entity-id element]]
-   (assoc-in db (conj [:rendered] entity-type entity-id) element)))
+ (fn [db [_ entity-type entity-id element generation]]
+   (assoc-in db (conj [:rendered] entity-type entity-id) {:element element
+                                                          :generation generation})))
