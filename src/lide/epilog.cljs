@@ -57,24 +57,20 @@
                  (minimize-attribute-subgoals arg attrs)))))
 
 (defn attribute-subgoals [attrs]
-  (->> attrs
-       (map (fn [[var attr]]
-              (str attr "(" var ", " (attribute-var-name var attr) ")")))
-       (string/join "  &\n  ")))
+  (map (fn [[var attr]]
+         (str attr "(" var ", " (attribute-var-name var attr) ")"))
+       attrs))
 
 (defn rule-to-epilog [rule defeating-rules]
   (let [head (literal-to-epilog (:head rule))
-        attrs (attribute-subgoals (required-attributes (:body rule)))
+        attrs (string/join " &\n  " (attribute-subgoals (required-attributes (:body rule))))
         body (string/join " &\n  " (map literal-to-epilog (:body rule)))
-        defeaters (string/join " &\n  " (map #(str "~" (literal-to-epilog (:head %))) defeating-rules))]
+        defeaters (string/join " &\n  " (map #(str "~" (literal-to-epilog (:head %))) defeating-rules))
+        sections (remove string/blank? [attrs body defeaters])]
     (str head
-         (when (or attrs body defeaters)
+         (when (seq sections)
            (str " :-\n  "))
-         (string/join " &\n  "
-                      (remove string/blank?
-                              [attrs
-                               body
-                               defeaters])))))
+         (string/join " &\n  " sections))))
 
 (defn attribute-value-to-string [facts {:keys [type value]}]
   (condp = type
