@@ -1,7 +1,8 @@
 (ns lide.epilog
   "Convert logic program constructs to their Epilog representations."
   (:require
-   [clojure.string :as string]))
+   [clojure.string :as string]
+   [lide.util :as util]))
 
 (defn literal-to-epilog [literal]
   (str (when (:negative literal) "~")
@@ -13,27 +14,67 @@
                        (->
                         (reduce
                          (fn [[anon-idx acc] arg]
-                           (if (= arg :unspecified)
+                           (cond
+                             (= arg :unspecified)
                              [(inc anon-idx) (conj acc (str "_" anon-idx))]
+
+                             (> (count (string/split arg "->")) 1)
+                             [anon-idx (conj acc (string/replace arg "->" "_"))]
+
+                             :else
                              [anon-idx (conj acc arg)]))
                          [0 []]
                          (:args literal))
                         (get 1)))
           ")"))))
 
+(defn attribute-var-name [threading-var attr]
+  (str threading-var "_" attr))
+
+(defn minimize-attribute-subgoals [threading-var attrs]
+  (mapcat (fn [[attr sub-attrs]]
+            (concat
+             [[threading-var attr]]
+             (minimize-attribute-subgoals (attribute-var-name threading-var attr) sub-attrs)))
+          attrs))
+
+(defn required-attributes [literals]
+  "Determine what attribute accesses are needed to produce the rule body
+  constituted by `literals`.
+
+  Some of `literals` may have arguments representing attribute paths, which map
+  to more than one subgoal."
+  (->> literals
+       (map :args)
+       flatten
+       (map util/parse-body-arg)
+       (filter #(= :attribute-path (:type %)))
+       (map :value)
+       (reduce (fn [acc attr-path]
+                 (update-in acc attr-path #(or % {})))
+               {})
+       (mapcat (fn [[arg attrs]]
+                 (minimize-attribute-subgoals arg attrs)))))
+
+(defn attribute-subgoals [attrs]
+  (->> attrs
+       (map (fn [[var attr]]
+              (str attr "(" var ", " (attribute-var-name var attr) ")")))
+       (string/join "  &\n  ")))
+
 (defn rule-to-epilog [rule defeating-rules]
   (let [head (literal-to-epilog (:head rule))
-        body (when (seq (:body rule))
-               (string/join " &\n  " (map literal-to-epilog (:body rule))))
-        defeaters (when (seq defeating-rules)
-                    (string/join " &\n  ~" (map #(literal-to-epilog (:head %)) defeating-rules)))]
+        attrs (attribute-subgoals (required-attributes (:body rule)))
+        body (string/join " &\n  " (map literal-to-epilog (:body rule)))
+        defeaters (string/join " &\n  " (map #(str "~" (literal-to-epilog (:head %))) defeating-rules))]
     (str head
-         (when (or body (seq defeaters))
+         (when (or attrs body defeaters)
            (str " :-\n  "))
-         body
-         (when (and body (seq defeaters))
-           (str " &\n  ~"))
-         defeaters)))
+         (string/join " &\n  "
+                      (remove string/blank?
+                              [attrs
+                               body
+                               defeaters])))))
 
 (defn attribute-value-to-string [facts {:keys [type value]}]
   (condp = type

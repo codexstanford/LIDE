@@ -93,6 +93,20 @@
                     (ground? b-arg)))
              (map vector (:args a) (:args b)))))
 
+(defn parse-body-arg [arg]
+  "Parse an argument to a body literal. Some special formats are allowed in this
+  context: `arg` might be more than a plain string."
+  (let [unparsable {:type :uncontrolled
+                    :value arg}]
+    (cond
+      (string/blank? arg) unparsable ;; redundant with :else but a useful guard
+
+      (> (count (string/split arg "->")) 1)
+      {:type :attribute-path
+       :value (string/split arg "->")}
+
+      :else unparsable)))
+
 (defn internal-names [rule]
   (->> rule
        :body
