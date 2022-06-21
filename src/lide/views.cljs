@@ -184,8 +184,7 @@
               [socket {:on-click #(rf/dispatch [::events/select-defeater id])}]
               [util/eip-plain-text
                {:value (-> rule :head :predicate)
-                :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]
-              [socket]]
+                :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]]
              (if (seq (-> rule :head :args))
                [:<>
                 [:div {:class "rule__tutor"} "is true of..."]
@@ -219,9 +218,10 @@
                [:div {:class "rule__add-arg button-add"
                       :on-click #(rf/dispatch [::events/add-body-literal id])}
                 "+ when..."])
-             [:div {:class "rule__add-arg button-add"
+             [:div {:class "rule__add-defeater button-add"
                     :on-click #(rf/dispatch [::events/defeated-selecting-defeater id])}
-              "+ unless..."]]]]))})))
+              [:div {:class "rule__add-defeater-label"} "+ unless..."]
+              [socket]]]]]))})))
 
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
@@ -339,7 +339,10 @@
         start-layout @(rf/subscribe [::subs/layout :rule defeater])
         end-layout   @(rf/subscribe [::subs/layout :rule defeated])
         start (socket-position start-layout :unbound {:end :src})
-        end   (socket-position end-layout :unbound {:end :dest})]
+        end   (merge-with +
+                          (socket-position end-layout :unbound {:end :dest})
+                          {:y (-> end-layout :container :size :height)}
+                          {:y -20})]
     [:<>
      [:line {:x1 (:x start)
              :y1 (:y start)
@@ -359,7 +362,10 @@
   "Draw a line emanating from the defeated rule while we select another rule to be defeater."
   (let [defeated-id @(rf/subscribe [::subs/defeated-selecting-defeater])
         defeated-layout @(rf/subscribe [::subs/layout :rule defeated-id])
-        start (socket-position defeated-layout :unbound {:end :dest})]
+        start (merge-with +
+                          (socket-position defeated-layout :unbound {:end :dest})
+                          {:y (-> defeated-layout :container :size :height)}
+                          {:y -20})]
     (when defeated-id
       [:line {:class "defeat-connector"
               :x1 (:x start)
