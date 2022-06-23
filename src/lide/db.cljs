@@ -69,14 +69,14 @@
 
       ;; Facts consist of a name and a set of key-value pairs, defining a set of
       ;; simple object-attribute relations.
-      ;; TODO Allow top-level primitive facts
+      ;; TODO What about multiple facts of the same type?
       :facts
-      {claim-id {:name "claim1"
+      {claim-id {:type "claim"
                  :attributes {"hospitalization" {:type :subobject
                                                  :value hospitalization-id}
                               "activity" {:type :primitive
                                           :value "skydiving"}}}
-       hospitalization-id {:name "hospitalization1"
+       hospitalization-id {:type "hospitalization"
                            :attributes {"duration" {:type :primitive
                                                     :value (* 60 60 24)}}}}}
 

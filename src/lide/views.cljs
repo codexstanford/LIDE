@@ -236,7 +236,7 @@
       [:div
        {:class "fact"
         :ref #(rf/dispatch [::events/rendered :fact id %])}
-       [:div {:class "fact__name"} (:name fact)]
+       [:div {:class "fact__name"} (:type fact)]
        [:div {:class "fact__attributes"}
         (map
          (fn [[attr-name attr-value]]
