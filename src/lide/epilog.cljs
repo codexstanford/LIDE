@@ -4,6 +4,9 @@
    [clojure.string :as string]
    [lide.util :as util]))
 
+(defn attribute-predicate [attr-name]
+  (str "ATTR_" attr-name))
+
 (defn literal-to-epilog [literal]
   (str (when (:negative literal) "~")
        (:predicate literal)
@@ -58,7 +61,7 @@
 
 (defn attribute-subgoals [attrs]
   (map (fn [[var attr]]
-         (str attr "(" var ", " (attribute-var-name var attr) ")"))
+         (str (attribute-predicate attr) "(" var ", " (attribute-var-name var attr) ")"))
        attrs))
 
 (defn rule-to-epilog [rule defeating-rules]
@@ -75,10 +78,10 @@
 (defn attribute-value-to-string [facts {:keys [type value]}]
   (condp = type
     :primitive value
-    :subobject (-> facts (get value) :name)))
+    :subobject (-> facts (get value) :type)))
 
-(defn fact-to-epilog [facts id {:keys [name attributes]}]
+(defn fact-to-epilog [facts id {:keys [type attributes]}]
   (->> attributes
        (map (fn [[k v]]
-              (str k "(" name  ", " (attribute-value-to-string facts v) ")")))
+              (str (attribute-predicate k) "(" type  ", " (attribute-value-to-string facts v) ")")))
        (string/join "\n")))
