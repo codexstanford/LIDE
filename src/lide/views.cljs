@@ -454,7 +454,7 @@
       (->> facts
            (map
             (fn [[id fact]]
-              (epilog/fact-to-epilog facts id fact)))
+              (epilog/stringify-fact facts id fact)))
            (string/join "\n\n"))
       "\n\n########################\n# Converse productions #\n########################\n\n"
       (string/join "\n\n" (map epilog/stringify-converse-operation compiled-rules))]]))

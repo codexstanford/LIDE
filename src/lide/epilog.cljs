@@ -94,7 +94,7 @@
     :primitive value
     :subobject (-> facts (get value) :type)))
 
-(defn fact-to-epilog [facts id {:keys [type attributes]}]
+(defn stringify-fact [facts id {:keys [type attributes]}]
   (->> attributes
        (map (fn [[k v]]
               (str (attribute-predicate k) "(" type  ", " (attribute-value-to-string facts v) ")")))
