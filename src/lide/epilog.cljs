@@ -7,7 +7,7 @@
 (defn attribute-predicate [attr-name]
   (str "ATTR_" attr-name))
 
-(defn literal-to-epilog [literal]
+(defn stringify-literal [literal]
   (str (when (:negative literal) "~")
        (:predicate literal)
        (when (not-empty (:args literal))
@@ -61,19 +61,33 @@
 
 (defn attribute-subgoals [attrs]
   (map (fn [[var attr]]
-         (str (attribute-predicate attr) "(" var ", " (attribute-var-name var attr) ")"))
+         {:predicate (attribute-predicate attr)
+          :args [var (attribute-var-name var attr)]})
        attrs))
 
-(defn rule-to-epilog [rule defeating-rules]
-  (let [head (literal-to-epilog (:head rule))
-        attrs (string/join " &\n  " (attribute-subgoals (required-attributes (:body rule))))
-        body (string/join " &\n  " (map literal-to-epilog (:body rule)))
-        defeaters (string/join " &\n  " (map #(str "~" (literal-to-epilog (:head %))) defeating-rules))
-        sections (remove string/blank? [attrs body defeaters])]
-    (str head
-         (when (seq sections)
-           (str " :-\n  "))
-         (string/join " &\n  " sections))))
+(defn compile-rule [rule defeating-rules]
+  (let [attrs (attribute-subgoals (required-attributes (:body rule)))
+        body (:body rule)
+        defeaters (map #(assoc (:head %) :negative true) defeating-rules)]
+    {:head (:head rule)
+     :body (concat attrs body defeaters)}))
+
+(defn stringify-rule [compiled-rule]
+  (str (stringify-literal (:head compiled-rule))
+       (when (seq (:body compiled-rule))
+         (str " :-\n  "))
+       (string/join " &\n  " (map stringify-literal (:body compiled-rule)))))
+
+(defn stringify-converse-operation [compiled-rule]
+  "Render an operation that is the converse of `compiled-rule`.
+
+  These are useful for forward chaining."
+  (str "tick"
+       (when (seq (:body compiled-rule))
+         (str " ::\n  "
+              (string/join " &\n  " (map stringify-literal (:body compiled-rule)))))
+       "\n  ==> "
+       (stringify-literal (:head compiled-rule))))
 
 (defn attribute-value-to-string [facts {:keys [type value]}]
   (condp = type

@@ -436,25 +436,28 @@
 (defn epilog-panel []
   (let [rules @(rf/subscribe [::subs/populated-rules])
         defeatings @(rf/subscribe [::subs/defeatings])
-        facts @(rf/subscribe [::subs/facts])]
+        facts @(rf/subscribe [::subs/facts])
+
+        compiled-rules
+        (->> rules
+             (map
+              (fn [[id rule]]
+                (epilog/compile-rule rule
+                                     (->> defeatings
+                                          (filter #(= id (:defeated %)))
+                                          (mapv #(get rules (:defeater %))))))))]
     [:div {:class "epilog-inspector"}
      [:pre {:class "code"}
       "#########\n# Rules #\n#########\n\n"
-      (->> rules
-           (map
-            (fn [[id rule]]
-              (epilog/rule-to-epilog
-               rule
-               (->> defeatings
-                    (filter #(= id (:defeated %)))
-                    (mapv #(get rules (:defeater %)))))))
-           (string/join "\n\n"))
+      (string/join "\n\n" (map epilog/stringify-rule compiled-rules))
       "\n\n#########\n# Facts #\n#########\n\n"
       (->> facts
            (map
             (fn [[id fact]]
               (epilog/fact-to-epilog facts id fact)))
-           (string/join "\n\n"))]]))
+           (string/join "\n\n"))
+      "\n\n########################\n# Converse productions #\n########################\n\n"
+      (string/join "\n\n" (map epilog/stringify-converse-operation compiled-rules))]]))
 
 (defn toolbar []
   (let [undos? @(rf/subscribe [:undos?])
