@@ -24,37 +24,30 @@
         hospitalization-id (random-uuid)]
     {:program
      {:literals
-      (into
-       {}
-       [[claim-pay-id  {:predicate "recommend_pay"
-                        :args ["Claim"]}]
-        [claim-decline-id {:predicate "claim.recommendation"
-                           :args ["Claim" "decline"]}]
-        [plan-in-effect-id {:predicate "plan_in_effect"
-                            :args ["Claim"]}]
-        [plan-in-effect-head-id {:predicate "plan_in_effect"
-                                 :args ["Claim"]}]
-        [partial-day-id {:predicate "partial_day"
-                         :args ["Claim"]}]
-        [exclusion-id {:predicate "exclusion"
-                       :args ["Claim" "E"]}]
-        [exclusion-4-3i-id {:predicate "exclusion"
-                            :args ["Claim" "4.3i"]}]
-        [skydiving-id {:predicate "activity"
-                       :args ["Claim" "skydiving"]}]])
+      {claim-pay-id  {:predicate "recommend_pay"
+                      :args ["Claim"]}
+       claim-decline-id {:predicate "claim.recommendation"
+                         :args ["Claim" "decline"]}
+       plan-in-effect-id {:predicate "plan_in_effect"
+                          :args ["Claim"]}
+       plan-in-effect-head-id {:predicate "plan_in_effect"
+                               :args ["Claim"]}
+       partial-day-id {:predicate "partial_day"
+                       :args ["Claim"]}
+       exclusion-id {:predicate "exclusion"
+                     :args ["Claim" "E"]}
+       exclusion-4-3i-id {:predicate "exclusion"
+                          :args ["Claim" "4.3i"]}
+       skydiving-id {:predicate "activity"
+                     :args ["Claim" "skydiving"]}}
 
       :rules
-      (into
-       {}
-       [[claim-pay-rule-id
-         {:head claim-pay-id
-          :body [plan-in-effect-id]}]
-        [plan-in-effect-rule-id
-         {:head plan-in-effect-head-id
-          :body []}]
-        [skydiving-rule-id
-         {:head exclusion-4-3i-id
-          :body [skydiving-id]}]])
+      {claim-pay-rule-id {:head claim-pay-id
+                          :body [plan-in-effect-id]}
+       plan-in-effect-rule-id {:head plan-in-effect-head-id
+                               :body []}
+       skydiving-rule-id {:head exclusion-4-3i-id
+                          :body [skydiving-id]}}
 
       ;; These individual defeater/defeated relationships together define a
       ;; superiority relation in the manner of Nute's Defeasible Logic (NDL).
@@ -84,10 +77,8 @@
      {}
 
      :positions
-     {:rule (into
-             {}
-             [[claim-pay-rule-id {:x 0, :y 0}]
-              [plan-in-effect-rule-id  {:x 316, :y 222}]
-              [skydiving-rule-id {:x 331, :y -57}]])
+     {:rule {claim-pay-rule-id {:x 0, :y 0}
+             plan-in-effect-rule-id  {:x 316, :y 222}
+             skydiving-rule-id {:x 331, :y -57}}
 
       :fact {}}}))
