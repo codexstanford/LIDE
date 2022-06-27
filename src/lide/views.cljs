@@ -3,7 +3,7 @@
    [clojure.string :as string]
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [lide.epilog :as epilog]
+   [lide.epilog.core :as epilog]
    [lide.events :as events]
    [lide.graph :as graph]
    [lide.subs :as subs]
@@ -111,11 +111,11 @@
               :id id}
    [rule-html props]])
 
-(defn rule-html [{:keys [id local-position store-ref]}]
+(defn rule-html [{:keys [id localize-position store-ref]}]
   (let [rule @(rf/subscribe [::subs/populated-rule id])]
     [:div {:class "rule"
            :ref store-ref
-           :on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) id])}
+           :on-mouse-down #(rf/dispatch [::events/start-drag-rule (localize-position %) id])}
      [:div {:class "rule__head-predicate"}
       [socket {:on-click #(rf/dispatch [::events/select-defeater id])}]
       [util/eip-plain-text
@@ -324,8 +324,8 @@
 (defn program-graph []
   (let [!svg-viewport (atom nil)]
     (fn []
-      (let [local-position (fn [event]
-                             (localize-event-to-svg @!svg-viewport event))
+      (let [localize-position (fn [event]
+                                (localize-event-to-svg @!svg-viewport event))
 
             program @(rf/subscribe [::subs/program])
             rule-matches @(rf/subscribe [::subs/rule-matches])
@@ -334,26 +334,27 @@
         (when program
           [:svg {:class "graph-panel"
                  :id "graph-svg"
-                 :on-mouse-move (goog.functions.throttle #(rf/dispatch [::events/mouse-move (local-position %)])
-                                                         25)
-                 :on-mouse-up #(rf/dispatch [::events/mouse-up (local-position %)])
+                 :on-mouse-move (goog.functions.throttle
+                                 #(rf/dispatch [::events/mouse-move (localize-position %)])
+                                 25)
+                 :on-mouse-up #(rf/dispatch [::events/mouse-up (localize-position %)])
                  :on-wheel (goog.functions.throttle #(rf/dispatch [::events/scroll-graph %])
                                                     100)}
            [:rect {:class "graph__bg"
                    :height 10000
                    :width  10000
-                   :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (local-position %)])}]
+                   :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (localize-position %)])}]
            [graph-viewport
             {:set-ref #(reset! !svg-viewport %)}
             (map (fn [[id _]]
                    [:<> {:key id}
                     [fact {:id id
-                           :localize-position local-position}]
+                           :localize-position localize-position}]
                     [subobject-connectors {:fact-id id}]])
                  (:facts program))
             (map (fn [[id _]]
                    [rule {:id  id
-                          :local-position local-position
+                          :localize-position localize-position
                           :key    id}])
                  (:rules program))
             (map (fn [match]
