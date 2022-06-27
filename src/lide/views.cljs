@@ -22,6 +22,39 @@
     {:x (.-x svg-point)
      :y (.-y svg-point)}))
 
+(defn normalize-hiccup [hic]
+  "Make sure Hiccup vector `hic` contains an attribute map."
+  (cond
+    (= 1 (count hic)) (conj hic {})
+    (not (map? (nth hic 1))) (vec (concat [(first hic)] [{}] (rest hic)))
+    :else hic))
+
+(defn prerender [{:keys [element-type id]} wrapped-component]
+  (let [element (r/atom nil)
+        generation (r/atom 0)
+        on-render #(do
+                     (swap! generation inc)
+                     (rf/dispatch [::events/rendered element-type id @element @generation]))]
+    (r/create-class
+     {:display-name (name element-type)
+
+      :component-did-mount  on-render
+      :component-did-update on-render
+
+      :reagent-render
+      (fn []
+        (let [position @(rf/subscribe [::subs/position element-type id])]
+          [:foreignObject {:width 1
+                           :height 1
+                           :style {"overflow" "visible"}
+                           :transform (str "translate(" (:x position) ", " (:y position) ")")}
+           [:div {:class "prerender-wrapper"}
+            (let [[tag attrs & grandchildren] (normalize-hiccup wrapped-component)]
+              (vec
+               (concat
+                [tag (merge attrs {:store-ref #(reset! element %)})]
+                grandchildren)))]]))})))
+
 (defn socket [props]
   [:div (merge props {:class "socket"})])
 
@@ -73,73 +106,58 @@
               :on-click #(rf/dispatch [::events/add-literal-argument id])}
         "+ is true of..."])]))
 
-;; TODO Extract HTML prerendering logic to its own component
-(defn rule [{:keys [id local-position]}]
-  (let [element (r/atom nil)
-        generation (r/atom 0)
-        on-render #(do
-                     (swap! generation inc)
-                     (rf/dispatch [::events/rendered :rule id @element @generation]))]
-    (r/create-class
-     {:display-name "rule"
+(defn rule [{:keys [id] :as props}]
+  [prerender {:element-type :rule
+              :id id}
+   [rule-html props]])
 
-      :component-did-update on-render
-      :component-did-mount  on-render
-
-      :reagent-render
-      (fn [{:keys [id local-position]}]
-        (let [rule @(rf/subscribe [::subs/populated-rule id])
-              position @(rf/subscribe [::subs/position :rule id])]
-          [:foreignObject {:width 1
-                           :height 1
-                           :style {"overflow" "visible"}
-                           :transform (str "translate(" (:x position) ", " (:y position) ")")}
-           [:div {:class "rule__wrapper"
-                  :on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) id])}
-            [:div {:class "rule"
-                   :ref #(reset! element %)}
-             [:div {:class "rule__head-predicate"}
-              [socket {:on-click #(rf/dispatch [::events/select-defeater id])}]
-              [util/eip-plain-text
-               {:value (-> rule :head :predicate)
-                :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]]
-             (if (seq (-> rule :head :args))
-               [:<>
-                [:div {:class "rule__tutor"} "is true of..."]
-                [:<>
-                 (map-indexed
-                  (fn [arg-index arg]
-                    [util/eip-plain-text
-                     {:value arg
-                      :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
-                      :style util/style-arg
-                      :key arg-index}])
-                  (-> rule :head :args))]
-                [:div {:class "rule__add-arg button-add"
-                       :on-click #(rf/dispatch [::events/add-argument id])}
-                 "+ and..."]]
-               [:div {:class "rule__add-arg button-add"
-                      :on-click #(rf/dispatch [::events/add-argument id])}
-                "+ is true of..."])
-             (if (seq (:body rule))
-               [:<>
-                [:div {:class "rule__tutor"} "when..."]
-                [:<>
-                 (map
-                  (fn [literal]
-                    [body-literal {:id (:id literal)
-                                   :key (:id literal)}])
-                  (:body rule))]
-                [:div {:class "rule__add-arg button-add"
-                       :on-click #(rf/dispatch [::events/add-body-literal id])}
-                 "+ and..."]]
-               [:div {:class "rule__add-arg button-add"
-                      :on-click #(rf/dispatch [::events/add-body-literal id])}
-                "+ when..."])
-             [:div {:class "rule__add-defeater button-add"
-                    :on-click #(rf/dispatch [::events/defeated-selecting-defeater id])}
-              [:div {:class "rule__add-defeater-label"} "+ unless..."]
-              [socket]]]]]))})))
+(defn rule-html [{:keys [id local-position store-ref]}]
+  (let [rule @(rf/subscribe [::subs/populated-rule id])]
+    [:div {:class "rule"
+           :ref store-ref
+           :on-mouse-down #(rf/dispatch [::events/start-drag-rule (local-position %) id])}
+     [:div {:class "rule__head-predicate"}
+      [socket {:on-click #(rf/dispatch [::events/select-defeater id])}]
+      [util/eip-plain-text
+       {:value (-> rule :head :predicate)
+        :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]]
+     (if (seq (-> rule :head :args))
+       [:<>
+        [:div {:class "rule__tutor"} "is true of..."]
+        [:<>
+         (map-indexed
+          (fn [arg-index arg]
+            [util/eip-plain-text
+             {:value arg
+              :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
+              :style util/style-arg
+              :key arg-index}])
+          (-> rule :head :args))]
+        [:div {:class "rule__add-arg button-add"
+               :on-click #(rf/dispatch [::events/add-argument id])}
+         "+ and..."]]
+       [:div {:class "rule__add-arg button-add"
+              :on-click #(rf/dispatch [::events/add-argument id])}
+        "+ is true of..."])
+     (if (seq (:body rule))
+       [:<>
+        [:div {:class "rule__tutor"} "when..."]
+        [:<>
+         (map
+          (fn [literal]
+            [body-literal {:id (:id literal)
+                           :key (:id literal)}])
+          (:body rule))]
+        [:div {:class "rule__add-arg button-add"
+               :on-click #(rf/dispatch [::events/add-body-literal id])}
+         "+ and..."]]
+       [:div {:class "rule__add-arg button-add"
+              :on-click #(rf/dispatch [::events/add-body-literal id])}
+        "+ when..."])
+     [:div {:class "rule__add-defeater button-add"
+            :on-click #(rf/dispatch [::events/defeated-selecting-defeater id])}
+      [:div {:class "rule__add-defeater-label"} "+ unless..."]
+      [socket]]]))
 
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
