@@ -41,20 +41,6 @@
              :y (/ graph/rule-head-height 2)}
       symbol]]))
 
-(defn literal-negate [id layout]
-  [:<>
-   [:rect {:class "rule__button-bg"
-           :x (- (-> layout :container :size :width) 40)
-           :y 0
-           :height graph/rule-head-height
-           :width 20
-           :on-click #(rf/dispatch [::events/negate-literal id])}
-    [:title "Negate literal"]]
-   [:text {:class "rule__button-label"
-           :x (- (-> layout :container :size :width) 35)
-           :y (/ graph/rule-head-height 2)}
-    "~"]])
-
 (defn body-literal [{:keys [id]}]
   (let [literal @(rf/subscribe [::subs/literal id])]
     [:div {:class "body-literal"
@@ -63,10 +49,14 @@
       [util/eip-plain-text
        {:value (:predicate literal)
         :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
+      [:button {:title "Negate"
+                :class "rule__button"
+                :on-click #(rf/dispatch [::events/negate-literal id])}
+       "not"]
       [socket]]
      (if (seq (:args literal))
        [:<>
-        [:div {:class "rule__tutor"} "is true of..."]
+        [:div {:class "rule__tutor"} "is " (when (:negative literal) [:span {:class "rule__tutor--stress"} "not "]) "true of..."]
         (map-indexed
          (fn [arg-index arg]
            [util/eip-plain-text
