@@ -55,79 +55,7 @@
            :y (/ graph/rule-head-height 2)}
     "~"]])
 
-(defn body-literal-collapsed [{:keys [layout]}]
-  (let [id (:id layout)]
-    [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")}
-     [:rect {:class  "rule__bg"
-             :width  (->> layout :container :size :width)
-             :height (->> layout :container :size :height)}]
-     [:text
-      {:x graph/rule-head-padding
-       :y (/ (->> layout :container :size :height) 2)
-       :width (->> layout :container :size :width)
-       :height (->> layout :container :size :height)}
-      (-> layout :predicate :predicate)]
-     [:<>
-      (map-indexed
-       (fn [arg-index [arg arg-layout]]
-         [:text
-          {:x (->> arg-layout :position :x)
-           :y (->> arg-layout :position :y)
-           :width  (->> arg-layout :size :width)
-           :height (->> layout :container :size :height)
-           :style util/style-arg
-           :key arg-index}
-          arg])
-       (:args layout))]
-     [literal-collapse id layout]
-     [:rect {:class  "rule__border"
-             :width  (->> layout :container :size :width)
-             :height (->> layout :container :size :height)}]]))
-
-(defn body-literal-uncollapsed [{:keys [layout]}]
-  (let [id (:id layout)
-        highlighted-connection @(rf/subscribe [::subs/highlighted-connection])]
-    [:g {:transform (str "translate(" (-> layout :container :position :x) "," (-> layout :container :position :y) ")")}
-     [:rect {:class  "rule__bg"
-             :width  (->> layout :container :size :width)
-             :height (->> layout :container :size :height)}]
-     [util/eip-svg-text
-      {:value (-> layout :predicate :predicate)
-       :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])
-       :x graph/rule-head-padding
-       :y (/ (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding) 2)
-       :width (->> layout :container :size :width)
-       :height (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding)}]
-     [literal-negate id layout]
-     [literal-collapse id layout]
-     [:<>
-      (map-indexed
-       (fn [arg-index [arg arg-layout]]
-         [util/eip-svg-text
-          {:value arg
-           :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
-           :x graph/rule-binding-padding-x
-           :y (->> arg-layout :position :y)
-           :width  (->> layout :container :size :width)
-           :height (+ graph/rule-head-padding graph/rule-head-font-size graph/rule-head-padding)
-           :display-style (when (util/variable? arg) {"fill" (util/hash-to-hsl arg)})
-           :key arg-index}])
-       (:args layout))]
-     [:text {:class "rule__add-arg"
-             :x graph/rule-binding-padding-x
-             :y (->> layout :add-argument :position :y)
-             :on-click #(rf/dispatch [::events/add-literal-argument id])}
-      "+ Add argument"]
-     [:rect {:class  "rule__border"
-             :width  (->> layout :container :size :width)
-             :height (->> layout :container :size :height)}]]))
-
-(defn body-literal [{:keys [layout] :as props}]
-  (if (:collapsed layout)
-    [body-literal-collapsed   props]
-    [body-literal-uncollapsed props]))
-
-(defn body-literal-html [{:keys [id]}]
+(defn body-literal [{:keys [id]}]
   (let [literal @(rf/subscribe [::subs/literal id])]
     [:div {:class "body-literal"
            :data-literal-id id}
@@ -209,8 +137,8 @@
                 [:<>
                  (map
                   (fn [literal]
-                    [body-literal-html {:id (:id literal)
-                                        :key (:id literal)}])
+                    [body-literal {:id (:id literal)
+                                   :key (:id literal)}])
                   (:body rule))]
                 [:div {:class "rule__add-arg button-add"
                        :on-click #(rf/dispatch [::events/add-body-literal id])}
