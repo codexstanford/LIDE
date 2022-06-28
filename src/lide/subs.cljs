@@ -16,6 +16,11 @@
    (:program db)))
 
 (rf/reg-sub
+ ::program-target
+ (fn [db]
+   (-> db :program :target)))
+
+(rf/reg-sub
  ::literal
  (fn [db [_ id]]
    (get-in db [:program :literals id])))

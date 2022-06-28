@@ -23,7 +23,9 @@
         claim-id (random-uuid)
         hospitalization-id (random-uuid)]
     {:program
-     {:literals
+     {:target :epilog
+
+      :literals
       {claim-pay-id
        {:predicate "recommend_pay"
         :args ["Claim"]}
