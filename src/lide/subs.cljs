@@ -2,7 +2,7 @@
   (:require
    [lide.graph :as graph]
    [lide.util :as util]
-   [lide.epilog :as epilog]
+   [lide.epilog.core :as epilog]
    [reagent.core :as r]
    [re-frame.core :as rf]))
 
