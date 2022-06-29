@@ -7,7 +7,8 @@
    [lide.util :as util]
    [lide.views :as views]
    [lide.epilog.core :as epilog]
-   [lide.epilog.views :as epilog-views]))
+   [lide.epilog.views :as epilog-views]
+   [lide.yscript.views :as yscript-views]))
 
 (defn graph-viewport [{:keys [set-ref]} & children]
   "Draw an SVG group to contain the program graph.
@@ -44,35 +45,11 @@
                    :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (localize-position %)])}]
            [graph-viewport
             {:set-ref #(reset! !svg-viewport %)}
-            [epilog-views/program-graph {:localize-position localize-position
-                                         :key :program-graph}]]])))))
-
-(defn epilog-panel []
-  (let [rules @(rf/subscribe [::subs/populated-rules])
-        defeatings @(rf/subscribe [::subs/defeatings])
-        facts @(rf/subscribe [::subs/facts])
-
-        compiled-rules
-        (->> rules
-             (map
-              (fn [[id rule]]
-                (epilog/compile-rule rule
-                                     (->> defeatings
-                                          (filter #(= id (:defeated %)))
-                                          (mapv #(get rules (:defeater %))))))))]
-    [:div {:class "epilog-inspector"}
-     [:pre {:class "code"}
-      "#########\n# Rules #\n#########\n\n"
-      (string/join "\n\n" (map epilog/stringify-rule compiled-rules))
-      "\n\n#########\n# Facts #\n#########\n\n"
-      (->> facts
-           (map
-            (fn [[id fact]]
-              (epilog/stringify-fact facts id fact)))
-           (string/join "\n\n"))
-      "\n\n########################\n# Converse productions #\n########################\n\n"
-      (string/join "\n\n" (map epilog/stringify-converse-operation compiled-rules))]]))
-
+            (let [graph-props {:localize-position localize-position
+                               :key :program-graph}]
+              (case target
+                :yscript [yscript-views/program-graph graph-props]
+                [epilog-views/program-graph graph-props]))]])))))
 
 (defn toolbar []
   (let [undos? @(rf/subscribe [:undos?])
@@ -92,9 +69,12 @@
       "Redo"]]))
 
 (defn main-panel []
-  [:div {:id "app-container"}
-   [:div {:class "work-viewport"}
-    [program-graph]
-    [:div {:class "inspectors"}
-     [epilog-panel]]]
-   [toolbar]])
+  (let [target @(rf/subscribe [::subs/program-target])]
+    [:div {:id "app-container"}
+     [:div {:class "work-viewport"}
+      [program-graph]
+      [:div {:class "inspectors"}
+       (case target
+         :yscript nil
+         [epilog-views/code-panel])]]
+     [toolbar]]))
