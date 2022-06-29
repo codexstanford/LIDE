@@ -153,8 +153,8 @@
 
 (rf/reg-sub
  ::position
- (fn [db [_ entity-type entity-id]]
-   (get-in db (conj [:positions] entity-type entity-id) {:x 0 :y 0})))
+ (fn [db [_ entity-id]]
+   (get-in db [:positions entity-id] {:x 0 :y 0})))
 
 (rf/reg-sub
   ::rendered
@@ -165,7 +165,7 @@
  ::layout
  (fn [[_ type id]]
    [(atom type)
-    (rf/subscribe [::position type id])
+    (rf/subscribe [::position id])
     (rf/subscribe [::rendered type id])])
  (fn [[type position {:keys [element _]}]]
    (when element

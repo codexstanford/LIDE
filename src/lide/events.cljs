@@ -116,10 +116,11 @@
  (fn [cofx [_ position]]
    {:db (-> (:db cofx)
             (dissoc :dragged)
+            (dissoc :dragging-id)
             (dissoc :dragging-rule)
             (dissoc :dragging-fact)
             (dissoc :dragging-literal)
-            (dissoc :node-drag-origin)
+            (dissoc :drag-origin)
             (dissoc :mouse-down-graph))
     :fx (cond
           ;; If mouse down was on the graph background, and there was no drag
@@ -238,34 +239,19 @@
            (assoc :graph-transform (util/dom-matrix-to-vals
                                     (.preMultiplySelf graph-transform translate-matrix)))))
 
-     (contains? db :dragging-rule)
+     (contains? db :dragging-id)
      (let [dx (- (-> event-position :x)
-                 (-> db :node-drag-origin :x))
+                 (-> db :drag-origin :x))
            dy (- (-> event-position :y)
-                 (-> db :node-drag-origin :y))
-           dragging-rule-pred (-> db :dragging-rule :head :predicate)]
+                 (-> db :drag-origin :y))]
        (-> db
-           (assoc :dragged true)
-           (update-in [:positions :rule (:dragging-rule db)]
+           (update-in [:positions (:dragging-id db)]
                       (fn [position]
                         (-> position
                             (update :x #(+ % dx))
                             (update :y #(+ % dy)))))
-           (assoc :node-drag-origin event-position)))
-
-     (contains? db :dragging-fact)
-     (let [dx (- (-> event-position :x)
-                 (-> db :node-drag-origin :x))
-           dy (- (-> event-position :y)
-                 (-> db :node-drag-origin :y))]
-       (-> db
-           (assoc :dragged true)
-           (update-in [:positions :fact (:dragging-fact db)]
-                      (fn [position]
-                        (-> position
-                            (update :x #(+ % dx))
-                            (update :y #(+ % dy)))))
-           (assoc :node-drag-origin event-position)))
+           (assoc :drag-origin event-position)
+           (assoc :dragged true)))
 
      :else db)))
 
@@ -293,18 +279,11 @@
                                  (.preMultiplySelf graph-transform zoom-matrix))))))
 
 (rf/reg-event-db
- ::start-drag-rule
- (fn [db [_ position rule-id]]
+ ::start-drag
+ (fn [db [_ position id]]
    (-> db
-       (assoc :dragging-rule rule-id)
-       (assoc :node-drag-origin position))))
-
-(rf/reg-event-db
- ::start-drag-fact
- (fn [db [_ position fact-id]]
-   (-> db
-       (assoc :dragging-fact fact-id)
-       (assoc :node-drag-origin position))))
+       (assoc :dragging-id id)
+       (assoc :drag-origin position))))
 
 ;; Defeasibility
 

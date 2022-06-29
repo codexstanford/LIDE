@@ -3,7 +3,6 @@
    [clojure.string :as string]
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [lide.epilog.core :as epilog]
    [lide.events :as events]
    [lide.graph :as graph]
    [lide.subs :as subs]
@@ -42,7 +41,7 @@
 
       :reagent-render
       (fn []
-        (let [position @(rf/subscribe [::subs/position element-type id])]
+        (let [position @(rf/subscribe [::subs/position id])]
           [:foreignObject {:width 1
                            :height 1
                            :style {"overflow" "visible"}
