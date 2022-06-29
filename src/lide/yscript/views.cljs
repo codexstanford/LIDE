@@ -19,9 +19,9 @@
 (defn conjunction-expression [{:keys [operator exprs]}]
   [:div
    (->> exprs
-        (map-indexed (fn [i expr]
-                       [expression {:expr %
-                                    :key i}]))
+        (map-indexed (fn [idx expr]
+                       [expression {:expr expr
+                                    :key idx}]))
         (interpose [:div {:key (random-uuid)}
                     (case operator
                       :and "AND"
