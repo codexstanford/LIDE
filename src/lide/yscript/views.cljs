@@ -7,6 +7,19 @@
    [lide.views :as views]
    [lide.yscript.subs :as ys-subs]))
 
+(defn required-fact [{:keys [id]}]
+  (let [fact @(rf/subscribe [::ys-subs/fact id])
+        determiners @(rf/subscribe [::ys-subs/statements-determining-fact id])]
+    [:div {:class "ys-fact"
+           :data-fact-id id}
+     [:div (:descriptor fact)]
+     (if (seq determiners)
+       [views/socket]
+       [:div {:class "ys-fact__value"}
+        (if (= :unknown (:value fact))
+          "unknown"
+          (:value fact))])]))
+
 ;; `expression` and `conjunction-expression` are mutually recursive, so we have
 ;; to declare `expression` in advance
 (declare expression)
@@ -26,10 +39,7 @@
   [:div {:class "ys-expr"}
    (cond
      (uuid? expr)
-     [:div {:class "ys-fact"
-            :data-fact-id expr}
-      [:div (:descriptor @(rf/subscribe [::ys-subs/fact expr]))]
-      [views/socket]]
+     [required-fact {:id expr}]
 
      (= :and (:type expr))
      [conjunction-expression {:operator :and
@@ -45,7 +55,7 @@
    (case (:type statement)
      :only-if
      [:div
-      [:div
+      [:div {:class "ys-statement__dest-fact"}
        [views/socket]
        [:div (:descriptor @(rf/subscribe [::ys-subs/fact (:dest-fact statement)]))]]
       [:div "ONLY IF"]

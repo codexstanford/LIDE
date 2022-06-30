@@ -188,8 +188,8 @@
                                                  (element-position fact-elem)
                                                  root-position)
                            :size (element-size fact-elem)
-                           :socket {:position (element-position socket-elem)
-                                    :size (element-size socket-elem)}}]
+                           :socket (when socket-elem {:position (element-position socket-elem)
+                                                      :size (element-size socket-elem)})}]
                       (assoc acc fact-id (if (contains? acc fact-id)
                                            (conj (get acc fact-id) fact-layout)
                                            #{fact-layout}))))

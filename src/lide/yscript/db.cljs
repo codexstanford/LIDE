@@ -76,5 +76,5 @@
 
      :positions
      {rule-1-id {:x 25, :y 40}
-      rule-2-id {:x 325, :y 40}
-      rule-3-id {:x 625, :y 40}}}))
+      rule-2-id {:x 325, :y 111}
+      rule-3-id {:x 625, :y 147}}}))
