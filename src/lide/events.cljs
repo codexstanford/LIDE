@@ -7,6 +7,7 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [lide.db :as db]
    [lide.util :as util]
+   [lide.yscript.db :as ys-db]
    ))
 
 ;; General purpose escape/cancel handler
@@ -76,11 +77,12 @@
  ::initialize-db
  [(rf/inject-cofx ::saved-state)]
  (fn [cofx _]
-   {:db (-> (or (::saved-state cofx)
+   {:db (-> ys-db/default-db
+            #_(or (::saved-state cofx)
                 db/default-db)
             ;; Add some values to make sure we have a viable DB (who knows what was saved)
             ;; TODO Handle this more robustly
-            (update-in [:program :defeatings] #(or % #{}))
+            #_(update-in [:program :defeatings] #(or % #{}))
             (update :graph-transform #(or % (util/dom-matrix-to-vals (js/DOMMatrix.)))))}))
 
 ;; Connections

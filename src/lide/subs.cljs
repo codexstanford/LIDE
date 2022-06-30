@@ -3,6 +3,7 @@
    [lide.graph :as graph]
    [lide.util :as util]
    [lide.epilog.core :as epilog]
+   [lide.yscript.core :as yscript]
    [reagent.core :as r]
    [re-frame.core :as rf]))
 
@@ -171,4 +172,5 @@
    (when element
      (case type
        :rule (graph/rule-layout position element)
-       :fact (graph/fact-layout position element)))))
+       :fact (graph/fact-layout position element)
+       :ys-rule (graph/ys-rule-layout position element)))))

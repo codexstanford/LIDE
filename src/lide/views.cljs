@@ -8,20 +8,23 @@
    [lide.subs :as subs]
    [lide.util :as util]))
 
-(defn center-position [{:keys [position size]}]
+(defn center-position
   "Find the center point of a square at `position` with `size`."
+  [{:keys [position size]}]
   {:x (+ (:x position) (/ (:width size) 2))
    :y (+ (:y position) (/ (:height size) 2))})
 
-(defn localize-event-to-svg [^js svg event]
+(defn localize-event-to-svg
   "Find the coordinates of `event` in `svg`'s local coordinate space."
+  [^js svg event]
   (let [dom-point (js/DOMPoint. (.-clientX event) (.-clientY event))
         svg-point (.matrixTransform dom-point (.inverse (.getScreenCTM svg)))]
     {:x (.-x svg-point)
      :y (.-y svg-point)}))
 
-(defn normalize-hiccup [hic]
+(defn normalize-hiccup
   "Make sure Hiccup vector `hic` contains an attribute map."
+  [hic]
   (cond
     (= 1 (count hic)) (conj hic {})
     (not (map? (nth hic 1))) (vec (concat [(first hic)] [{}] (rest hic)))

@@ -122,36 +122,75 @@
 ;;
 ;; See subs.cljs for a description of the rendering process.
 
+(defn element-position [element]
+  {:x (.-offsetLeft element)
+   :y (.-offsetTop  element)})
+
+(defn element-size [element]
+  {:width  (.-offsetWidth  element)
+   :height (.-offsetHeight element)})
+
 (defn rule-layout [position element]
-  (let [root-position {:x (.-offsetLeft element)
-                       :y (.-offsetTop  element)}]
+  (let [root-position (element-position element)]
     {:container {:position position
-                 :size {:width  (.-offsetWidth  element)
-                        :height (.-offsetHeight element)}}
+                 :size (element-size element)}
      :body (->> (.querySelectorAll element ".body-literal")
                 (map
                  (fn [literal-elem]
                    [(uuid (.getAttribute literal-elem "data-literal-id"))
                     ;; We want the relative position of the attribute row,
                     ;; so subtract the position of the root element.
-                    {:position {:x (- (.-offsetLeft literal-elem) (:x root-position))
-                                :y (- (.-offsetTop  literal-elem) (:y root-position))}
-                     :size {:width  (.-offsetWidth  literal-elem)
-                            :height (.-offsetHeight literal-elem)}}]))
+                    {:position (merge-with -
+                                           (element-position literal-elem)
+                                           root-position)
+                     :size (element-size literal-elem)}]))
                 (into {}))}))
 
 (defn fact-layout [position element]
-  (let [root-position {:x (.-offsetLeft element)
-                       :y (.-offsetTop  element)}]
+  (let [root-position (element-position element)]
     {:container {:position position
-                 :size {:width  (.-offsetWidth  element)
-                        :height (.-offsetHeight element)}}
+                 :size (element-size element)}
      :attributes (->> (.querySelectorAll element ".fact__attribute")
                       (map
                        (fn [attr-elem]
                          [(.getAttribute attr-elem "data-attribute-name")
-                          {:position {:x (- (.-offsetLeft attr-elem) (:x root-position))
-                                      :y (- (.-offsetTop  attr-elem) (:y root-position))}
-                           :size {:width  (.-offsetWidth  attr-elem)
-                                  :height (.-offsetHeight attr-elem)}}]))
+                          {:position (merge-with -
+                                                 (element-position attr-elem)
+                                                 root-position)
+                           :size (element-size attr-elem)}]))
                       (into {}))}))
+
+(defn ys-rule-layout [position element]
+  (let [root-position (element-position element)]
+    {:container {:position position
+                 :size (element-size element)}
+     :statements (->> (.querySelectorAll element ".ys-statement")
+                      (map
+                       (fn [st-elem]
+                         (let [socket-elem (.querySelector st-elem ".socket")]
+                           [(uuid (.getAttribute st-elem "data-statement-id"))
+                            {:position (element-position st-elem)
+                             :size (element-size st-elem)
+                             :socket {:position (element-position socket-elem)
+                                      :size (element-size socket-elem)}}])))
+                      (into {}))
+     :facts (->> (.querySelectorAll element ".ys-fact")
+                 (reduce
+                  (fn [acc fact-elem]
+                    (let [socket-elem
+                          (.querySelector fact-elem ".socket")
+
+                          fact-id
+                          (uuid (.getAttribute fact-elem "data-fact-id"))
+
+                          fact-layout
+                          {:position (merge-with -
+                                                 (element-position fact-elem)
+                                                 root-position)
+                           :size (element-size fact-elem)
+                           :socket {:position (element-position socket-elem)
+                                    :size (element-size socket-elem)}}]
+                      (assoc acc fact-id (if (contains? acc fact-id)
+                                           (conj (get acc fact-id) fact-layout)
+                                           #{fact-layout}))))
+                  {}))}))

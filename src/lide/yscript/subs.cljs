@@ -15,15 +15,53 @@
    (get-in db [:program :rules id])))
 
 (rf/reg-sub
+ ::rules-by-statement
+ (fn [_ _]
+   (rf/subscribe [::subs/program]))
+ (fn [program]
+   (ys/rules-by-statement program)))
+
+(rf/reg-sub
+ ::rule-containing-statement
+ (fn [[_ statement-id]]
+   [(atom statement-id)
+    (rf/subscribe [::rules-by-statement])])
+ (fn [[statement-id rules-by-statement]]
+   (get rules-by-statement statement-id)))
+
+(rf/reg-sub
+ ::statements-by-determined-fact
+ (fn [_ _]
+   (rf/subscribe [::subs/program]))
+ (fn [program]
+   (ys/statements-by-determined-fact program)))
+
+(rf/reg-sub
+ ::statements-determining-fact
+ (fn [[_ fact-id]]
+   [(atom fact-id)
+    (rf/subscribe [::statements-by-determined-fact])])
+ (fn [[fact-id statements-by-fact]]
+   (get statements-by-fact fact-id)))
+
+(rf/reg-sub
+ ::rules-by-required-fact
+ (fn [_ _]
+   (rf/subscribe [::subs/program]))
+ (fn [program]
+   (ys/rules-by-required-fact program)))
+
+(rf/reg-sub
+ ::rules-requiring-fact
+ (fn [[_ fact-id]]
+   [(atom fact-id)
+    (rf/subscribe [::rules-by-required-fact])])
+ (fn [[fact-id rules-by-fact]]
+   (get rules-by-fact fact-id)))
+
+(rf/reg-sub
  ::orphan-facts
  (fn [_ _]
    (rf/subscribe [::subs/program]))
  (fn [program]
    (ys/orphan-facts program)))
-
-(rf/reg-sub
- ::fact-matches
- (fn [_ _]
-   (rf/subscribe [::subs/program]))
- (fn [program]
-   (ys/find-fact-matches program)))
