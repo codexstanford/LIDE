@@ -8,6 +8,11 @@
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
 
+(defn fact-value [fact]
+  (if (= :unknown (:value fact))
+    "unknown"
+    (str (:value fact))))
+
 (defn next-value [value]
   (case value
     true false
@@ -24,9 +29,7 @@
       (if (seq determiners)
         [views/socket]
         [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value id (next-value (:value fact))])}
-         (if (= :unknown (:value fact))
-           "unknown"
-           (str (:value fact)))])]]))
+         (fact-value fact)])]]))
 
 ;; `expression` and `conjunction-expression` are mutually recursive, so we have
 ;; to declare `expression` in advance
@@ -64,9 +67,11 @@
      (case (:type statement)
        :only-if
        [:div
-        [:div {:class "ys-statement__dest-fact"}
-         [views/socket]
-         [:div (:descriptor @(rf/subscribe [::ys-subs/fact (:dest-fact statement)]))]]
+        (let [fact @(rf/subscribe [::ys-subs/fact (:dest-fact statement)])]
+          [:div {:class "ys-statement__dest-fact"}
+           [views/socket]
+           [:div (:descriptor fact)]
+           [:div (fact-value fact)]])
         [:div "ONLY IF"]
         [expression {:expr (:src-expr statement)}]])]))
 
