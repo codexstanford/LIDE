@@ -27,7 +27,9 @@
      [:div (:descriptor fact)]
      [:div {:class "ys-fact__value"}
       (if (seq determiners)
-        [views/socket]
+        [:<>
+         [:div (fact-value fact)]
+         [views/socket]]
         [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value id (next-value (:value fact))])}
          (fact-value fact)])]]))
 
@@ -71,7 +73,7 @@
           [:div {:class "ys-statement__dest-fact"}
            [views/socket]
            [:div (:descriptor fact)]
-           [:div (fact-value fact)]])
+           [:div {:class "ys-statement__dest-value"} (fact-value fact)]])
         [:div "ONLY IF"]
         [expression {:expr (:src-expr statement)}]])]))
 
