@@ -58,7 +58,7 @@
 
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
-        position @(rf/subscribe [::subs/position :fact id])]
+        position @(rf/subscribe [::subs/position id])]
     [:foreignObject {:width 1
                      :height 1
                      :style {"overflow" "visible"}
