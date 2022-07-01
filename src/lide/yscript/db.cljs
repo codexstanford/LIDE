@@ -48,31 +48,36 @@
                :descriptor "water is falling from the sky"
                :value :unknown}}
 
+      :statements
+      {take-if-id
+       {:type :only-if
+        :dest-fact take-umbrella-id
+        :src-expr {:type :and
+                   :exprs [have-umbrella-id
+                           might-need-umbrella-id]}}
+       might-need-if-id
+       {:type :only-if
+        :dest-fact might-need-umbrella-id
+        :src-expr {:type :or
+                   :exprs [is-raining-id
+                           might-rain-id]}}
+       raining-if-id
+       {:type :only-if
+        :dest-fact is-raining-id
+        :src-expr water-falling-id}}
+
       :rules
       {rule-1-id {:name ""
                   :goal true
-                  :statements {take-if-id
-                               {:type :only-if
-                                :dest-fact take-umbrella-id
-                                :src-expr {:type :and
-                                           :exprs [have-umbrella-id
-                                                   might-need-umbrella-id]}}}}
+                  :statements [take-if-id]}
 
        rule-2-id {:name ""
                   :goal false
-                  :statements {might-need-if-id
-                               {:type :only-if
-                                :dest-fact might-need-umbrella-id
-                                :src-expr {:type :or
-                                           :exprs [is-raining-id
-                                                   might-rain-id]}}}}
+                  :statements [might-need-if-id]}
 
        rule-3-id {:name ""
                   :goal false
-                  :statements {raining-if-id
-                               {:type :only-if
-                                :dest-fact is-raining-id
-                                :src-expr water-falling-id}}}}}
+                  :statements [raining-if-id]}}}
 
      :positions
      {rule-1-id {:x 25, :y 40}

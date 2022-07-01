@@ -164,33 +164,37 @@
   (let [root-position (element-position element)]
     {:container {:position position
                  :size (element-size element)}
-     :statements (->> (.querySelectorAll element ".ys-statement")
-                      (map
-                       (fn [st-elem]
-                         (let [socket-elem (.querySelector st-elem ".socket")]
-                           [(uuid (.getAttribute st-elem "data-statement-id"))
-                            {:position (element-position st-elem)
-                             :size (element-size st-elem)
-                             :socket {:position (element-position socket-elem)
-                                      :size (element-size socket-elem)}}])))
-                      (into {}))
-     :facts (->> (.querySelectorAll element ".ys-fact")
-                 (reduce
-                  (fn [acc fact-elem]
-                    (let [socket-elem
-                          (.querySelector fact-elem ".socket")
 
-                          fact-id
-                          (uuid (.getAttribute fact-elem "data-fact-id"))
+     :statements
+     (->> (.querySelectorAll element ".ys-statement")
+          (map
+           (fn [st-elem]
+             (let [socket-elem (.querySelector st-elem ".socket")]
+               [(uuid (.getAttribute st-elem "data-statement-id"))
+                {:position (element-position st-elem)
+                 :size (element-size st-elem)
+                 :socket {:position (element-position socket-elem)
+                          :size (element-size socket-elem)}
+                 :facts
+                 (->> (.querySelectorAll st-elem ".ys-fact")
+                      (reduce
+                       (fn [acc fact-elem]
+                         (let [socket-elem
+                               (.querySelector fact-elem ".socket")
 
-                          fact-layout
-                          {:position (merge-with -
-                                                 (element-position fact-elem)
-                                                 root-position)
-                           :size (element-size fact-elem)
-                           :socket (when socket-elem {:position (element-position socket-elem)
-                                                      :size (element-size socket-elem)})}]
-                      (assoc acc fact-id (if (contains? acc fact-id)
-                                           (conj (get acc fact-id) fact-layout)
-                                           #{fact-layout}))))
-                  {}))}))
+                               fact-id
+                               (uuid (.getAttribute fact-elem "data-fact-id"))
+
+                               fact-layout
+                               {:position (merge-with -
+                                                      (element-position fact-elem)
+                                                      root-position)
+                                :size (element-size fact-elem)
+                                :socket (when socket-elem {:position (element-position socket-elem)
+                                                           :size (element-size socket-elem)})}]
+                           (assoc acc fact-id (if (contains? acc fact-id)
+                                                (conj (get acc fact-id) fact-layout)
+                                                #{fact-layout}))))
+                       {}))}])))
+          (into {}))}))
+

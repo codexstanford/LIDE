@@ -10,6 +10,11 @@
    (get-in db [:program :facts id])))
 
 (rf/reg-sub
+ ::statement
+ (fn [db [_ id]]
+   (get-in db [:program :statements id])))
+
+(rf/reg-sub
  ::rule
  (fn [db [_ id]]
    (get-in db [:program :rules id])))
@@ -45,21 +50,21 @@
    (get statements-by-fact fact-id)))
 
 (rf/reg-sub
- ::rules-by-required-fact
+ ::statements-by-required-fact
  (fn [_ _]
    (rf/subscribe [::subs/program]))
  (fn [program]
-   (ys/rules-by-required-fact program)))
+   (ys/statements-by-required-fact program)))
 
 (rf/reg-sub
- ::rules-requiring-fact
+ ::statements-requiring-fact
  (fn [[_ fact-id]]
    [(atom fact-id)
-    (rf/subscribe [::rules-by-required-fact])])
- (fn [[fact-id rules-by-fact]]
-   (get rules-by-fact fact-id)))
+    (rf/subscribe [::statements-by-required-fact])])
+ (fn [[fact-id st-by-fact]]
+   (get st-by-fact fact-id)))
 
-(rf/reg-sub
+#_(rf/reg-sub
  ::orphan-facts
  (fn [_ _]
    (rf/subscribe [::subs/program]))

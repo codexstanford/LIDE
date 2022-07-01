@@ -5,7 +5,14 @@
    [lide.events :as events]
    [lide.subs :as subs]
    [lide.views :as views]
+   [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
+
+(defn next-value [value]
+  (case value
+    true false
+    false :unknown
+    :unknown true))
 
 (defn required-fact [{:keys [id]}]
   (let [fact @(rf/subscribe [::ys-subs/fact id])
@@ -13,12 +20,13 @@
     [:div {:class "ys-fact"
            :data-fact-id id}
      [:div (:descriptor fact)]
-     (if (seq determiners)
-       [views/socket]
-       [:div {:class "ys-fact__value"}
-        (if (= :unknown (:value fact))
-          "unknown"
-          (:value fact))])]))
+     [:div {:class "ys-fact__value"}
+      (if (seq determiners)
+        [views/socket]
+        [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value id (next-value (:value fact))])}
+         (if (= :unknown (:value fact))
+           "unknown"
+           (str (:value fact)))])]]))
 
 ;; `expression` and `conjunction-expression` are mutually recursive, so we have
 ;; to declare `expression` in advance
@@ -49,17 +57,18 @@
      [conjunction-expression {:operator :or
                               :exprs (:exprs expr)}])])
 
-(defn statement [{:keys [id statement]}]
-  [:div {:class "ys-statement"
-         :data-statement-id id}
-   (case (:type statement)
-     :only-if
-     [:div
-      [:div {:class "ys-statement__dest-fact"}
-       [views/socket]
-       [:div (:descriptor @(rf/subscribe [::ys-subs/fact (:dest-fact statement)]))]]
-      [:div "ONLY IF"]
-      [expression {:expr (:src-expr statement)}]])])
+(defn statement [{:keys [id]}]
+  (let [statement @(rf/subscribe [::ys-subs/statement id])]
+    [:div {:class "ys-statement"
+           :data-statement-id id}
+     (case (:type statement)
+       :only-if
+       [:div
+        [:div {:class "ys-statement__dest-fact"}
+         [views/socket]
+         [:div (:descriptor @(rf/subscribe [::ys-subs/fact (:dest-fact statement)]))]]
+        [:div "ONLY IF"]
+        [expression {:expr (:src-expr statement)}]])]))
 
 (defn rule-html [{:keys [id localize-position store-ref]}]
   (let [rule @(rf/subscribe [::ys-subs/rule id])]
@@ -72,10 +81,9 @@
                                        (:name rule)
                                        "[unnamed rule]")]]
      (->> (:statements rule)
-          (map (fn [[id st]]
-                 [statement {:id id
-                             :statement st
-                             :key id}])))]))
+          (map (fn [st-id]
+                 [statement {:id st-id
+                             :key st-id}])))]))
 
 (defn rule [{:keys [id] :as props}]
   [views/prerender {:element-type :ys-rule
@@ -100,16 +108,19 @@
 
 (defn requirer-determiner-connectors
   "Draw connectors between `determining-statement-id` and all the instances of
-  `required-fact-id` being required in `rule-id`."
+  `fact-id` being required in `requiring-statement-id`."
   [{:keys [fact-id
-           requiring-rule-id
+           requiring-statement-id
            determining-statement-id]}]
-  (let [requirer-layout @(rf/subscribe [::subs/layout :ys-rule requiring-rule-id])
+  (let [requirer-statement @(rf/subscribe [::ys-subs/statement requiring-statement-id])
+        requirer-rule @(rf/subscribe [::ys-subs/rule-containing-statement requiring-statement-id])
+        requirer-layout @(rf/subscribe [::subs/layout :ys-rule requirer-rule])
         determiner-rule @(rf/subscribe [::ys-subs/rule-containing-statement
                                         determining-statement-id])
         determiner-layout @(rf/subscribe [::subs/layout :ys-rule determiner-rule])]
+    [:text "hello"]
     [:<>
-     (->> (get-in requirer-layout [:facts fact-id])
+     (->> (get-in requirer-layout [:statements requiring-statement-id :facts fact-id])
           (map-indexed
            (fn [idx fact-layout]
              (let [determiner-socket
@@ -135,17 +146,17 @@
   "Draw connectors between all the instances of `fact-id` being required and the
   instances of it being determined."
   [{:keys [fact-id]}]
-  (let [requiring-rules @(rf/subscribe [::ys-subs/rules-requiring-fact fact-id])
+  (let [requiring-statements @(rf/subscribe [::ys-subs/statements-requiring-fact fact-id])
         determining-statements @(rf/subscribe [::ys-subs/statements-determining-fact fact-id])]
     [:<>
-     (->> requiring-rules
+     (->> requiring-statements
           (mapcat
            (fn [requirer]
              (->> determining-statements
                   (map
                    (fn [determiner]
                      [requirer-determiner-connectors {:fact-id fact-id
-                                                      :requiring-rule-id requirer
+                                                      :requiring-statement-id requirer
                                                       :determining-statement-id determiner
                                                       :key (str fact-id requirer determiner)}]))))))]))
 
