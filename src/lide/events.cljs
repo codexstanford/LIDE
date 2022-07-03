@@ -8,7 +8,7 @@
    [lide.db :as db]
    [lide.util :as util]
    [lide.yscript.db :as ys-db]
-   ))
+   [lide.yscript.events :as ys-events]))
 
 ;; General purpose escape/cancel handler
 
@@ -124,16 +124,14 @@
             (dissoc :dragging-literal)
             (dissoc :drag-origin)
             (dissoc :mouse-down-graph))
-    :fx (cond
-          ;; If mouse down was on the graph background, and there was no drag
-          ;; before mouse up, that's a click on the graph background. In
-          ;; response, we create a rule.
-          (and (:mouse-down-graph (:db cofx))
-               (not (:dragged (:db cofx))))
-          [[:dispatch [::create-rule position]]]
-
-          :else
-          [])}))
+    :fx [(when (and (:mouse-down-graph (:db cofx))
+                    (not (:dragged (:db cofx))))
+           ;; If mouse down was on the graph background, and there was no drag
+           ;; before mouse up, that's a click on the graph background. In
+           ;; response, we create a rule.
+           (case (get-in (:db cofx) [:program :target])
+             :epilog [:dispatch [::create-rule position]]
+             :yscript [:dispatch [::ys-events/create-rule position]]))]}))
 
 (rf/reg-event-db
  ::create-rule

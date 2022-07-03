@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [lide.events :as events]
    [lide.subs :as subs]
+   [lide.util :as util]
    [lide.views :as views]
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
@@ -72,10 +73,25 @@
         (let [fact @(rf/subscribe [::ys-subs/fact (:dest-fact statement)])]
           [:div {:class "ys-statement__dest-fact"}
            [views/socket]
-           [:div (:descriptor fact)]
+           [util/eip-plain-text
+            {:value (:descriptor fact)
+             :on-blur #(rf/dispatch [::ys-events/set-determinee-descriptor
+                                     id
+                                     (-> % .-target .-value)])
+             :placeholder "[not set]"}]
            [:div {:class "ys-statement__dest-value"} (fact-value fact)]])
         [:div "ONLY IF"]
-        [expression {:expr (:src-expr statement)}]])]))
+        (if (= :unspecified (:src-expr statement))
+          [:select {:on-change #(do
+                                  (when (-> % .-target .-value)
+                                    (rf/dispatch [::ys-events/add-source-expr
+                                                  id
+                                                  (keyword (-> % .-target .-value))]))
+                                  (set! (-> % .-target .-value) ""))}
+           [:option {:value ""} "Add expression..."]
+           [:option {:value "and"} "AND"]
+           [:option {:value "or"} "OR"]]
+          [expression {:expr (:src-expr statement)}])])]))
 
 (defn rule-html [{:keys [id localize-position store-ref]}]
   (let [rule @(rf/subscribe [::ys-subs/rule id])]
@@ -84,13 +100,21 @@
            :data-rule-id id
            :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) id])}
      [:div {:class "ys-rule__header"}
-      [:div {:class "ys-rule__name"} (if-not (string/blank? (:name rule))
-                                       (:name rule)
-                                       "[unnamed rule]")]]
+      [:div {:class "ys-rule__name"} (str "RULE "
+                                          (if-not (string/blank? (:name rule))
+                                            (:name rule)
+                                            "[not named]")
+                                          " PROVIDES")]]
      (->> (:statements rule)
           (map (fn [st-id]
                  [statement {:id st-id
-                             :key st-id}])))]))
+                             :key st-id}])))
+     [:select {:on-change #(do
+                             (when (-> % .-target .-value)
+                               (rf/dispatch [::ys-events/add-statement id (keyword (-> % .-target .-value))]))
+                             (set! (-> % .-target .-value) ""))}
+      [:option {:value ""} "Add statement..."]
+      [:option {:value "only-if"} "ONLY IF"]]]))
 
 (defn rule [{:keys [id] :as props}]
   [views/prerender {:element-type :ys-rule

@@ -2,14 +2,19 @@
   (:require
    [clojure.set :as set]))
 
+(defn default-fact []
+  {:type :boolean
+   :descriptor :unspecified
+   :value :unknown})
+
 (defn facts-required-by-expression
   "Return a set of all facts required by `expr`."
   [expr]
-  (if (uuid? expr)
-    #{expr} ;; `expr` is just a fact
-    (case (:type expr)
-      :and (apply set/union (map facts-required-by-expression (:exprs expr)))
-      :or  (apply set/union (map facts-required-by-expression (:exprs expr))))))
+  (cond
+    (= :unspecified expr) #{}
+    (uuid? expr) #{expr} ;; `expr` is just a fact
+    (= :and (:type expr)) (apply set/union (map facts-required-by-expression (:exprs expr)))
+    (= :or  (:type expr)) (apply set/union (map facts-required-by-expression (:exprs expr)))))
 
 (defn facts-required-by-statement
   "Return a set of all facts required for the execution of `rule`."
@@ -21,7 +26,33 @@
   "Return a set of all facts that can be determined by executing `statement`."
   [statement]
   (case (:type statement)
-    :only-if #{(:dest-fact statement)}))
+    :only-if (facts-required-by-expression (:dest-fact statement))))
+
+(defn orphan-facts
+  "Return a set of IDs of all facts neither determined nor required by any rule in
+  `program`."
+  [program]
+  (->> (:rules program)
+       (reduce
+        (fn [orphans [_ rule]]
+          (reduce
+           (fn [orphans' statement-id]
+             (let [statement (get-in program [:statements statement-id])]
+               (set/difference orphans'
+                               (facts-determined-by-statement statement)
+                               (facts-required-by-statement   statement))))
+           orphans
+           (:statements rule)))
+        (set (keys (:facts program))))))
+
+(defn facts-by-descriptor
+  "Return a map of descriptor to ID for all facts in `program`."
+  [program]
+  (->> (:facts program)
+       (reduce
+        (fn [acc [id fact]]
+          (assoc acc (:descriptor fact) id))
+        {})))
 
 (defn statements-by-required-fact
   "Return a map of fact ID to a set of IDs of all statements requiring that fact."
