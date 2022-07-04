@@ -73,13 +73,15 @@
                               :path (conj path :exprs)}])])
 
 (defn statement [{:keys [id]}]
-  (let [statement @(rf/subscribe [::ys-subs/statement id])]
+  (let [statement @(rf/subscribe [::ys-subs/statement id])
+        determinations @(rf/subscribe [::ys-subs/determinations-for-statement id])]
     [:div {:class "ys-statement"
            :data-statement-id id}
      (case (:type statement)
        :only-if
        [:div
-        (let [fact @(rf/subscribe [::ys-subs/fact (:dest-fact statement)])]
+        (let [fact @(rf/subscribe [::ys-subs/fact (:dest-fact statement)])
+              local-determination (get determinations (:dest-fact statement))]
           [:div {:class "ys-statement__dest-fact"}
            [views/socket]
            [util/eip-plain-text
@@ -88,7 +90,10 @@
                                      id
                                      (-> % .-target .-value)])
              :placeholder "[not set]"}]
-           [:div {:class "ys-statement__dest-value"} (fact-value fact)]])
+           [:div {:class "ys-statement__dest-value"}
+            (when (not= (:value fact) local-determination)
+              [:div {:class "ys-statement__warn-stale"} "(stale)"])
+            (fact-value {:value local-determination})]])
         [:div "ONLY IF"]
         (if (= :unspecified (:src-expr statement))
           [:select {:on-change #(do

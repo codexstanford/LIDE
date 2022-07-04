@@ -64,9 +64,7 @@
  (fn [[fact-id st-by-fact]]
    (get st-by-fact fact-id)))
 
-#_(rf/reg-sub
- ::orphan-facts
- (fn [_ _]
-   (rf/subscribe [::subs/program]))
- (fn [program]
-   (ys/orphan-facts program)))
+(rf/reg-sub
+ ::determinations-for-statement
+ (fn [db [_ st-id]]
+   (ys/compute-statement (:program db) (get-in db [:program :statements st-id]))))

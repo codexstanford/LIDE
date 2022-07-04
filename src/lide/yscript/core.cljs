@@ -104,6 +104,9 @@
   TODO this would memoize very nicely"
   [program expr]
   (cond
+    (= :unspecified expr)
+    :unknown
+
     (uuid? expr)
     (get-in program [:facts expr :value])
 
@@ -119,13 +122,23 @@
       (every? #(= false (compute-expression program %)) (:exprs expr)) false
       :else :unknown)))
 
-(defn execute-statement
-  "Determine whatever fact values `statement` can. Return `program` with these
-  fact values updated."
+(defn compute-statement
+  "Determine whatever fact values `statement` can, and return a map of such fact
+  IDs to their determined values."
   [program statement]
   (case (:type statement)
-    :only-if (let [value (compute-expression program (:src-expr statement))]
-               (assoc-in program [:facts (:dest-fact statement) :value] value))))
+    :only-if {(:dest-fact statement) (compute-expression program (:src-expr statement))}))
+
+(defn execute-statement
+  "Determine whatever fact values `statement` can, and apply these changes to
+  `program`."
+  [program statement]
+  (case (:type statement)
+    :only-if (->> (compute-statement program statement)
+                  (reduce
+                   (fn [program' [fact-id value]]
+                     (assoc-in program' [:facts fact-id :value] value))
+                   program))))
 
 (defn forward-chain
   "Infer as much as possible from fact `fact-id` and return `program` with new
