@@ -1,6 +1,7 @@
 (ns lide.yscript.core
   (:require
-   [clojure.set :as set]))
+   [clojure.set :as set]
+   [clojure.string :as string]))
 
 (defn default-fact []
   {:type :boolean
@@ -155,3 +156,38 @@
                                   (forward-chain program''' index determined-fact))
                                 program''))))
                program)))
+
+(defn codify-fact-reference [fact]
+  (if (= :unspecified (:descriptor fact))
+    "[not set]"
+    (:descriptor fact)))
+
+(defn codify-expression [expr]
+  (cond
+    (= :boolean (:type expr))
+    (codify-fact-reference expr)
+
+    (= :and (:type expr))
+    (->> (:exprs expr)
+         (map codify-expression)
+         (string/join " AND\n    "))
+
+    (= :or (:type expr))
+    (->> (:exprs expr)
+         (map codify-expression)
+         (string/join " OR\n    "))))
+
+(defn codify-statement [statement]
+  (case (:type statement)
+    :only-if
+    (str
+     "  " (codify-fact-reference (:dest-fact statement)) " ONLY IF\n"
+     "    " (codify-expression (:src-expr statement)))))
+
+(defn codify-rule [rule]
+  (str
+   (string/join " " (remove string/blank? ["RULE" (:name rule) "PROVIDES"])) "\n"
+   (string/join "\n" (map codify-statement (vals (:statements rule))))))
+
+(defn codify-program [program]
+  (string/join "\n\n" (map codify-rule (vals (:rules program)))))

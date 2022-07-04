@@ -6,6 +6,7 @@
    [lide.subs :as subs]
    [lide.util :as util]
    [lide.views :as views]
+   [lide.yscript.core :as ys]
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
 
@@ -220,3 +221,9 @@
            (fn [[fact-id _]]
              [fact-determiner-connectors {:fact-id fact-id
                                           :key fact-id}])))]))
+
+(defn code-panel []
+  (let [program @(rf/subscribe [::ys-subs/populated-program])]
+    [:div {:class "yscript-inspector"}
+     [:pre {:class "code"}
+      (ys/codify-program program)]]))

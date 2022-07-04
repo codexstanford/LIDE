@@ -8,7 +8,7 @@
    [lide.views :as views]
    [lide.epilog.core :as epilog]
    [lide.epilog.views :as epilog-views]
-   [lide.yscript.views :as yscript-views]))
+   [lide.yscript.views :as ys-views]))
 
 (defn graph-viewport [{:keys [set-ref]} & children]
   "Draw an SVG group to contain the program graph.
@@ -48,7 +48,7 @@
             (let [graph-props {:localize-position localize-position
                                :key :program-graph}]
               (case target
-                :yscript [yscript-views/program-graph graph-props]
+                :yscript [ys-views/program-graph graph-props]
                 [epilog-views/program-graph graph-props]))]])))))
 
 (defn toolbar []
@@ -75,6 +75,6 @@
       [program-graph]
       [:div {:class "inspectors"}
        (case target
-         :yscript nil
+         :yscript [ys-views/code-panel]
          [epilog-views/code-panel])]]
      [toolbar]]))

@@ -2,7 +2,8 @@
   (:require
    [re-frame.core :as rf]
    [lide.subs :as subs]
-   [lide.yscript.core :as ys]))
+   [lide.yscript.core :as ys]
+   [lide.yscript.db :as ys-db]))
 
 (rf/reg-sub
  ::fact
@@ -66,5 +67,15 @@
 
 (rf/reg-sub
  ::determinations-for-statement
- (fn [db [_ st-id]]
-   (ys/compute-statement (:program db) (get-in db [:program :statements st-id]))))
+ (fn [[_ st-id]]
+   [(atom st-id)
+    (rf/subscribe [::subs/program])])
+ (fn [[st-id program]]
+   (ys/compute-statement program (get-in program [:statements st-id]))))
+
+(rf/reg-sub
+ ::populated-program
+ (fn [_ _]
+   (rf/subscribe [::subs/program]))
+ (fn [program]
+   (ys-db/populate-program program)))

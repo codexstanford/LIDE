@@ -1,4 +1,6 @@
-(ns lide.yscript.db)
+(ns lide.yscript.db
+  (:require
+   [lide.util :as util]))
 
 (def default-db
   (let [take-umbrella-id (random-uuid)
@@ -83,3 +85,41 @@
      {rule-1-id {:x 25, :y 40}
       rule-2-id {:x 325, :y 111}
       rule-3-id {:x 625, :y 147}}}))
+
+(defn populate-expr [program expr]
+  (cond
+    (uuid? expr)
+    (get-in program [:facts expr])
+
+    (contains? #{:and :or} (:type expr))
+    (update expr
+            :exprs
+            (fn [exprs]
+              (mapv #(populate-expr program %) exprs)))))
+
+(defn populate-statement [program statement]
+  (case (:type statement)
+    :only-if (-> statement
+                 (update :dest-fact #(get-in program [:facts %]))
+                 (update :src-expr #(populate-expr program %)))))
+
+(defn populate-rule [program rule]
+  (update rule
+          :statements
+          (fn [statements]
+            (->> statements
+                 (map
+                  (fn [st-id]
+                    [st-id (populate-statement program (get-in program [:statements st-id]))]))
+                 (into {})))))
+
+(defn populate-program
+  "Replace IDs throughout `program` with their actual values."
+  [program]
+  (update program
+          :rules
+          (fn [rules]
+            (util/map-vals
+             (fn [rule]
+               (populate-rule program rule))
+             rules))))
