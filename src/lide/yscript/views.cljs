@@ -20,48 +20,57 @@
     false :unknown
     :unknown true))
 
-(defn required-fact [{:keys [id]}]
-  (let [fact @(rf/subscribe [::ys-subs/fact id])
-        determiners @(rf/subscribe [::ys-subs/statements-determining-fact id])]
+(defn required-fact [{:keys [fact-id path]}]
+  (let [fact @(rf/subscribe [::ys-subs/fact fact-id])
+        determiners @(rf/subscribe [::ys-subs/statements-determining-fact fact-id])]
     [:div {:class "ys-fact"
-           :data-fact-id id}
-     [:div (:descriptor fact)]
+           :data-fact-id fact-id}
+     [util/eip-plain-text
+      {:value (:descriptor fact)
+       :on-blur #(rf/dispatch [::ys-events/set-requiree-descriptor
+                               path
+                               (-> % .-target .-value)])
+       :placeholder "[not set]"}]
      [:div {:class "ys-fact__value"}
       (if (seq determiners)
         [:<>
          [:div (fact-value fact)]
          [views/socket]]
-        [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value id (next-value (:value fact))])}
+        [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value fact-id (next-value (:value fact))])}
          (fact-value fact)])]]))
 
 ;; `expression` and `conjunction-expression` are mutually recursive, so we have
 ;; to declare `expression` in advance
 (declare expression)
 
-(defn conjunction-expression [{:keys [operator exprs]}]
+(defn conjunction-expression [{:keys [operator exprs path]}]
   [:div
    (->> exprs
         (map-indexed (fn [idx expr]
                        [expression {:expr expr
+                                    :path (conj path idx)
                                     :key idx}]))
         (interpose [:div {:key (random-uuid)}
                     (case operator
                       :and "AND"
                       :or  "OR")]))])
 
-(defn expression [{:keys [expr]}]
+(defn expression [{:keys [expr path]}]
   [:div {:class "ys-expr"}
    (cond
      (uuid? expr)
-     [required-fact {:id expr}]
+     [required-fact {:fact-id expr
+                     :path path}]
 
      (= :and (:type expr))
      [conjunction-expression {:operator :and
-                              :exprs (:exprs expr)}]
+                              :exprs (:exprs expr)
+                              :path (conj path :exprs)}]
 
      (= :or (:type expr))
      [conjunction-expression {:operator :or
-                              :exprs (:exprs expr)}])])
+                              :exprs (:exprs expr)
+                              :path (conj path :exprs)}])])
 
 (defn statement [{:keys [id]}]
   (let [statement @(rf/subscribe [::ys-subs/statement id])]
@@ -91,7 +100,8 @@
            [:option {:value ""} "Add expression..."]
            [:option {:value "and"} "AND"]
            [:option {:value "or"} "OR"]]
-          [expression {:expr (:src-expr statement)}])])]))
+          [expression {:expr (:src-expr statement)
+                       :path [id :src-expr]}])])]))
 
 (defn rule-html [{:keys [id localize-position store-ref]}]
   (let [rule @(rf/subscribe [::ys-subs/rule id])]

@@ -63,6 +63,30 @@
                                                      %))))))
 
 (rf/reg-event-db
+ ::set-requiree-descriptor
+ (undo/undoable "set requiree descriptor")
+ (fn [db [_ [statement-id & sub-st-path :as path] descriptor]]
+   (let [statement (get-in db [:program :statements statement-id])
+         old-requiree-id (get-in statement sub-st-path)
+         old-requiree (get-in db [:program :facts old-requiree-id])
+         new-requiree-id (get (ys/facts-by-descriptor (:program db)) descriptor)
+         new-requiree (get-in db [:program :facts new-requiree-id])
+         db' (if new-requiree
+               ;; Switch requiree to fact matching `descriptor`
+               (assoc-in db (concat [:program :statements] path) new-requiree-id)
+               ;; If `descriptor` doesn't match any existing fact, make a new one
+               (let [fact (assoc (or old-requiree (ys/default-fact)) :descriptor descriptor)
+                     fact-id (random-uuid)]
+                 (-> db
+                     (assoc-in [:program :facts fact-id] fact)
+                     (assoc-in (concat [:program :statements] path) fact-id))))
+         orphans (ys/orphan-facts (:program db'))]
+     (update-in db' [:program :facts] #(into {}
+                                             (remove (fn [[fact-id _]]
+                                                       (contains? orphans fact-id))
+                                                     %))))))
+
+(rf/reg-event-db
  ::set-fact-value
  (undo/undoable "set fact value")
  (fn [db [_ fact-id value]]
