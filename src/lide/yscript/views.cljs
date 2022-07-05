@@ -92,7 +92,7 @@
                                      (-> % .-target .-value)])
              :placeholder "[not set]"}]
            [:div {:class "ys-statement__dest-value"}
-            (when (not= (:value fact) local-determination)
+            (when (and fact (not= (:value fact) local-determination))
               [:div {:class "ys-statement__warn-stale"} "(stale)"])
             (fact-value {:value local-determination})]])
         [:div "ONLY IF"]
