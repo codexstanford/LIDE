@@ -1,7 +1,9 @@
 (ns lide.yscript.core
   (:require
    [clojure.set :as set]
-   [clojure.string :as string]))
+   [clojure.string :as string]
+   [instaparse.core :as insta :refer-macros [defparser]]
+   [lide.yscript.grammar :as grammar]))
 
 (defn default-fact []
   {:type :boolean
@@ -191,3 +193,67 @@
 
 (defn codify-program [program]
   (string/join "\n\n" (map codify-rule (vals (:rules program)))))
+
+(defparser parse
+  "
+code = block+
+keyword = 'ALIAS' | 'AS' | 'BOOLEAN' | 'DATE' | 'DISPLAYED' | 'ELSE' | 'EXIT' | 'FORWARD' | 'GREATER' | 'INCLUDE' | 'LESSEQUAL' | 'MATCHES' | 'MONTH' | 'NUMBERED' | 'PERSON' | 'PROVIDES' | 'SECOND' | 'STYLE' | 'THAN' | 'TRANSLATE' | 'UNREPORTED' | 'WHEN' | 'ALL' | 'ASSERT' | 'BY' | 'DAY' | 'DIVIDED' | 'END' | 'EXPLAIN' | 'FROM' | 'GREATEREQUAL' | 'INFO' | 'LEVEL' | 'MINUS' | 'MONTHS' | 'ONLY' | 'PERSON-THING' | 'RANGE' | 'SECONDS' | 'SUB-RULE' | 'THEN' | 'UNCERTAIN' | 'UNTIL' | 'WHILE' | 'AND' | 'ATTACH' | 'CALL' | 'DAYS' | 'DO' | 'END-SECTION' | 'FACT' | 'GENDER' | 'HOUR' | 'INFORMAL' | 'LINE' | 'MINUTE' | 'NEXT' | 'OR' | 'PERSONTHING' | 'REPEAT' | 'SECTION' | 'SUBRULE' | 'THING' | 'UNIT' | 'VERB' | 'YEAR' | 'AND/OR' | 'AUTHORITY' | 'CASE' | 'DEFAULT' | 'DOCUMENT' | 'EQUAL' | 'FOR' | 'GENDER-NEUTRAL' | 'HOURS' | 'INTEGER' | 'LINK' | 'MINUTES' | 'NOT' | 'OR/WITH' | 'PLUS' | 'REPORT' | 'SESSION' | 'SYSTEM' | 'TIME' | 'UNKNOWN' | 'VERBS' | 'YEARS' | 'AND/OR/WITH' | 'BACKWARD' | 'CONTEXT' | 'DEFINITE' | 'DOLLAR' | 'EQUALS' | 'FORGET' | 'GENDERNEUTRAL' | 'IF' | 'IS' | 'LISTED' | 'MOD' | 'NUMBER' | 'ORDER' | 'PROCEDURE' | 'RULE' | 'SEX' | 'TEMPLATE' | 'TIMES' | 'UNLISTED' | 'WEEK' | 'AND/WITH' | 'BEGIN' | 'DAEMON' | 'DETERMINE' | 'DOLLARS' | 'EXAMPLE' | 'FORMAL' | 'GOAL' | 'IN' | 'LESS' | 'MATCH' | 'MONEY' | 'NUMBER' | 'PARAGRAPH' | 'PROMPT' | 'SAY' | 'STRING' | 'TEXT' | 'TO' | 'UNNAMED' | 'WEEKS'
+whitespace = #'\\s+'
+<text-word> = !keyword #'[\\w]+'
+text = '\"' text-word { whitespace text-word } '\"' | text-word { whitespace text-word }
+descriptor = text-word { whitespace text-word }
+block = context | defaults | example | fact-declaration | (* include | *) order | rule | verbs
+context = 'CONTEXT' descriptor
+defaults = 'DEFAULT' generic-type 'STYLE' text
+fact-declaration = [ 'GOAL' ] fact-type descriptor [ 'FROM' context ] [ 'PROVIDES' ] { attachment | explanation | info | prompt | range | translation } [ statements ]
+fact-type = [qualifier] [type 'FACT' | 'FACT']
+qualifier = 'SYSTEM' | 'UNREPORTED' | 'UNNAMED' | 'INFORMAL' | 'GENDER-NEUTRAL'
+attachment = 'ATTACH' ['DISPLAYED'] [qualifier] 'REPORT'|'DOCUMENT'|'TEMPLATE' descriptor ['AS' descriptor]
+explanation = 'EXPLAIN' [ 'UNKNOWN' | descriptor ] 'AS' text
+info = 'INFO' text
+prompt = 'PROMPT' text
+range = 'RANGE' arith-expr [ 'TO' arith-expr ]
+translation = 'TRANSLATE' [ 'RANGE' | 'UNKNOWN' | descriptor ] 'AS' text
+fact-type = generic-type | named-subject
+generic-type = 'BOOLEAN'|'DATE'|'GENDER'|'INTEGER'|'MONEY'|'NUMBER'|'STRING'
+named-subject = 'PERSON' | 'THING' | 'PERSON-THING'
+verbs = 'VERB' | 'VERBS' descriptor
+(* include = 'INCLUDE' file-name *)
+example = example-header example-body
+example-header = ['GOAL'] 'EXAMPLE' ['RULE'] [descriptor] 'PROVIDES'
+example-body = 'IF' bool-expr 'THEN' assignment
+order = 'ORDER' descriptor { 'THEN' descriptor }
+rule = rule-header statements
+rule-header = ['GOAL'] rule-type ['RULE'] [descriptor] <'PROVIDES'>
+rule-type = 'BACKWARD'|'DAEMON'|'DOCUMENT'|'FORWARD'|'PROCEDURE'|'RULE'
+statements = statement+
+statement = assignment|call|case|determine|exit|forget|if|(* include| *)repeat|say|while|write|'BEGIN' statements 'END'
+<assignment> = [ 'ASSERT' ] (is-assignment | !is-assignment descriptor { 'AND' descriptor })
+is-assignment = descriptor is-assignment-operator expression
+is-assignment-operator = 'IS' | 'ONLY IF'
+call = 'CALL' | 'SUBRULE' | 'NEXT' ['GOAL'] descriptor [ 'FROM' descriptor ]
+case = 'CASE' descriptor { 'WHEN' descriptor [ 'THEN' ] statement }
+determine = 'DETERMINE' descriptor
+exit = 'EXIT' ['SESSION']
+forget = 'FORGET' ( 'ALL' | descriptor )
+if = 'IF' expression 'THEN' statement [ 'ELSE' statement ]
+say = 'SAY' text
+repeat = 'REPEAT' statements 'UNTIL' expression
+write = ['NUMBERED'] ['LEVEL' natural-number] 'PARAGRAPH'|'LINE'|'TEXT' text
+natural-number = digit { digit }
+digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+while = 'WHILE' expression 'DO' statement
+<expression> = bool-expr | !bool-expr arith-expr | !arith-expr rel-expr
+<bool-expr> = fact-expr | !fact-expr and-or-expr | !and-or-expr and-expr | !and-expr or-expr
+fact-expr = descriptor
+and-or-expr = bool-expr { <'AND/OR'|'AND/OR/WITH'> bool-expr }
+and-expr = bool-expr { <'AND'/'AND-WITH'> bool-expr }
+or-expr = bool-expr { <'OR'/'OR-WITH'> bool-expr }
+rel-expr = arith-expr { ['IS'] rel-op ['THAN'|'TO'] arith-expr }
+arith-expr = term { 'PLUS'|'MINUS' } term
+term = factor { 'TIMES'|'DIVIDED' ['BY'] } factor
+factor = {pre-unary-op} descriptor [post-unary-op]
+rel-op = 'LESS'|'GREATER'|'LESSEQUAL'|'GREATEREQUAL'|'EQUAL'|'EQUALS'|'NOT' 'EQUAL'|'NOT' 'EQUALS'
+pre-unary-op = 'NOT'|'MINUS'|'PLUS'|'DAY'|'MONTH'|'YEAR'|'HOUR'|'MINUTE'|'SECOND'|'UNKNOWN'
+post-unary-op = 'DAY'|'WEEK'|'MONTH'|'YEAR'|'DAYS'|'WEEKS'|'MONTHS'|'YEARS'|'HOURS'|'MINUTES'|'SECONDS'"
+  :auto-whitespace :standard)
