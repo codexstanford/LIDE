@@ -2,7 +2,7 @@
 
 (def bnf
   "code = block { block }
-block = context | defaults | example | fact-declaration | (* include | *) order | rule | verbs
+<block> = context | defaults | example | fact-declaration | (* include | *) order | rule | verbs
 text = #'\"[^\"]\"'
 descriptor = #'.*'
 context = 'CONTEXT' context
@@ -26,7 +26,8 @@ example-header = ['GOAL'] 'EXAMPLE' ['RULE'] [descriptor] 'PROVIDES'
 example-body = 'IF' bool-expr 'THEN' assignment
 order = 'ORDER' descriptor { 'THEN' descriptor }
 rule = rule-header statements
-rule-header = ['GOAL'] rule-type ['RULE'] [descriptor] 'PROVIDES'
+(* XXX yscript proper allows unnamed rules *)
+rule-header = ['GOAL'] rule-type ['RULE'] descriptor 'PROVIDES'
 rule-type = 'BACKWARD'|'DAEMON'|'DOCUMENT'|'FORWARD'|'PROCEDURE'|'RULE'
 statements = statement { statement }
 statement = assignment|call|case|determine|exit|forget|if|(* include| *)repeat|say|while|write|'BEGIN' statements 'END'

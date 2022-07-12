@@ -225,5 +225,5 @@
 (defn code-panel []
   (let [program @(rf/subscribe [::ys-subs/populated-program])]
     [:div {:class "yscript-inspector"}
-     [:pre {:class "code"}
-      (ys/codify-program program)]]))
+     [:textarea {:class "code"
+                 :defaultValue (ys/codify-program program)}]]))

@@ -10,6 +10,11 @@
    :descriptor :unspecified
    :value :unknown})
 
+(defn default-rule []
+  {:name ""
+   :goal false
+   :statements []})
+
 (defn facts-required-by-expression
   "Return a set of all facts required by `expr`."
   [expr]
@@ -202,7 +207,7 @@ whitespace = #'\\s+'
 <text-word> = !keyword #'[\\w]+'
 text = '\"' text-word { whitespace text-word } '\"' | text-word { whitespace text-word }
 descriptor = text-word { whitespace text-word }
-block = context | defaults | example | fact-declaration | (* include | *) order | rule | verbs
+<block> = context | defaults | example | fact-declaration | (* include | *) order | rule | verbs
 context = 'CONTEXT' descriptor
 defaults = 'DEFAULT' generic-type 'STYLE' text
 fact-declaration = [ 'GOAL' ] fact-type descriptor [ 'FROM' context ] [ 'PROVIDES' ] { attachment | explanation | info | prompt | range | translation } [ statements ]
@@ -227,7 +232,7 @@ rule = rule-header statements
 rule-header = ['GOAL'] rule-type ['RULE'] [descriptor] <'PROVIDES'>
 rule-type = 'BACKWARD'|'DAEMON'|'DOCUMENT'|'FORWARD'|'PROCEDURE'|'RULE'
 statements = statement+
-statement = assignment|call|case|determine|exit|forget|if|(* include| *)repeat|say|while|write|'BEGIN' statements 'END'
+<statement> = assignment|call|case|determine|exit|forget|if|(* include| *)repeat|say|while|write|'BEGIN' statements 'END'
 <assignment> = [ 'ASSERT' ] (is-assignment | !is-assignment descriptor { 'AND' descriptor })
 is-assignment = descriptor is-assignment-operator expression
 is-assignment-operator = 'IS' | 'ONLY IF'

@@ -1,6 +1,7 @@
 (ns lide.yscript.db
   (:require
-   [lide.util :as util]))
+   [lide.util :as util]
+   [lide.yscript.core :as ys]))
 
 (def default-db
   (let [take-umbrella-id (random-uuid)
@@ -69,22 +70,120 @@
         :src-expr water-falling-id}}
 
       :rules
-      {rule-1-id {:name ""
+      {rule-1-id {:name "a"
                   :goal true
                   :statements [take-if-id]}
 
-       rule-2-id {:name ""
+       rule-2-id {:name "b"
                   :goal false
                   :statements [might-need-if-id]}
 
-       rule-3-id {:name ""
+       rule-3-id {:name "c"
                   :goal false
                   :statements [raining-if-id]}}}
+
+     :rule-source-order
+     [rule-1-id
+      rule-2-id
+      rule-3-id]
 
      :positions
      {rule-1-id {:x 25, :y 40}
       rule-2-id {:x 325, :y 111}
       rule-3-id {:x 625, :y 147}}}))
+
+(defn fact-by-descriptor
+  "Find a [ID, fact] pair in `db` matching `descriptor`."
+  [db descriptor]
+  (some (fn [[id fact]]
+          (= descriptor (:descriptor fact)))
+        (get-in db [:program :facts])))
+
+(defn rule-by-name [db name]
+  (some #(= name (:name %))
+        (get-in db [:program :rules])))
+
+(defn ensure-fact
+  "Find a fact with `descriptor` in `db`, or create one.
+
+  Returns a vector of the possibly updated DB, the fact ID, and the fact."
+  [db descriptor]
+  (let [[found-id fact] (fact-by-descriptor db descriptor)
+        id (or found-id (random-uuid))
+        db-with-fact (if found-id
+                       db
+                       (assoc-in db
+                                 [:program :facts id]
+                                 (assoc (ys/default-fact) :descriptor descriptor)))]
+    [db-with-fact id fact]))
+
+(defn ingest-expr-type [type]
+  (case type
+    :or-expr :or
+    :and-expr :and))
+
+(defn ingest
+  "Update `db` with values obtained from yscript AST `parsed`.
+
+  Returns a pair of the updated `db` and maybe some extra information, depending
+  on the type of `parsed`'s root node."
+  ;; TODO this is not very efficient
+  [db path [node-type & children]]
+  (cond
+    (= node-type :fact-expr)
+    (let [[[_ & descriptor-tokens]] children
+          descriptor (apply str descriptor-tokens)
+          [db-with-fact id _] (ensure-fact db descriptor)]
+      [db-with-fact id])
+
+    (= node-type :code)
+    (reduce
+     (fn [[db'] block]
+       (ingest db' [:program] block))
+     [db]
+     children)
+
+    (= node-type :rule)
+    (let [[[_ [_ rule-type] [_ name]]
+           [_ & statements]] children
+          [found-id rule] (rule-by-name db name)
+          id (or found-id (random-uuid))
+          db-with-rule (if found-id
+                         db
+                         (assoc-in db
+                                   [:program :rules id]
+                                   (assoc (ys/default-rule) :name name)))]
+      (->> statements
+           (reduce
+            (fn [[[db'] statement-idx] statement]
+              [(ingest db' (conj path :rules id :statements statement-idx) statement)
+               (inc statement-idx)])
+            [[db-with-rule] 0])
+           first))
+
+    (= node-type :is-assignment)
+    (let [[[_ & dest-descriptor-tokens]
+           _
+           src-expr-parsed] children
+          [db' dest-fact-id _] (ensure-fact db (apply str dest-descriptor-tokens))
+          [db'' src-expr] (ingest db' path src-expr-parsed)]
+      [(assoc-in db''
+                  path
+                  {:type :only-if
+                   :dest-fact dest-fact-id
+                   :src-expr src-expr})])
+
+    (contains? #{:and-expr :or-expr} node-type)
+    (let [[db-with-facts fact-ids]
+          (reduce
+           (fn [[db' ids] fact-expr]
+             (let [[db-with-fact id] (ingest db' path fact-expr)]
+               [db-with-fact (conj ids id)]))
+           [db []]
+           children)]
+      [db-with-facts
+       {:type (ingest-expr-type node-type)
+        :exprs fact-ids}])))
 
 (defn populate-expr [program expr]
   (cond
