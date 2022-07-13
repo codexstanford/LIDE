@@ -21,6 +21,8 @@
   (dev-setup)
   (mount-root)
   (rf/dispatch-sync [::events/initialize-db])
+  (when (.-acquireVsCodeApi js/window)
+    (rf/dispatch-sync [::events/vs-code-api (. js/window acquireVsCodeApi)]))
   ;; Global listeners live alone up here, pretty much unaffected by the rest of
   ;; the app
   (.addEventListener js/window
@@ -28,10 +30,7 @@
                      (fn [message]
                        (cond
                          (= "yscript.graph.codeUpdated" (-> message .-data .-type))
-                         (rf/dispatch [::ys-events/code-updated (-> message .-data .-text)])
-
-                         :else
-                         (println "Received unrecognized message:" (str message)))))
+                         (rf/dispatch [::ys-events/code-updated (-> message .-data .-text)]))))
   (.addEventListener js/document
                      "keydown"
                      (fn [event]
