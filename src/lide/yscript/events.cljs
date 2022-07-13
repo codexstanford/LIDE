@@ -2,7 +2,8 @@
   (:require
    [re-frame.core :as rf]
    [day8.re-frame.undo :as undo]
-   [lide.yscript.core :as ys]))
+   [lide.yscript.core :as ys]
+   [lide.yscript.db :as ys-db]))
 
 (rf/reg-event-db
  ::create-rule
@@ -91,8 +92,16 @@
  (undo/undoable "set fact value")
  (fn [db [_ fact-id value]]
    (-> db
-    (assoc-in [:program :facts fact-id :value] value)
-    (update :program
-            #(ys/forward-chain %
-                               {:statements-by-required-fact (ys/statements-by-required-fact %)}
-                               fact-id)))))
+       (assoc-in [:program :facts fact-id :value] value)
+       (update :program
+               #(ys/forward-chain %
+                                  {:statements-by-required-fact (ys/statements-by-required-fact %)}
+                                  fact-id)))))
+
+(rf/reg-event-db
+ ::code-updated
+ (undo/undoable "update code")
+ (fn [db [_ new-code]]
+   (update db :program #(merge % (:program
+                                  (first
+                                   (ys-db/ingest {} [] (ys/parse new-code))))))))

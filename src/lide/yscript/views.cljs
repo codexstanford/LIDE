@@ -226,4 +226,5 @@
   (let [program @(rf/subscribe [::ys-subs/populated-program])]
     [:div {:class "yscript-inspector"}
      [:textarea {:class "code"
-                 :defaultValue (ys/codify-program program)}]]))
+                 :defaultValue (ys/codify-program program)
+                 :on-blur #(rf/dispatch [::ys-events/code-updated (-> % .-target .-value)])}]]))

@@ -96,11 +96,16 @@
   "Find a [ID, fact] pair in `db` matching `descriptor`."
   [db descriptor]
   (some (fn [[id fact]]
-          (= descriptor (:descriptor fact)))
+          (when (= descriptor (:descriptor fact))
+            [id fact]))
         (get-in db [:program :facts])))
 
-(defn rule-by-name [db name]
-  (some #(= name (:name %))
+(defn rule-by-name
+  "Find a [ID, rule] pair in `db` matching `name`."
+  [db name]
+  (some (fn [[id rule]]
+          (when (= name (:name rule))
+            [id rule]))
         (get-in db [:program :rules])))
 
 (defn ensure-fact
@@ -108,13 +113,12 @@
 
   Returns a vector of the possibly updated DB, the fact ID, and the fact."
   [db descriptor]
-  (let [[found-id fact] (fact-by-descriptor db descriptor)
+  (let [[found-id found-fact] (fact-by-descriptor db descriptor)
         id (or found-id (random-uuid))
+        fact (or found-fact (assoc (ys/default-fact) :descriptor descriptor))
         db-with-fact (if found-id
                        db
-                       (assoc-in db
-                                 [:program :facts id]
-                                 (assoc (ys/default-fact) :descriptor descriptor)))]
+                       (assoc-in db [:program :facts id] fact))]
     [db-with-fact id fact]))
 
 (defn ingest-expr-type [type]
@@ -166,12 +170,15 @@
            _
            src-expr-parsed] children
           [db' dest-fact-id _] (ensure-fact db (apply str dest-descriptor-tokens))
-          [db'' src-expr] (ingest db' path src-expr-parsed)]
-      [(assoc-in db''
-                  path
-                  {:type :only-if
-                   :dest-fact dest-fact-id
-                   :src-expr src-expr})])
+          [db'' src-expr] (ingest db' path src-expr-parsed)
+          id (random-uuid)]
+      ;; TODO this is not quite right, don't need new statement every time
+      [(-> db''
+           (assoc-in [:program :statements id]
+                     {:type :only-if
+                      :dest-fact dest-fact-id
+                      :src-expr src-expr})
+           (assoc-in path id))])
 
     (contains? #{:and-expr :or-expr} node-type)
     (let [[db-with-facts fact-ids]
