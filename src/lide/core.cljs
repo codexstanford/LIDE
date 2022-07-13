@@ -4,7 +4,8 @@
    [re-frame.core :as rf]
    [lide.events :as events]
    [lide.main :as main]
-   [lide.config :as config]))
+   [lide.config :as config]
+   [lide.yscript.events :as ys-events]))
 
 (defn dev-setup []
   (when config/debug?
@@ -20,8 +21,17 @@
   (dev-setup)
   (mount-root)
   (rf/dispatch-sync [::events/initialize-db])
-  ;; Global key listeners live alone up here, pretty much unaffected by the rest
-  ;; of the app
+  ;; Global listeners live alone up here, pretty much unaffected by the rest of
+  ;; the app
+  (.addEventListener js/window
+                     "message"
+                     (fn [message]
+                       (cond
+                         (= "yscript.graph.codeUpdated" (-> message .-data .-type))
+                         (rf/dispatch [::ys-events/code-updated (-> message .-data .-text)])
+
+                         :else
+                         (println "Received unrecognized message:" (str message)))))
   (.addEventListener js/document
                      "keydown"
                      (fn [event]

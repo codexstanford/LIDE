@@ -13,6 +13,11 @@
    (:show-saved-popup? db)))
 
 (rf/reg-sub
+ ::show-toolbar?
+ (fn [db]
+   (:show-toolbar? db)))
+
+(rf/reg-sub
  ::program
  (fn [db]
    (:program db)))

@@ -69,12 +69,13 @@
       "Redo"]]))
 
 (defn main-panel []
-  (let [target @(rf/subscribe [::subs/program-target])]
+  (let [target @(rf/subscribe [::subs/program-target])
+        show-toolbar? @(rf/subscribe [::subs/show-toolbar?])]
     [:div {:id "app-container"}
      [:div {:class "work-viewport"}
       [program-graph]
       [:div {:class "inspectors"}
-       (case target
-         :yscript [ys-views/code-panel]
+       (when (= target :epilog)
          [epilog-views/code-panel])]]
-     [toolbar]]))
+     (when show-toolbar?
+       [toolbar])]))
