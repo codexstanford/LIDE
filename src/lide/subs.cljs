@@ -9,7 +9,8 @@
 
 (rf/reg-sub
  ::show-saved-popup?
- (fn [db] (:show-saved-popup? db)))
+ (fn [db]
+   (:show-saved-popup? db)))
 
 (rf/reg-sub
  ::program
@@ -19,7 +20,7 @@
 (rf/reg-sub
  ::program-target
  (fn [db]
-   (-> db :program :target)))
+   (get-in db [:program :target])))
 
 (rf/reg-sub
  ::literal

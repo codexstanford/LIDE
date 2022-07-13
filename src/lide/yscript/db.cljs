@@ -154,13 +154,14 @@
           id (or found-id (random-uuid))
           db-with-rule (if found-id
                          db
-                         (assoc-in db
-                                   [:program :rules id]
-                                   (assoc (ys/default-rule) :name name)))]
+                         (let [_ (println "didn't find rule named" name)]
+                           (assoc-in db
+                                     [:program :rules id]
+                                     (assoc (ys/default-rule) :name name))))]
       (->> statements
            (reduce
             (fn [[[db'] statement-idx] statement]
-              [(ingest db' (conj path :rules id :statements statement-idx) statement)
+              [(ingest db' [:program :rules id :statements statement-idx] statement)
                (inc statement-idx)])
             [[db-with-rule] 0])
            first))

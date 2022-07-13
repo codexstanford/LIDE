@@ -102,6 +102,11 @@
  ::code-updated
  (undo/undoable "update code")
  (fn [db [_ new-code]]
-   (update db :program #(merge % (:program
-                                  (first
-                                   (ys-db/ingest {} [] (ys/parse new-code))))))))
+   (let [db' (-> db
+                 (ys-db/ingest [] (ys/parse new-code))
+                 first)
+         orphans (ys/orphan-statements (:program db'))]
+     (update-in db' [:program :statements] #(into {}
+                                                  (remove (fn [[st-id _]]
+                                                            (contains? orphans st-id))
+                                                          %))))))

@@ -53,6 +53,19 @@
            (:statements rule)))
         (set (keys (:facts program))))))
 
+(defn orphan-statements
+  "Return a set of IDs of all statements not contained by any rule in `program`."
+  [program]
+  (->> (:rules program)
+       (reduce
+        (fn [orphans [_ rule]]
+          (reduce
+           (fn [orphans' statement-id]
+             (disj orphans' statement-id))
+           orphans
+           (:statements rule)))
+        (set (keys (:statements program))))))
+
 (defn facts-by-descriptor
   "Return a map of descriptor to ID for all facts in `program`."
   [program]
