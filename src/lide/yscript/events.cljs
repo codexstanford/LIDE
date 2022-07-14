@@ -5,9 +5,28 @@
    [lide.yscript.core :as ys]
    [lide.yscript.db :as ys-db]))
 
+(def publish-db
+  (rf/->interceptor
+   :id :publish-code
+
+   :after
+   (fn [context]
+     (let [vs-code (get-in context [:effects :db :vs-code])]
+       (do
+         (when vs-code
+           (println "publishing to VS Code")
+           (. vs-code
+              postMessage
+              (clj->js {:type "programUpdated"
+                        :text (ys/codify-program
+                               (ys-db/populate-program
+                                (get-in context [:effects :db :program])))})))
+         context)))))
+
 (rf/reg-event-db
  ::create-rule
- (undo/undoable "create rule")
+ [publish-db
+  (undo/undoable "create rule")]
  (fn [db [_ position]]
    (let [id (random-uuid)]
      (-> db
@@ -19,7 +38,8 @@
 
 (rf/reg-event-db
  ::add-statement
- (undo/undoable "add statement")
+ [publish-db
+  (undo/undoable "add statement")]
  (fn [db [_ rule-id type]]
    (let [id (random-uuid)]
      (-> db
@@ -31,7 +51,8 @@
 
 (rf/reg-event-db
  ::add-source-expr
- (undo/undoable "add source expression")
+ [publish-db
+  (undo/undoable "add source expression")]
  (fn [db [_ statement-id type]]
    (let [fact-id (random-uuid)]
      (-> db
@@ -41,7 +62,8 @@
 
 (rf/reg-event-db
  ::set-determinee-descriptor
- (undo/undoable "set determinee descriptor")
+ [publish-db
+  (undo/undoable "set determinee descriptor")]
  (fn [db [_ statement-id descriptor]]
    (let [statement (get-in db [:program :statements statement-id])
          old-determinee-id (:dest-fact statement)
@@ -65,7 +87,8 @@
 
 (rf/reg-event-db
  ::set-requiree-descriptor
- (undo/undoable "set requiree descriptor")
+ [publish-db
+  (undo/undoable "set requiree descriptor")]
  (fn [db [_ [statement-id & sub-st-path :as path] descriptor]]
    (let [statement (get-in db [:program :statements statement-id])
          old-requiree-id (get-in statement sub-st-path)
@@ -89,7 +112,8 @@
 
 (rf/reg-event-db
  ::set-fact-value
- (undo/undoable "set fact value")
+ [publish-db
+  (undo/undoable "set fact value")]
  (fn [db [_ fact-id value]]
    (-> db
        (assoc-in [:program :facts fact-id :value] value)

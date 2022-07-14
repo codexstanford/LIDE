@@ -85,6 +85,11 @@
             #_(update-in [:program :defeatings] #(or % #{}))
             (update :graph-transform #(or % (util/dom-matrix-to-vals (js/DOMMatrix.)))))}))
 
+(rf/reg-event-db
+ ::vs-code-api
+ (fn [db [_ vs-code]]
+   (assoc db :vs-code vs-code)))
+
 ;; Connections
 
 (rf/reg-event-db
