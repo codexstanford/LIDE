@@ -92,6 +92,14 @@
       rule-2-id {:x 325, :y 111}
       rule-3-id {:x 625, :y 147}}}))
 
+(defn rule-names
+  "Return a set of names of all rules in `db`."
+  [db]
+  (->> (get-in db [:program :rules])
+       vals
+       (map :name)
+       set))
+
 (defn fact-by-descriptor
   "Find a [ID, fact] pair in `db` matching `descriptor`."
   [db descriptor]
@@ -157,7 +165,7 @@
                          (let [_ (println "didn't find rule named" name)]
                            (assoc-in db
                                      [:program :rules id]
-                                     (assoc (ys/default-rule) :name name))))]
+                                     (ys/generate-rule (rule-names db)))))]
       (->> statements
            (reduce
             (fn [[[db'] statement-idx] statement]

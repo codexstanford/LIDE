@@ -10,8 +10,20 @@
    :descriptor :unspecified
    :value :unknown})
 
-(defn default-rule []
-  {:name ""
+(defn name-rule
+  "Generate a rule name that doesn't already exist in `existing-names`.
+
+  This will be something like 'rule 1', falling back to 'rule 2', ..."
+  ([existing-names]
+   (name-rule existing-names 1))
+  ([existing-names attempt]
+   (let [try-name (str "rule " attempt)]
+     (if (not (contains? existing-names try-name))
+       try-name
+       (name-rule existing-names (inc attempt))))))
+
+(defn generate-rule [existing-names]
+  {:name (name-rule existing-names)
    :goal false
    :statements []})
 
