@@ -1,13 +1,14 @@
 (ns lide.yscript.events
   (:require
+   [instaparse.core :as insta]
    [re-frame.core :as rf]
    [day8.re-frame.undo :as undo]
    [lide.yscript.core :as ys]
    [lide.yscript.db :as ys-db]))
 
-(def publish-db
+(def updates-code
   (rf/->interceptor
-   :id :publish-code
+   :id :updates-code
 
    :after
    (fn [context]
@@ -25,20 +26,20 @@
 
 (rf/reg-event-db
  ::create-rule
- [publish-db
+ [updates-code
   (undo/undoable "create rule")]
  (fn [db [_ position]]
    (let [id (random-uuid)]
      (-> db
          (assoc-in [:program :rules id]
-                   {:name ""
+                   {:name (ys/name-rule (ys-db/rule-names db))
                     :goal false
                     :statements []})
          (assoc-in [:positions id] position)))))
 
 (rf/reg-event-db
  ::add-statement
- [publish-db
+ [updates-code
   (undo/undoable "add statement")]
  (fn [db [_ rule-id type]]
    (let [id (random-uuid)]
@@ -51,7 +52,7 @@
 
 (rf/reg-event-db
  ::add-source-expr
- [publish-db
+ [updates-code
   (undo/undoable "add source expression")]
  (fn [db [_ statement-id type]]
    (let [fact-id (random-uuid)]
@@ -62,7 +63,7 @@
 
 (rf/reg-event-db
  ::set-determinee-descriptor
- [publish-db
+ [updates-code
   (undo/undoable "set determinee descriptor")]
  (fn [db [_ statement-id descriptor]]
    (let [statement (get-in db [:program :statements statement-id])
@@ -87,7 +88,7 @@
 
 (rf/reg-event-db
  ::set-requiree-descriptor
- [publish-db
+ [updates-code
   (undo/undoable "set requiree descriptor")]
  (fn [db [_ [statement-id & sub-st-path :as path] descriptor]]
    (let [statement (get-in db [:program :statements statement-id])
@@ -112,7 +113,7 @@
 
 (rf/reg-event-db
  ::set-fact-value
- [publish-db
+ [updates-code
   (undo/undoable "set fact value")]
  (fn [db [_ fact-id value]]
    (-> db
@@ -126,11 +127,16 @@
  ::code-updated
  (undo/undoable "update code")
  (fn [db [_ new-code]]
-   (let [db' (-> db
-                 (ys-db/ingest [] (ys/parse new-code))
-                 first)
-         orphans (ys/orphan-statements (:program db'))]
-     (update-in db' [:program :statements] #(into {}
-                                                  (remove (fn [[st-id _]]
-                                                            (contains? orphans st-id))
-                                                          %))))))
+   (let [parse (ys/parse new-code)]
+     (if (insta/failure? parse)
+       ;; If the new code wasn't parsable, ignore the change
+       db
+       ;; Otherwise, ingest the updates
+       (let [db' (-> db
+                     (ys-db/ingest [] parse)
+                     first)
+             orphans (ys/orphan-statements (:program db'))]
+         (update-in db' [:program :statements] #(into {}
+                                                      (remove (fn [[st-id _]]
+                                                                (contains? orphans st-id))
+                                                              %))))))))
