@@ -203,15 +203,31 @@
         {:type (ingest-expr-type node-type)
          :exprs fact-ids}]))))
 
+(defn rekey-facts
+  "Update fact references in `expr` according to `fact-key-renames`."
+  [expr fact-key-renames]
+  (cond
+    (uuid? expr)
+    (get fact-key-renames expr)
+
+    (contains? #{:and :or} (:type expr))
+    (update expr :exprs #(mapv (fn [subexpr]
+                                 (rekey-facts subexpr fact-key-renames))
+                               %))
+
+    (= :only-if (:type expr))
+    (-> expr
+        (update :dest-fact #(rekey-facts % fact-key-renames))
+        (update :src-expr #(rekey-facts % fact-key-renames)))))
+
 (defn reconcile-ids
-  "Re-key rules and facts in `into-db` where they have correspondents in
+  "Replace rule and fact IDs in `into-db` with their correspondents in
   `prior-db`."
   [into-db prior-db]
   (let [rule-key-renames
         (->> (get-in into-db [:program :rules])
              (map (fn [[into-id rule]]
-                    (let [[prior-id _] (rule-by-name prior-db (:name rule))
-                          _ (println (:name rule) prior-id (get-in prior-db [:program :rules]))]
+                    (let [[prior-id _] (rule-by-name prior-db (:name rule))]
                       [into-id (or prior-id into-id)])))
              (into {}))
 
@@ -220,13 +236,14 @@
              (map (fn [[into-id fact]]
                     (let [[prior-id _] (fact-by-descriptor prior-db (:descriptor fact))]
                       [into-id (or prior-id into-id)])))
-             (into {}))
-
-        _ (println rule-key-renames)
-        _ (println fact-key-renames)]
+             (into {}))]
     (-> into-db
         (update-in [:program :rules] #(set/rename-keys % rule-key-renames))
-        (update-in [:program :facts] #(set/rename-keys % fact-key-renames)))))
+        (update-in [:program :facts] #(set/rename-keys % fact-key-renames))
+        (update-in [:program :statements]
+                   (fn [statements]
+                     (util/map-vals #(rekey-facts % fact-key-renames)
+                                    statements))))))
 
 (defn populate-expr [program expr]
   (cond
