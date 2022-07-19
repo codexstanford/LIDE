@@ -22,10 +22,13 @@
        try-name
        (name-rule existing-names (inc attempt))))))
 
-(defn generate-rule [existing-names]
-  {:name (name-rule existing-names)
+(defn named-rule [name]
+  {:name name
    :goal false
    :statements []})
+
+(defn generate-rule [existing-names]
+  (named-rule (name-rule existing-names)))
 
 (defn facts-required-by-expression
   "Return a set of all facts required by `expr`."

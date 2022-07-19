@@ -1,5 +1,6 @@
 (ns lide.yscript.db
   (:require
+   [clojure.set :as set]
    [lide.util :as util]
    [lide.yscript.core :as ys]))
 
@@ -135,71 +136,97 @@
     :and-expr :and))
 
 (defn ingest
-  "Update `db` with values obtained from yscript AST `parsed`.
+  "Update `db` with values obtained from a yscript AST.
 
   Returns a pair of the updated `db` and maybe some extra information, depending
-  on the type of `parsed`'s root node."
+  on the type of the AST's root node."
   ;; TODO this is not very efficient
-  [db path [node-type & children]]
-  (cond
-    (= node-type :fact-expr)
-    (let [[[_ & descriptor-tokens]] children
-          descriptor (apply str descriptor-tokens)
-          [db-with-fact id _] (ensure-fact db descriptor)]
-      [db-with-fact id])
+  ([ast]
+   (ingest {:program {:target :yscript}} [] ast))
+  ([db path [node-type & children]]
+   (cond
+     (= node-type :fact-expr)
+     (let [[[_ & descriptor-tokens]] children
+           descriptor (apply str descriptor-tokens)
+           [db-with-fact id _] (ensure-fact db descriptor)]
+       [db-with-fact id])
 
-    (= node-type :code)
-    (reduce
-     (fn [[db'] block]
-       (ingest db' [:program] block))
-     [db]
-     children)
+     (= node-type :code)
+     (reduce
+      (fn [[db'] block]
+        (ingest db' [:program] block))
+      [db]
+      children)
 
-    (= node-type :rule)
-    (let [[[_ [_ rule-type] [_ name]]
-           [_ & statements]] children
-          [found-id rule] (rule-by-name db name)
-          id (or found-id (random-uuid))
-          db-with-rule (if found-id
-                         db
-                         (let [_ (println "didn't find rule named" name)]
-                           (assoc-in db
-                                     [:program :rules id]
-                                     (ys/generate-rule (rule-names db)))))]
-      (->> statements
+     (= node-type :rule)
+     (let [[[_ [_ rule-type] [_ name]]
+            [_ & statements]] children
+           [found-id rule] (rule-by-name db name)
+           id (or found-id (random-uuid))
+           db-with-rule (if found-id
+                          db
+                          (assoc-in db
+                                    [:program :rules id]
+                                    (ys/named-rule name)))]
+       (->> statements
+            (reduce
+             (fn [[[db'] statement-idx] statement]
+               [(ingest db' [:program :rules id :statements statement-idx] statement)
+                (inc statement-idx)])
+             [[db-with-rule] 0])
+            first))
+
+     (= node-type :is-assignment)
+     (let [[[_ & dest-descriptor-tokens]
+            _
+            src-expr-parsed] children
+           [db' dest-fact-id _] (ensure-fact db (apply str dest-descriptor-tokens))
+           [db'' src-expr] (ingest db' path src-expr-parsed)
+           id (random-uuid)]
+       ;; TODO this is not quite right, don't need new statement every time
+       [(-> db''
+            (assoc-in [:program :statements id]
+                      {:type :only-if
+                       :dest-fact dest-fact-id
+                       :src-expr src-expr})
+            (assoc-in path id))])
+
+     (contains? #{:and-expr :or-expr} node-type)
+     (let [[db-with-facts fact-ids]
            (reduce
-            (fn [[[db'] statement-idx] statement]
-              [(ingest db' [:program :rules id :statements statement-idx] statement)
-               (inc statement-idx)])
-            [[db-with-rule] 0])
-           first))
+            (fn [[db' ids] fact-expr]
+              (let [[db-with-fact id] (ingest db' path fact-expr)]
+                [db-with-fact (conj ids id)]))
+            [db []]
+            children)]
+       [db-with-facts
+        {:type (ingest-expr-type node-type)
+         :exprs fact-ids}]))))
 
-    (= node-type :is-assignment)
-    (let [[[_ & dest-descriptor-tokens]
-           _
-           src-expr-parsed] children
-          [db' dest-fact-id _] (ensure-fact db (apply str dest-descriptor-tokens))
-          [db'' src-expr] (ingest db' path src-expr-parsed)
-          id (random-uuid)]
-      ;; TODO this is not quite right, don't need new statement every time
-      [(-> db''
-           (assoc-in [:program :statements id]
-                     {:type :only-if
-                      :dest-fact dest-fact-id
-                      :src-expr src-expr})
-           (assoc-in path id))])
+(defn reconcile-ids
+  "Re-key rules and facts in `into-db` where they have correspondents in
+  `prior-db`."
+  [into-db prior-db]
+  (let [rule-key-renames
+        (->> (get-in into-db [:program :rules])
+             (map (fn [[into-id rule]]
+                    (let [[prior-id _] (rule-by-name prior-db (:name rule))
+                          _ (println (:name rule) prior-id (get-in prior-db [:program :rules]))]
+                      [into-id (or prior-id into-id)])))
+             (into {}))
 
-    (contains? #{:and-expr :or-expr} node-type)
-    (let [[db-with-facts fact-ids]
-          (reduce
-           (fn [[db' ids] fact-expr]
-             (let [[db-with-fact id] (ingest db' path fact-expr)]
-               [db-with-fact (conj ids id)]))
-           [db []]
-           children)]
-      [db-with-facts
-       {:type (ingest-expr-type node-type)
-        :exprs fact-ids}])))
+        fact-key-renames
+        (->> (get-in into-db [:program :facts])
+             (map (fn [[into-id fact]]
+                    (let [[prior-id _] (fact-by-descriptor prior-db (:descriptor fact))]
+                      [into-id (or prior-id into-id)])))
+             (into {}))
+
+        _ (println rule-key-renames)
+        _ (println fact-key-renames)]
+    (-> into-db
+        (update-in [:program :rules] #(set/rename-keys % rule-key-renames))
+        (update-in [:program :facts] #(set/rename-keys % fact-key-renames)))))
 
 (defn populate-expr [program expr]
   (cond

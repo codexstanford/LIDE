@@ -131,12 +131,8 @@
      (if (insta/failure? parse)
        ;; If the new code wasn't parsable, ignore the change
        db
-       ;; Otherwise, ingest the updates
-       (let [db' (-> db
-                     (ys-db/ingest [] parse)
-                     first)
-             orphans (ys/orphan-statements (:program db'))]
-         (update-in db' [:program :statements] #(into {}
-                                                      (remove (fn [[st-id _]]
-                                                                (contains? orphans st-id))
-                                                              %))))))))
+       ;; Otherwise, switch to the new program
+       (let [db' (->> (ys-db/ingest parse)
+                      first
+                      (merge db))]
+         (ys-db/reconcile-ids db' db))))))
