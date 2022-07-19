@@ -38,6 +38,13 @@
          (assoc-in [:positions id] position)))))
 
 (rf/reg-event-db
+ ::set-rule-name
+ [updates-code
+  (undo/undoable "set rule name")]
+ (fn [db [_ id name]]
+   (assoc-in db [:program :rules id :name] name)))
+
+(rf/reg-event-db
  ::add-statement
  [updates-code
   (undo/undoable "add statement")]

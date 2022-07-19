@@ -205,13 +205,13 @@
 (defn eip-plain-text [{:keys [value on-blur style]}]
   (let [!value (r/atom value)
         !input (r/atom nil)]
-    (fn [{:keys [value on-blur style]
+    (fn [{:keys [class on-blur style value]
           :or {style (constantly {})}
           :as props}]
       [:input (merge
                props
                {:ref #(reset! !input %)
-                :class "eip-plain-text"
+                :class (str "eip-plain-text " class)
                 :value @!value
                 :on-focus #(.select @!input)
                 :on-change #(reset! !value (-> % .-target .-value))

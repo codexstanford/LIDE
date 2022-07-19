@@ -116,11 +116,13 @@
            :data-rule-id id
            :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) id])}
      [:div {:class "ys-rule__header"}
-      [:div {:class "ys-rule__name"} (str "RULE "
-                                          (if-not (string/blank? (:name rule))
-                                            (:name rule)
-                                            "[not named]")
-                                          " PROVIDES")]]
+      "RULE "
+      [util/eip-plain-text
+       {:value (:name rule)
+        ;; TODO should validate (esp against empty)
+        :on-blur #(rf/dispatch [::ys-events/set-rule-name id (-> % .-target .-value)])
+        :class "ys-rule__name"}]
+      " PROVIDES"]
      (->> (:statements rule)
           (map (fn [st-id]
                  [statement {:id st-id
