@@ -159,8 +159,9 @@
       children)
 
      (= node-type :rule)
-     (let [[[_ [_ rule-type] [_ name]]
+     (let [[[_ [_ rule-type] [_ & name-tokens]]
             [_ & statements]] children
+           name (apply str name-tokens)
            [found-id rule] (rule-by-name db name)
            id (or found-id (random-uuid))
            db-with-rule (if found-id
