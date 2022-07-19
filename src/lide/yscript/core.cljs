@@ -232,8 +232,8 @@
 code = block+
 keyword = 'ALIAS' | 'AS' | 'BOOLEAN' | 'DATE' | 'DISPLAYED' | 'ELSE' | 'EXIT' | 'FORWARD' | 'GREATER' | 'INCLUDE' | 'LESSEQUAL' | 'MATCHES' | 'MONTH' | 'NUMBERED' | 'PERSON' | 'PROVIDES' | 'SECOND' | 'STYLE' | 'THAN' | 'TRANSLATE' | 'UNREPORTED' | 'WHEN' | 'ALL' | 'ASSERT' | 'BY' | 'DAY' | 'DIVIDED' | 'END' | 'EXPLAIN' | 'FROM' | 'GREATEREQUAL' | 'INFO' | 'LEVEL' | 'MINUS' | 'MONTHS' | 'ONLY' | 'PERSON-THING' | 'RANGE' | 'SECONDS' | 'SUB-RULE' | 'THEN' | 'UNCERTAIN' | 'UNTIL' | 'WHILE' | 'AND' | 'ATTACH' | 'CALL' | 'DAYS' | 'DO' | 'END-SECTION' | 'FACT' | 'GENDER' | 'HOUR' | 'INFORMAL' | 'LINE' | 'MINUTE' | 'NEXT' | 'OR' | 'PERSONTHING' | 'REPEAT' | 'SECTION' | 'SUBRULE' | 'THING' | 'UNIT' | 'VERB' | 'YEAR' | 'AND/OR' | 'AUTHORITY' | 'CASE' | 'DEFAULT' | 'DOCUMENT' | 'EQUAL' | 'FOR' | 'GENDER-NEUTRAL' | 'HOURS' | 'INTEGER' | 'LINK' | 'MINUTES' | 'NOT' | 'OR/WITH' | 'PLUS' | 'REPORT' | 'SESSION' | 'SYSTEM' | 'TIME' | 'UNKNOWN' | 'VERBS' | 'YEARS' | 'AND/OR/WITH' | 'BACKWARD' | 'CONTEXT' | 'DEFINITE' | 'DOLLAR' | 'EQUALS' | 'FORGET' | 'GENDERNEUTRAL' | 'IF' | 'IS' | 'LISTED' | 'MOD' | 'NUMBER' | 'ORDER' | 'PROCEDURE' | 'RULE' | 'SEX' | 'TEMPLATE' | 'TIMES' | 'UNLISTED' | 'WEEK' | 'AND/WITH' | 'BEGIN' | 'DAEMON' | 'DETERMINE' | 'DOLLARS' | 'EXAMPLE' | 'FORMAL' | 'GOAL' | 'IN' | 'LESS' | 'MATCH' | 'MONEY' | 'NUMBER' | 'PARAGRAPH' | 'PROMPT' | 'SAY' | 'STRING' | 'TEXT' | 'TO' | 'UNNAMED' | 'WEEKS'
 whitespace = #'\\s+'
-<text-word> = !keyword #'[\\w]+'
-text = '\"' text-word { whitespace text-word } '\"' | text-word { whitespace text-word }
+<text-word> = !keyword #'[\\S]+'
+text = ['\"'] text-word { whitespace text-word } ['\"']
 descriptor = text-word { whitespace text-word }
 <block> = context | defaults | example | fact-declaration | (* include | *) order | rule | verbs
 context = 'CONTEXT' descriptor
