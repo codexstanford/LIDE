@@ -188,7 +188,10 @@
                    (->> statement
                         facts-determined-by-statement
                         (reduce (fn [program''' determined-fact]
-                                  (forward-chain program''' index determined-fact))
+                                  (if (not= :unknown
+                                            (get-in program''' [:facts determined-fact :value]))
+                                    (forward-chain program''' index determined-fact)
+                                    program'''))
                                 program''))))
                program)))
 

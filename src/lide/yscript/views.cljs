@@ -92,7 +92,12 @@
                                      (-> % .-target .-value)])
              :placeholder "[not set]"}]
            [:div {:class "ys-statement__dest-value"}
-            (when (and fact (not= (:value fact) local-determination))
+            ;; Warn about stale determinations if there is a value in the app DB
+            ;; for `fact`, and the statement has a local determination for it,
+            ;; but the values differ
+            (when (and (:value fact)
+                       local-determination
+                       (not= (:value fact) local-determination))
               [:div {:class "ys-statement__warn-stale"} "(stale)"])
             (fact-value {:value local-determination})]])
         [:div "ONLY IF"]
