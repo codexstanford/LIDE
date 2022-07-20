@@ -268,7 +268,7 @@
                                                   (get-in db [:positions])]]]
             [])})
 
-       :else db))))
+       :else {:db db}))))
 
 (rf/reg-event-db
  ::mouse-down-graph-bg
