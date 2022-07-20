@@ -114,7 +114,7 @@
     [:div {:class "ys-rule"
            :ref store-ref
            :data-rule-id id
-           :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) id])}
+           :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) id ::ys/rule])}
      [:div {:class "ys-rule__header"}
       "RULE "
       [util/eip-plain-text

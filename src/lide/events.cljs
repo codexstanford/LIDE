@@ -7,6 +7,7 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [lide.db :as db]
    [lide.util :as util]
+   [lide.yscript.core :as ys]
    [lide.yscript.db :as ys-db]
    [lide.yscript.events :as ys-events]))
 
@@ -124,9 +125,7 @@
    {:db (-> (:db cofx)
             (dissoc :dragged)
             (dissoc :dragging-id)
-            (dissoc :dragging-rule)
-            (dissoc :dragging-fact)
-            (dissoc :dragging-literal)
+            (dissoc :dragging-type)
             (dissoc :drag-origin)
             (dissoc :mouse-down-graph))
     :fx [(when (and (:mouse-down-graph (:db cofx))
@@ -221,44 +220,55 @@
  (fn [db [_ literal-id]]
    (update-in db [:program :literals literal-id :negative] not)))
 
-(rf/reg-event-db
+(rf/reg-event-fx
  ::mouse-move
- (fn [db [_ event-position]]
-   (cond
-     (contains? db :defeated-selecting-defeater)
-     (assoc db :mouse-position event-position)
+ (fn [cofx [_ event-position]]
+   (let [db (:db cofx)]
+     (cond
+       (contains? db :defeated-selecting-defeater)
+       {:db (assoc db :mouse-position event-position)}
 
-     ;; XXX There's a bug here that I haven't quite figured out: When zoomed way
-     ;; out, dragging causes the graph to jump around wildly. I think it's
-     ;; related to the graph transform changing but the drag origin staying
-     ;; the same?
-     (contains? db :mouse-down-graph)
-     (let [dx (- (-> event-position :x)
-                 (-> db :mouse-down-graph :x))
-           dy (- (-> event-position :y)
-                 (-> db :mouse-down-graph :y))
-           graph-transform (util/dom-matrix-from-vals (:graph-transform db))
-           translate-matrix (.translateSelf (js/DOMMatrix.) dx dy)]
-       (-> db
-           (assoc :dragged true)
-           (assoc :graph-transform (util/dom-matrix-to-vals
-                                    (.preMultiplySelf graph-transform translate-matrix)))))
+       ;; XXX There's a bug here that I haven't quite figured out: When zoomed way
+       ;; out, dragging causes the graph to jump around wildly. I think it's
+       ;; related to the graph transform changing but the drag origin staying
+       ;; the same?
+       (contains? db :mouse-down-graph)
+       (let [dx (- (-> event-position :x)
+                   (-> db :mouse-down-graph :x))
+             dy (- (-> event-position :y)
+                   (-> db :mouse-down-graph :y))
+             graph-transform (util/dom-matrix-from-vals (:graph-transform db))
+             translate-matrix (.translateSelf (js/DOMMatrix.) dx dy)]
+         {:db
+          (-> db
+              (assoc :dragged true)
+              (assoc :graph-transform (util/dom-matrix-to-vals
+                                       (.preMultiplySelf graph-transform translate-matrix))))})
 
-     (contains? db :dragging-id)
-     (let [dx (- (-> event-position :x)
-                 (-> db :drag-origin :x))
-           dy (- (-> event-position :y)
-                 (-> db :drag-origin :y))]
-       (-> db
-           (update-in [:positions (:dragging-id db)]
-                      (fn [position]
-                        (-> position
-                            (update :x #(+ % dx))
-                            (update :y #(+ % dy)))))
-           (assoc :drag-origin event-position)
-           (assoc :dragged true)))
+       (contains? db :dragging-id)
+       (let [dx (- (-> event-position :x)
+                   (-> db :drag-origin :x))
+             dy (- (-> event-position :y)
+                   (-> db :drag-origin :y))]
+         {:db
+          (-> db
+              (update-in [:positions (:dragging-id db)]
+                         (fn [position]
+                           (-> position
+                               (update :x #(+ % dx))
+                               (update :y #(+ % dy)))))
+              (assoc :drag-origin event-position)
+              (assoc :dragged true))
 
-     :else db)))
+          :fx
+          (if (and (:vs-code db)
+                   (= ::ys/rule (:dragging-type db)))
+            [[::ys-events/publish-rule-positions [(:vs-code db)
+                                                  (get-in db [:program :rules])
+                                                  (get-in db [:positions])]]]
+            [])})
+
+       :else db))))
 
 (rf/reg-event-db
  ::mouse-down-graph-bg
@@ -285,10 +295,11 @@
 
 (rf/reg-event-db
  ::start-drag
- (fn [db [_ position id]]
+ (fn [db [_ position id type]]
    (-> db
+       (assoc :drag-origin position)
        (assoc :dragging-id id)
-       (assoc :drag-origin position))))
+       (assoc :dragging-type type))))
 
 ;; Defeasibility
 

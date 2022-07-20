@@ -15,7 +15,6 @@
      (let [vs-code (get-in context [:effects :db :vs-code])]
        (do
          (when vs-code
-           (println "publishing to VS Code")
            (. vs-code
               postMessage
               (clj->js {:type "programUpdated"
@@ -23,6 +22,35 @@
                                (ys-db/populate-program
                                 (get-in context [:effects :db :program])))})))
          context)))))
+
+(rf/reg-fx
+ ::publish-rule-positions
+ (goog.functions.debounce
+  (fn [[vs-code rules positions]]
+    (when vs-code
+      (. vs-code
+         postMessage
+         (clj->js {:type "positionsUpdated"
+                   :positions (reduce (fn [acc [rule-id position]]
+                                        (assoc acc
+                                               (get-in rules [rule-id :name])
+                                               position))
+                                      {}
+                                      positions)}))))
+  2000))
+
+(rf/reg-event-db
+ ::positions-read
+ (fn [db [_ positions]]
+   (reduce (fn [db' [rule-name position]]
+             (let [[rule-id _] (ys-db/rule-by-name db rule-name)]
+               ;; TODO ought to be some cleanup if there's a position for a rule
+               ;; that doesn't exist
+               (if rule-id
+                 (assoc-in db' [:positions rule-id] position)
+                 db')))
+           db
+           positions)))
 
 (rf/reg-event-db
  ::create-rule
