@@ -70,12 +70,17 @@
 
 (defn main-panel []
   (let [target @(rf/subscribe [::subs/program-target])
-        show-toolbar? @(rf/subscribe [::subs/show-toolbar?])]
+        show-toolbar? @(rf/subscribe [::subs/show-toolbar?])
+        vs-code @(rf/subscribe [::subs/vs-code])]
     [:div {:id "app-container"}
      [:div {:class "work-viewport"}
       [program-graph]
       [:div {:class "inspectors"}
-       (when (= target :epilog)
-         [epilog-views/code-panel])]]
+       (cond
+         (= target :epilog)
+         [epilog-views/code-panel]
+
+         (and (= target :yscript) (not vs-code))
+         [ys-views/code-panel])]]
      (when show-toolbar?
        [toolbar])]))

@@ -18,6 +18,11 @@
    (:show-toolbar? db)))
 
 (rf/reg-sub
+ ::vs-code
+ (fn [db]
+   (:vs-code db)))
+
+(rf/reg-sub
  ::program
  (fn [db]
    (:program db)))
