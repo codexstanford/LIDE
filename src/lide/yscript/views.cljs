@@ -46,15 +46,17 @@
 
 (defn conjunction-expression [{:keys [operator exprs path]}]
   [:div
-   (->> exprs
-        (map-indexed (fn [idx expr]
-                       [expression {:expr expr
-                                    :path (conj path idx)
-                                    :key idx}]))
-        (interpose [:div {:key (random-uuid)}
-                    (case operator
-                      :and "AND"
-                      :or  "OR")]))])
+   (interleave
+    (map-indexed (fn [idx expr]
+                   [expression {:expr expr
+                                :path (conj path idx)
+                                :key idx}])
+                 exprs)
+    (repeatedly (fn []
+                  [:div {:key (random-uuid)}
+                   (case operator
+                     :and "AND"
+                     :or  "OR")])))])
 
 (defn expression [{:keys [expr path]}]
   [:div {:class "ys-expr"}
