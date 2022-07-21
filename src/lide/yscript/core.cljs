@@ -227,8 +227,10 @@
    (string/join " " (remove string/blank? ["RULE" (:name rule) "PROVIDES"])) "\n"
    (string/join "\n" (map codify-statement (vals (:statements rule))))))
 
-(defn codify-program [program]
-  (string/join "\n\n" (map codify-rule (vals (:rules program)))))
+(defn codify-program [program rule-order]
+  (string/join "\n\n" (map (fn [rule-id]
+                             (codify-rule (get-in program [:rules rule-id])))
+                           rule-order)))
 
 (defparser parse
   "

@@ -20,7 +20,8 @@
               (clj->js {:type "programUpdated"
                         :text (ys/codify-program
                                (ys-db/populate-program
-                                (get-in context [:effects :db :program])))})))
+                                (get-in context [:effects :db :program]))
+                               (get-in context [:effects :db :rule-source-order]))})))
          context)))))
 
 (rf/reg-fx

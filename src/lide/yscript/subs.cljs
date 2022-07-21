@@ -79,3 +79,8 @@
    (rf/subscribe [::subs/program]))
  (fn [program]
    (ys-db/populate-program program)))
+
+(rf/reg-sub
+ ::rule-order
+ (fn [db _]
+   (:rule-source-order db)))

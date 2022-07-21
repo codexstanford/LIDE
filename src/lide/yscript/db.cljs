@@ -142,7 +142,10 @@
   on the type of the AST's root node."
   ;; TODO this is not very efficient
   ([ast]
-   (ingest {:program {:target :yscript}} [] ast))
+   (ingest {:program {:target :yscript}
+            :rule-source-order []}
+           []
+           ast))
   ([db path [node-type & children]]
    (cond
      (= node-type :fact-expr)
@@ -166,9 +169,10 @@
            id (or found-id (random-uuid))
            db-with-rule (if found-id
                           db
-                          (assoc-in db
-                                    [:program :rules id]
-                                    (ys/named-rule name)))]
+                          (-> db
+                              (assoc-in [:program :rules id]
+                                        (ys/named-rule name))
+                              (update :rule-source-order #(conj % id))))]
        (->> statements
             (reduce
              (fn [[[db'] statement-idx] statement]
