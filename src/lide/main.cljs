@@ -34,7 +34,7 @@
           [:svg {:class "graph-panel"
                  :id "graph-svg"
                  :on-mouse-move (goog.functions.throttle
-                                 #(rf/dispatch [::events/mouse-move (localize-position %)])
+                                 #(rf/dispatch [::events/mouse-move % (localize-position %)])
                                  25)
                  :on-mouse-up #(rf/dispatch [::events/mouse-up (localize-position %)])
                  :on-wheel (goog.functions.throttle #(rf/dispatch [::events/scroll-graph %])
@@ -42,7 +42,7 @@
            [:rect {:class "graph__bg"
                    :height 10000
                    :width  10000
-                   :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg (localize-position %)])}]
+                   :on-mouse-down #(rf/dispatch [::events/mouse-down-graph-bg %])}]
            [graph-viewport
             {:set-ref #(reset! !svg-viewport %)}
             (let [graph-props {:localize-position localize-position

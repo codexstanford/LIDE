@@ -222,33 +222,32 @@
 
 (rf/reg-event-fx
  ::mouse-move
- (fn [cofx [_ event-position]]
+ (fn [cofx [_ event local-position]]
    (let [db (:db cofx)]
      (cond
        (contains? db :defeated-selecting-defeater)
-       {:db (assoc db :mouse-position event-position)}
+       {:db (assoc db :mouse-position local-position)}
 
-       ;; XXX There's a bug here that I haven't quite figured out: When zoomed way
-       ;; out, dragging causes the graph to jump around wildly. I think it's
-       ;; related to the graph transform changing but the drag origin staying
-       ;; the same?
        (contains? db :mouse-down-graph)
-       (let [dx (- (-> event-position :x)
+       (let [dx (- (-> event .-clientX)
                    (-> db :mouse-down-graph :x))
-             dy (- (-> event-position :y)
+             dy (- (-> event .-clientY)
                    (-> db :mouse-down-graph :y))
-             graph-transform (util/dom-matrix-from-vals (:graph-transform db))
-             translate-matrix (.translateSelf (js/DOMMatrix.) dx dy)]
+             translation-screen (.translate (js/DOMMatrixReadOnly.) dx dy)]
          {:db
           (-> db
               (assoc :dragged true)
-              (assoc :graph-transform (util/dom-matrix-to-vals
-                                       (.preMultiplySelf graph-transform translate-matrix))))})
+              (assoc :mouse-down-graph {:x (.-clientX event)
+                                        :y (.-clientY event)})
+              (assoc :graph-transform
+                     (util/dom-matrix-to-vals
+                      (.preMultiplySelf (util/dom-matrix-from-vals (:graph-transform db))
+                                        translation-screen))))})
 
        (contains? db :dragging-id)
-       (let [dx (- (-> event-position :x)
+       (let [dx (- (-> local-position :x)
                    (-> db :drag-origin :x))
-             dy (- (-> event-position :y)
+             dy (- (-> local-position :y)
                    (-> db :drag-origin :y))]
          {:db
           (-> db
@@ -257,7 +256,7 @@
                            (-> position
                                (update :x #(+ % dx))
                                (update :y #(+ % dy)))))
-              (assoc :drag-origin event-position)
+              (assoc :drag-origin local-position)
               (assoc :dragged true))
 
           :fx
@@ -272,8 +271,9 @@
 
 (rf/reg-event-db
  ::mouse-down-graph-bg
- (fn [db [_ position]]
-   (assoc db :mouse-down-graph position)))
+ (fn [db [_ event]]
+   (assoc db :mouse-down-graph {:x (.-clientX event)
+                                :y (.-clientY event)})))
 
 (rf/reg-event-db
  ::scroll-graph
