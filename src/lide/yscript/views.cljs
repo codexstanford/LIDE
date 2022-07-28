@@ -25,7 +25,7 @@
   (let [fact @(rf/subscribe [::ys-subs/fact descriptor])
         fact-values @(rf/subscribe [::ys-subs/fact-values])]
     [:div {:class "ys-fact"
-           :data-fact-id descriptor}
+           :data-fact-descriptor descriptor}
      [:div {:on-click #(rf/dispatch [::ys-events/select-range range])}
       descriptor]
      (let [fact-value (get-in fact-values [descriptor :value] :unknown)]
@@ -159,18 +159,15 @@
 (defn requirer-determiner-connectors
   "Draw connectors between `determining-statement-id` and all the instances of
   `fact-id` being required in `requiring-statement-id`."
-  [{:keys [fact-id
-           requiring-statement-id
-           determining-statement-id]}]
-  (let [requirer-statement @(rf/subscribe [::ys-subs/statement requiring-statement-id])
-        requirer-rule @(rf/subscribe [::ys-subs/rule-containing-statement requiring-statement-id])
-        requirer-layout @(rf/subscribe [::subs/layout :ys-rule requirer-rule])
-        determiner-rule @(rf/subscribe [::ys-subs/rule-containing-statement
-                                        determining-statement-id])
-        determiner-layout @(rf/subscribe [::subs/layout :ys-rule determiner-rule])]
-    [:text "hello"]
+  [{:keys [descriptor requirer determiner]}]
+  (let [[requirer-rule-name   requirer-statement-idx]   requirer
+        [determiner-rule-name determiner-statement-idx] determiner
+        requirer-rule @(rf/subscribe [::ys-subs/rule requirer-rule-name])
+        requirer-layout @(rf/subscribe [::subs/layout :rule requirer-rule-name])
+        determiner-rule @(rf/subscribe [::ys-subs/rule determiner-rule-name])
+        determiner-layout @(rf/subscribe [::subs/layout :rule determiner-rule-name])]
     [:<>
-     (->> (get-in requirer-layout [:statements requiring-statement-id :facts fact-id])
+     (->> (get-in requirer-layout [:statements requirer-statement-idx :facts descriptor])
           (map-indexed
            (fn [idx fact-layout]
              (let [determiner-socket
@@ -178,37 +175,36 @@
                                (get-in determiner-layout [:container :position])
                                (views/center-position
                                 (get-in determiner-layout [:statements
-                                                           determining-statement-id
+                                                           determiner-statement-idx
                                                            :socket])))
-                   requiring-socket
+                   requirer-socket
                    (merge-with +
                                (get-in requirer-layout [:container :position])
                                (views/center-position
                                 (get-in fact-layout [:socket])))]
-               [:line {:x1 (:x requiring-socket)
-                       :y1 (:y requiring-socket)
+               [:line {:x1 (:x requirer-socket)
+                       :y1 (:y requirer-socket)
                        :x2 (:x determiner-socket)
                        :y2 (:y determiner-socket)
                        :stroke "black"
                        :key idx}]))))]))
 
 (defn fact-determiner-connectors
-  "Draw connectors between all the instances of `fact-id` being required and the
-  instances of it being determined."
-  [{:keys [fact-id]}]
-  (let [requiring-statements @(rf/subscribe [::ys-subs/statements-requiring-fact fact-id])
-        determining-statements @(rf/subscribe [::ys-subs/statements-determining-fact fact-id])]
+  "Draw connectors between all the instances of fact with `descriptor` being
+  required and the instances of it being determined."
+  [{:keys [descriptor]}]
+  (let [fact @(rf/subscribe [::ys-subs/fact descriptor])]
     [:<>
-     (->> requiring-statements
+     (->> (:requirers fact)
           (mapcat
            (fn [requirer]
-             (->> determining-statements
+             (->> (:determiners fact)
                   (map
                    (fn [determiner]
-                     [requirer-determiner-connectors {:fact-id fact-id
-                                                      :requiring-statement-id requirer
-                                                      :determining-statement-id determiner
-                                                      :key (str fact-id requirer determiner)}]))))))]))
+                     [requirer-determiner-connectors {:descriptor descriptor
+                                                      :requirer (:path requirer)
+                                                      :determiner (:path determiner)
+                                                      :key (str descriptor requirer determiner)}]))))))]))
 
 (defn program-graph [{:keys [localize-position]}]
   (let [program @(rf/subscribe [::subs/program])
@@ -221,6 +217,6 @@
                         :key name}])))
      (->> (:facts program)
           (map
-           (fn [[fact-id _]]
-             [fact-determiner-connectors {:fact-id fact-id
-                                          :key fact-id}])))]))
+           (fn [[descriptor _]]
+             [fact-determiner-connectors {:descriptor descriptor
+                                          :key descriptor}])))]))

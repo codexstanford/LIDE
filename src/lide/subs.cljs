@@ -176,12 +176,13 @@
 (rf/reg-sub
  ::layout
  (fn [[_ type id]]
-   [(atom type)
-    (rf/subscribe [::position id])
+   [(rf/subscribe [::program-target])
+    (atom type)
+    (rf/subscribe [::position [type id]])
     (rf/subscribe [::rendered type id])])
- (fn [[type position {:keys [element _]}]]
+ (fn [[target type position {:keys [element _]}]]
    (when element
-     (case type
-       :rule (graph/rule-layout position element)
-       :fact (graph/fact-layout position element)
-       :ys-rule (graph/ys-rule-layout position element)))))
+     (case [target type]
+       [:yscript :rule] (graph/ys-rule-layout position element)
+       [:epilog :rule] (graph/rule-layout position element)
+       [:epilog :fact] (graph/fact-layout position element)))))

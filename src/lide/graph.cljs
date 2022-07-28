@@ -170,31 +170,29 @@
           (map
            (fn [st-elem]
              (let [socket-elem (.querySelector st-elem ".socket")]
-               [(uuid (.getAttribute st-elem "data-statement-id"))
-                {:position (element-position st-elem)
-                 :size (element-size st-elem)
-                 :socket {:position (element-position socket-elem)
-                          :size (element-size socket-elem)}
-                 :facts
-                 (->> (.querySelectorAll st-elem ".ys-fact")
-                      (reduce
-                       (fn [acc fact-elem]
-                         (let [socket-elem
-                               (.querySelector fact-elem ".socket")
+               {:position (element-position st-elem)
+                :size (element-size st-elem)
+                :socket {:position (element-position socket-elem)
+                         :size (element-size socket-elem)}
+                :facts
+                (->> (.querySelectorAll st-elem ".ys-fact")
+                     (reduce
+                      (fn [acc fact-elem]
+                        (let [socket-elem
+                              (.querySelector fact-elem ".socket")
 
-                               fact-id
-                               (uuid (.getAttribute fact-elem "data-fact-id"))
+                              descriptor
+                              (.getAttribute fact-elem "data-fact-descriptor")
 
-                               fact-layout
-                               {:position (merge-with -
-                                                      (element-position fact-elem)
-                                                      root-position)
-                                :size (element-size fact-elem)
-                                :socket (when socket-elem {:position (element-position socket-elem)
-                                                           :size (element-size socket-elem)})}]
-                           (assoc acc fact-id (if (contains? acc fact-id)
-                                                (conj (get acc fact-id) fact-layout)
-                                                #{fact-layout}))))
-                       {}))}])))
-          (into {}))}))
-
+                              fact-layout
+                              {:position (merge-with -
+                                                     (element-position fact-elem)
+                                                     root-position)
+                               :size (element-size fact-elem)
+                               :socket (when socket-elem {:position (element-position socket-elem)
+                                                          :size (element-size socket-elem)})}]
+                          (assoc acc descriptor (if (contains? acc descriptor)
+                                                  (conj (get acc descriptor) fact-layout)
+                                                  [fact-layout]))))
+                      {}))})))
+          vec)}))
