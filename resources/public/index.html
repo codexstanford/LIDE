@@ -273,10 +273,13 @@
 
       .ys-rule__header {
         display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
 
       .ys-rule__name {
-        min-width: 0; /* allows flex shrinking */
+        font-weight: bold;
+        cursor: pointer;
       }
 
       .ys-statement__dest-fact {
@@ -296,6 +299,11 @@
       .ys-fact {
         display: flex;
         align-items: center;
+      }
+
+      .ys-fact__descriptor {
+        font-weight: bold;
+        cursor: pointer;
       }
 
       .ys-fact__value {

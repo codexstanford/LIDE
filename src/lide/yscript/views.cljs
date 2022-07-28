@@ -26,7 +26,8 @@
         fact-values @(rf/subscribe [::ys-subs/fact-values])]
     [:div {:class "ys-fact"
            :data-fact-descriptor descriptor}
-     [:div {:on-click #(rf/dispatch [::ys-events/select-range range])}
+     [:div {:class "ys-fact__descriptor"
+            :on-click #(rf/dispatch [::ys-events/select-range range])}
       descriptor]
      (let [fact-value (get-in fact-values [descriptor :value] :unknown)]
        [:div {:class "ys-fact__value"}
@@ -113,16 +114,13 @@
     [:div {:class "ys-rule"
            :ref store-ref
            :data-rule-key name
-           :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) name :rule])
-           :on-click #(rf/dispatch [::ys-events/show-range (:range rule)])}
+           :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) name :rule])}
      [:div {:class "ys-rule__header"}
-      "RULE "
-      [util/eip-plain-text
-       {:value name
-        ;; TODO should validate (esp against empty)
-        :on-blur #(rf/dispatch [::ys-events/set-rule-name name (-> % .-target .-value)])
-        :class "ys-rule__name"}]
-      " PROVIDES"]
+      [:div "RULE"]
+      [:div {:class "ys-rule__name"
+             :on-click #(rf/dispatch [::ys-events/show-range (:range rule)])}
+       name]
+      [:div "PROVIDES"]]
      (map-indexed
       (fn [idx _]
         [statement {:path [name idx]
