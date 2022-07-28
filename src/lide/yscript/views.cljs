@@ -21,25 +21,22 @@
     false :unknown
     :unknown true))
 
-(defn required-fact [{:keys [expr path]}]
-  (let [fact-values @(rf/subscribe [::ys-subs/fact-values])
-        determiners @(rf/subscribe [::ys-subs/statements-determining-fact (:descriptor expr)])]
+(defn required-fact [{:keys [descriptor range]}]
+  (let [fact @(rf/subscribe [::ys-subs/fact descriptor])
+        _ (println fact)
+        fact-values @(rf/subscribe [::ys-subs/fact-values])]
     [:div {:class "ys-fact"
-           :data-fact-id (:descriptor expr)}
-     [util/eip-plain-text
-      {:value (:descriptor expr)
-       :on-blur #(rf/dispatch [::ys-events/set-requiree-descriptor
-                               path
-                               (-> % .-target .-value)])
-       :placeholder "[not set]"}]
-     (let [fact-value (get fact-values (:descriptor expr) :unknown)]
+           :data-fact-id descriptor}
+     [:div {:on-click #(rf/dispatch [::ys-events/select-range range])}
+      descriptor]
+     (let [fact-value (get fact-values descriptor :unknown)]
        [:div {:class "ys-fact__value"}
-        (if (seq determiners)
+        (if (seq (:determiners fact))
           [:<>
            [:div fact-value]
            [views/socket]]
           [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
-                                          (:descriptor expr)
+                                          descriptor
                                           (next-value fact-value)])}
            fact-value])])]))
 
@@ -64,11 +61,10 @@
    (let [lines (flatten-conjunctions expr)]
      (map-indexed
       (fn [idx expr-line]
-        [:div {:on-click #(rf/dispatch [::ys-events/select-range (:range expr-line)])
-               :key idx}
-         (str (:descriptor expr-line)
-              " "
-              (:operator expr-line))])
+        [:<> {:key idx}
+         [required-fact expr-line]
+         (when (not (string/blank? (:operator expr-line)))
+           [:div (:operator expr-line)])])
       lines))])
 
 (defn statement [{:keys [path]}]
