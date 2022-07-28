@@ -76,11 +76,7 @@
      [:div {:class "work-viewport"}
       [program-graph]
       [:div {:class "inspectors"}
-       (cond
-         (= target :epilog)
-         [epilog-views/code-panel]
-
-         (and (= target :yscript) (not vs-code))
-         [ys-views/code-panel])]]
+       (when (= target :epilog)
+         [epilog-views/code-panel])]]
      (when show-toolbar?
        [toolbar])]))

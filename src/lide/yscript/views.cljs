@@ -225,11 +225,3 @@
            (fn [[fact-id _]]
              [fact-determiner-connectors {:fact-id fact-id
                                           :key fact-id}])))]))
-
-(defn code-panel []
-  (let [program @(rf/subscribe [::ys-subs/populated-program])
-        rule-order @(rf/subscribe [::ys-subs/rule-order])]
-    [:div {:class "yscript-inspector"}
-     [:textarea {:class "code"
-                 :defaultValue (ys/codify-program program rule-order)
-                 :on-blur #(rf/dispatch [::ys-events/code-updated (-> % .-target .-value)])}]]))
