@@ -46,7 +46,9 @@
 (defn flatten-conjunctions [expr]
   ;; TODO this doesn't tolerate manual association via BEGIN/END
   (if (= "fact_expr" (:type expr))
-    [{:descriptor (:descriptor expr), :operator ""}]
+    [{:descriptor (:descriptor expr)
+      :operator ""
+      :range (:range expr)}]
 
     (let [operator (case (:type expr)
                      "and_expr" "AND"
@@ -62,7 +64,8 @@
    (let [lines (flatten-conjunctions expr)]
      (map-indexed
       (fn [idx expr-line]
-        [:div {:key idx}
+        [:div {:on-click #(rf/dispatch [::ys-events/select-range (:range expr-line)])
+               :key idx}
          (str (:descriptor expr-line)
               " "
               (:operator expr-line))])

@@ -201,3 +201,11 @@
    {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
                           {:type "showRange"
                            :range range}]]]}))
+
+(rf/reg-event-fx
+ ::select-range
+ (fn [cofx [_ range]]
+   (println range)
+   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
+                          {:type "selectRange"
+                           :range range}]]]}))
