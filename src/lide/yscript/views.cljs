@@ -28,16 +28,16 @@
            :data-fact-id descriptor}
      [:div {:on-click #(rf/dispatch [::ys-events/select-range range])}
       descriptor]
-     (let [fact-value (get fact-values descriptor {:value :unknown})]
+     (let [fact-value (get-in fact-values [descriptor :value] :unknown)]
        [:div {:class "ys-fact__value"}
         (if (seq (:determiners fact))
           [:<>
-           [:div (:value fact-value)]
+           [:div (fact-value-to-string fact-value)]
            [views/socket]]
           [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
                                           descriptor
-                                          (next-value (:value fact-value))])}
-           (fact-value-to-string (:value fact-value))])])]))
+                                          (next-value fact-value)])}
+           (fact-value-to-string fact-value)])])]))
 
 (defn flatten-conjunctions [expr]
   ;; TODO this doesn't tolerate manual association via BEGIN/END
