@@ -3,6 +3,7 @@
    [instaparse.core :as insta]
    [re-frame.core :as rf]
    [day8.re-frame.undo :as undo]
+   [lide.util :as util]
    [lide.yscript.core :as ys]
    [lide.yscript.db :as ys-db]))
 
@@ -23,6 +24,13 @@
                                 (get-in context [:effects :db :program]))
                                (get-in context [:effects :db :rule-source-order]))})))
          context)))))
+
+(rf/reg-fx
+ ::tell-vs-code
+ (fn [[vs-code message]]
+   (. vs-code
+      postMessage
+      (clj->js message))))
 
 (rf/reg-fx
  ::edit-source
@@ -183,6 +191,13 @@
          ;; like at some point to improve a lot of interchange format stuff
          renamed-program
          (-> new-program
-             (update :rules #(map-keys name %))
-             (update :facts #(map-keys name %)))]
+             (update :rules #(util/map-keys name %))
+             (update :facts #(util/map-keys name %)))]
      (update db :program #(merge % renamed-program)))))
+
+(rf/reg-event-fx
+ ::show-range
+ (fn [cofx [_ range]]
+   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
+                          {:type "showRange"
+                           :range range}]]]}))
