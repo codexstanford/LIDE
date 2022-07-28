@@ -21,129 +21,124 @@
     false :unknown
     :unknown true))
 
-(defn required-fact [{:keys [fact-id path]}]
-  (let [fact @(rf/subscribe [::ys-subs/fact fact-id])
-        determiners @(rf/subscribe [::ys-subs/statements-determining-fact fact-id])]
+(defn required-fact [{:keys [expr path]}]
+  (let [fact-values @(rf/subscribe [::ys-subs/fact-values])
+        determiners @(rf/subscribe [::ys-subs/statements-determining-fact (:descriptor expr)])]
     [:div {:class "ys-fact"
-           :data-fact-id fact-id}
+           :data-fact-id (:descriptor expr)}
      [util/eip-plain-text
-      {:value (:descriptor fact)
+      {:value (:descriptor expr)
        :on-blur #(rf/dispatch [::ys-events/set-requiree-descriptor
                                path
                                (-> % .-target .-value)])
        :placeholder "[not set]"}]
-     [:div {:class "ys-fact__value"}
-      (if (seq determiners)
-        [:<>
-         [:div (fact-value fact)]
-         [views/socket]]
-        [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value fact-id (next-value (:value fact))])}
-         (fact-value fact)])]]))
+     (let [fact-value (get fact-values (:descriptor expr) :unknown)]
+       [:div {:class "ys-fact__value"}
+        (if (seq determiners)
+          [:<>
+           [:div fact-value]
+           [views/socket]]
+          [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
+                                          (:descriptor expr)
+                                          (next-value fact-value)])}
+           fact-value])])]))
 
-;; `expression` and `conjunction-expression` are mutually recursive, so we have
-;; to declare `expression` in advance
-(declare expression)
+(defn flatten-conjunctions [expr]
+  ;; TODO this doesn't tolerate manual association via BEGIN/END
+  (if (= "fact_expr" (:type expr))
+    [{:descriptor (:descriptor expr), :operator ""}]
 
-(defn conjunction-expression [{:keys [operator exprs path]}]
-  [:div
-   (interleave
-    (map-indexed (fn [idx expr]
-                   [expression {:expr expr
-                                :path (conj path idx)
-                                :key idx}])
-                 exprs)
-    (repeatedly (fn []
-                  [:div {:key (random-uuid)}
-                   (case operator
-                     :and "AND"
-                     :or  "OR")])))])
+    (let [operator (case (:type expr)
+                     "and_expr" "AND"
+                     "or_expr"  "OR")
+          left (flatten-conjunctions (:left expr))
+          left-and (update left (dec (count left)) #(assoc % :operator operator))]
+      (vec
+       (concat left-and
+               (flatten-conjunctions (:right expr)))))))
 
 (defn expression [{:keys [expr path]}]
   [:div {:class "ys-expr"}
-   (cond
-     (uuid? expr)
-     [required-fact {:fact-id expr
-                     :path path}]
+   (let [lines (flatten-conjunctions expr)]
+     (map-indexed
+      (fn [idx expr-line]
+        [:div {:key idx}
+         (str (:descriptor expr-line)
+              " "
+              (:operator expr-line))])
+      lines))])
 
-     (= :and (:type expr))
-     [conjunction-expression {:operator :and
-                              :exprs (:exprs expr)
-                              :path (conj path :exprs)}]
-
-     (= :or (:type expr))
-     [conjunction-expression {:operator :or
-                              :exprs (:exprs expr)
-                              :path (conj path :exprs)}])])
-
-(defn statement [{:keys [id]}]
-  (let [statement @(rf/subscribe [::ys-subs/statement id])
-        determinations @(rf/subscribe [::ys-subs/determinations-for-statement id])]
-    [:div {:class "ys-statement"
-           :data-statement-id id}
+(defn statement [{:keys [path]}]
+  (let [program @(rf/subscribe [::subs/program])
+        fact-values @(rf/subscribe [::ys-subs/fact-values])
+        statement @(rf/subscribe [::ys-subs/statement path])
+        local-determinations (ys/compute-statement program fact-values statement)]
+    [:div {:class "ys-statement"}
      (case (:type statement)
-       :only-if
+       "only_if"
        [:div
-        (let [fact @(rf/subscribe [::ys-subs/fact (:dest-fact statement)])
-              local-determination (get determinations (:dest-fact statement))]
+        (let [local-determination (get local-determinations (:dest_fact statement))]
           [:div {:class "ys-statement__dest-fact"}
            [views/socket]
            [util/eip-plain-text
-            {:value (:descriptor fact)
-             :on-blur #(rf/dispatch [::ys-events/set-determinee-descriptor
-                                     id
+            {:value (:dest_fact statement)
+             :on-blur #(rf/dispatch [::ys-events/set-dest-fact
+                                     path
                                      (-> % .-target .-value)])
              :placeholder "[not set]"}]
            [:div {:class "ys-statement__dest-value"}
             ;; Warn about stale determinations if there is a value in the app DB
-            ;; for `fact`, and the statement has a local determination for it,
-            ;; but the values differ
-            (when (and (:value fact)
-                       local-determination
-                       (not= (:value fact) local-determination))
-              [:div {:class "ys-statement__warn-stale"} "(stale)"])
-            (fact-value {:value local-determination})]])
+            ;; for dest_fact, and the statement has a local determination for
+            ;; it, but the values differ
+            (let [global-value (get-in fact-values [(:dest_fact statement) :value])]
+              (when (and global-value
+                         local-determination
+                         (not= global-value local-determination))
+                [:div {:class "ys-statement__warn-stale"} "(stale)"]))
+            (fact-value local-determination)]])
         [:div "ONLY IF"]
-        (if (= :unspecified (:src-expr statement))
+        (if (= :unspecified (:src_expr statement))
           [:select {:on-change #(do
                                   (when (-> % .-target .-value)
                                     (rf/dispatch [::ys-events/add-source-expr
-                                                  id
+                                                  path
                                                   (keyword (-> % .-target .-value))]))
                                   (set! (-> % .-target .-value) ""))}
            [:option {:value ""} "Add expression..."]
            [:option {:value "and"} "AND"]
            [:option {:value "or"} "OR"]]
-          [expression {:expr (:src-expr statement)
-                       :path [id :src-expr]}])])]))
+          [expression {:expr (:src_expr statement)
+                       :path (conj path :src_expr)}])])]))
 
-(defn rule-html [{:keys [id localize-position store-ref]}]
-  (let [rule @(rf/subscribe [::ys-subs/rule id])]
+(defn rule-html [{:keys [name localize-position store-ref]}]
+  (let [rule @(rf/subscribe [::ys-subs/rule name])]
     [:div {:class "ys-rule"
            :ref store-ref
-           :data-rule-id id
-           :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) id ::ys/rule])}
+           :data-rule-key name
+           :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) name :rule])}
      [:div {:class "ys-rule__header"}
       "RULE "
       [util/eip-plain-text
-       {:value (:name rule)
+       {:value name
         ;; TODO should validate (esp against empty)
-        :on-blur #(rf/dispatch [::ys-events/set-rule-name id (-> % .-target .-value)])
+        :on-blur #(rf/dispatch [::ys-events/set-rule-name name (-> % .-target .-value)])
         :class "ys-rule__name"}]
       " PROVIDES"]
-     (->> (:statements rule)
-          (map (fn [st-id]
-                 [statement {:id st-id
-                             :key st-id}])))
+     (map-indexed
+      (fn [idx _]
+        [statement {:path [name idx]
+                    :key idx}])
+      (:statements rule))
      [:select {:on-change #(do
                              (when (-> % .-target .-value)
-                               (rf/dispatch [::ys-events/add-statement id (keyword (-> % .-target .-value))]))
+                               (rf/dispatch [::ys-events/add-statement name (keyword (-> % .-target .-value))]))
                              (set! (-> % .-target .-value) ""))}
       [:option {:value ""} "Add statement..."]
       [:option {:value "only-if"} "ONLY IF"]]]))
 
-(defn rule [{:keys [id] :as props}]
-  [views/prerender {:element-type :ys-rule
-                    :id id}
+(defn rule [{:keys [name] :as props}]
+  [views/prerender {:element-type :rule
+                    :id name}
    [rule-html props]])
 
 (defn statement-socket-position [rule-layout statement-id]
@@ -221,10 +216,10 @@
         mouse-position @(rf/subscribe [::subs/mouse-position])]
     [:<>
      (->> (:rules program)
-          (map (fn [[id _]]
-                 [rule {:id  id
+          (map (fn [[name _]]
+                 [rule {:name name
                         :localize-position localize-position
-                        :key    id}])))
+                        :key name}])))
      (->> (:facts program)
           (map
            (fn [[fact-id _]]

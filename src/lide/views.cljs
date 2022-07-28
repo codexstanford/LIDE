@@ -44,7 +44,7 @@
 
       :reagent-render
       (fn []
-        (let [position @(rf/subscribe [::subs/position id])]
+        (let [position @(rf/subscribe [::subs/position [element-type id]])]
           [:foreignObject {:width 1
                            :height 1
                            :style {"overflow" "visible"}

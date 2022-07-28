@@ -132,68 +132,83 @@
         {})))
 
 (defn compute-expression
-  "Compute the value of `expression` given the information in `program`.
+  "Compute the value of `expression` given the information in `program` and
+  `fact-values`.
 
   It may not be possible to determine a value, in which case `:unknown` is
   returned.
 
   TODO this would memoize very nicely"
-  [program expr]
+  [program fact-values expr]
   (cond
     (= :unspecified expr)
     :unknown
 
-    (uuid? expr)
-    (get-in program [:facts expr :value])
+    (= "fact_expr" (:type expr))
+    (get fact-values (:descriptor expr) :unknown)
 
-    (= :and (:type expr))
-    (cond
-      (some #(= false (compute-expression program %)) (:exprs expr)) false
-      (every? #(= true (compute-expression program %)) (:exprs expr)) true
-      :else :unknown)
+    (= "and_expr" (:type expr))
+    (let [left (compute-expression program fact-values (:left expr))]
+      (if (= false left)
+        false
+        (let [right (compute-expression program fact-values (:right expr))]
+          (case [left right]
+            [true false] false
+            [:unknown false] false
+            [true :unknown] :unknown
+            [:unknown :unknown] :unknown
+            true))))
 
-    (= :or (:type expr))
-    (cond
-      (some #(= true (compute-expression program %)) (:exprs expr)) true
-      (every? #(= false (compute-expression program %)) (:exprs expr)) false
-      :else :unknown)))
+    (= "or_expr" (:type expr))
+    (let [left (compute-expression program fact-values (:left expr))]
+      (if (= true left)
+        true
+        (let [right (compute-expression program fact-values (:right expr))]
+          (case [left right]
+            [false true] true
+            [:unknown true] true
+            [false :unknown] :unknown
+            [:unknown :unknown] :unknown
+            false))))))
 
 (defn compute-statement
-  "Determine whatever fact values `statement` can, and return a map of such fact
-  IDs to their determined values."
-  [program statement]
+  "Determine whatever fact values `statement` can, and return a map of descriptors
+  of such facts to their determined values."
+  [program fact-values statement]
   (case (:type statement)
-    :only-if {(:dest-fact statement) (compute-expression program (:src-expr statement))}))
+    "only_if"
+    {(:dest_fact statement)
+     (compute-expression program fact-values (:src_expr statement))}))
 
 (defn execute-statement
   "Determine whatever fact values `statement` can, and apply these changes to
-  `program`."
-  [program statement]
+  `fact-values`."
+  [program fact-values statement]
   (case (:type statement)
-    :only-if (->> (compute-statement program statement)
+    :only-if (->> (compute-statement program fact-values statement)
                   (reduce
-                   (fn [program' [fact-id value]]
-                     (assoc-in program' [:facts fact-id :value] value))
-                   program))))
+                   (fn [fact-values' [descriptor value]]
+                     (assoc-in fact-values' [descriptor :value] value))
+                   fact-values))))
 
 (defn forward-chain
-  "Infer as much as possible from fact `fact-id` and return `program` with new
-  conclusions added."
-  [program index fact-id]
+  "Infer as much as possible from fact `fact-id` and update `fact-values`
+  accordingly."
+  [program fact-values index fact-id]
   (->> (get-in index [:statements-by-required-fact fact-id])
        ;; TODO should handle rule order
-       (reduce (fn [program' statement-id]
+       (reduce (fn [fact-values' statement-id]
                  (let [statement (get-in program [:statements statement-id])
-                       program'' (execute-statement program' statement)]
+                       fact-values'' (execute-statement program fact-values' statement)]
                    (->> statement
                         facts-determined-by-statement
-                        (reduce (fn [program''' determined-fact]
+                        (reduce (fn [fact-values''' determined-fact]
                                   (if (not= :unknown
-                                            (get-in program''' [:facts determined-fact :value]))
-                                    (forward-chain program''' index determined-fact)
-                                    program'''))
-                                program''))))
-               program)))
+                                            (get-in fact-values''' [determined-fact :value]))
+                                    (forward-chain program fact-values''' index determined-fact)
+                                    fact-values'''))
+                                fact-values''))))
+               fact-values)))
 
 (defn codify-fact-reference [fact]
   (if (= :unspecified (:descriptor fact))

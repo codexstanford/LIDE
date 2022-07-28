@@ -5,21 +5,33 @@
 
 ;; General utilities
 
-(defn map-vals [f m]
-  "Map `f` over the values of `m`, keeping the same keys."
+(defn map-keys
+  "Apply `f` to keys in `m`, keeping the same values."
+  [f m]
+  (->> m
+       (map
+        (fn [[k v]]
+          [(f k) v]))
+       (into {})))
+
+(defn map-vals
+  "Apply `f` to values in `m`, keeping the same keys."
+  [f m]
   (into (empty m) (for [[k v] m] [k (f v)])))
 
-(defn first-indexed [pred coll]
+(defn first-indexed
   "Return a vector of the first element in `coll` matching `pred` and the index
   of that element, ordered [index, item]."
+  [pred coll]
   (->> coll
        (keep-indexed (fn [idx elem]
                        (when (pred elem)
                          [idx elem])))
        first))
 
-(defn vector-remove [vec idx]
+(defn vector-remove
   "Remove the element at `idx` from `vec`."
+  [vec idx]
   (into (subvec vec 0 idx) (subvec vec (inc idx))))
 
 (defn hash-to-hsl [s]
@@ -44,8 +56,9 @@
 
 ;; Rule/program utilities
 
-(defn populate-rule [program rule]
+(defn populate-rule
   "Retrieve the actual values from `program` pointed to by the IDs in `rule`."
+  [program rule]
   (-> rule
       (update :head (fn [id]
                       (-> program :literals (get id))))
@@ -55,8 +68,9 @@
                                      :id id))
                             literals)))))
 
-(defn variable? [arg]
+(defn variable?
   "True if `arg` is a string starting with an upper-case letter."
+  [arg]
   (if (string/blank? arg)
       false
       (let [first-char (subs arg 0 1)
@@ -68,9 +82,10 @@
 (defn ground? [arg]
   (not (variable? arg)))
 
-(defn matches? [a b]
+(defn matches?
   "Literals `a` and `b` match if they have the same predicate, same arity, and
   any ground arguments are the same."
+  [a b]
   (and (= (:predicate a)
           (:predicate b))
        (= (count (:args a))
@@ -81,9 +96,10 @@
                         (ground? b-arg)))
                  (map vector (:args a) (:args b)))))
 
-(defn grounds? [a b]
+(defn grounds?
   "Literal `b` grounds literal `a` if they have the same predicate, same arity,
   and at least one shared argument is ground in `b` and variable in `a`. "
+  [a b]
   (and (= (:predicate a)
           (:predicate b))
        (= (count (:args a))
@@ -93,9 +109,10 @@
                     (ground? b-arg)))
              (map vector (:args a) (:args b)))))
 
-(defn parse-body-arg [arg]
+(defn parse-body-arg
   "Parse an argument to a body literal. Some special formats are allowed in this
   context: `arg` might be more than a plain string."
+  [arg]
   (let [unparsable {:type :uncontrolled
                     :value arg}]
     (cond
@@ -129,8 +146,9 @@
        flatten
        (into {})))
 
-(defn find-rule-matches [program]
+(defn find-rule-matches
   "Find head literals that match with body literals from other rules."
+  [program]
   (->> (:rules program)
        (map
         (fn [[rule-id rule]]
@@ -219,8 +237,9 @@
                                 (.blur @!input))
                 :style (when @!value (style @!value))})])))
 
-(defn style-arg [arg]
+(defn style-arg
   "Hash `arg` to a color if it's a variable and return an appropriate style map."
+  [arg]
   (if (variable? arg)
     {"color" (hash-to-hsl arg)}
     {}))

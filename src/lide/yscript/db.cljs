@@ -5,93 +5,49 @@
    [lide.yscript.core :as ys]))
 
 (def default-db
-  (let [take-umbrella-id (random-uuid)
-        have-umbrella-id (random-uuid)
-        might-need-umbrella-id (random-uuid)
-        is-raining-id (random-uuid)
-        might-rain-id (random-uuid)
-        water-falling-id (random-uuid)
+  {:program
+   {:target :yscript
 
-        take-if-id (random-uuid)
-        might-need-if-id (random-uuid)
-        raining-if-id (random-uuid)
+    :facts
+    {"it is raining"
+     {:determiners [{:path ["c" 0]}]
+      :requirers   [{:path ["b" 0 "src_expr"]
+                     :source-position [{:row 0,  :column 0}
+                                       {:row 50, :column 67}]}]}}
 
-        rule-1-id (random-uuid)
-        rule-2-id (random-uuid)
-        rule-3-id (random-uuid)]
-    {:program
-     {:target :yscript
+    :rules
+    {"a" {:statements
+          [{:type "only_if"
+            :dest_fact {:text "you should take an umbrella"
+                        :startPosition {:row 0, :column 0}}
+            :src_expr {:type "and_expr"
+                       :left {:type "fact_expr"
+                              :descriptor "you have an umbrella"}
+                       :right {:type "fact_expr"
+                               :descriptor "you might need an umbrella"}}}]}
 
-      :facts {take-umbrella-id
-              {:type :boolean
-               :descriptor "you should take an umbrella"
-               :value :unknown}
+     "b" {:statements
+          [{:type "only_if"
+            :dest_fact "you might need an umbrella"
+            :src_expr {:type "or_expr"
+                       :left {:type "fact_expr"
+                              :descriptor "it is raining"}
+                       :right {:type "fact_expr"
+                               :descriptor "it looks like it might rain"}}}]}
 
-              have-umbrella-id
-              {:type :boolean
-               :descriptor "you have an umbrella"
-               :value :unknown}
+     "c" {:statements
+          [{:type "only_if"
+            :dest_fact "it is raining"
+            :src_expr {:type "fact_expr"
+                       :descriptor "water is falling from the sky"}}]}}}
 
-              might-need-umbrella-id
-              {:type :boolean
-               :descriptor "you might need an umbrella"
-               :value :unknown}
+   :fact-values
+   {"water is falling from the sky" {:value false}}
 
-              is-raining-id
-              {:type :boolean
-               :descriptor "it is raining"
-               :value :unknown}
-
-              might-rain-id
-              {:type :boolean
-               :descriptor "it looks like it might rain"
-               :value :unknown}
-
-              water-falling-id
-              {:type :boolean
-               :descriptor "water is falling from the sky"
-               :value :unknown}}
-
-      :statements
-      {take-if-id
-       {:type :only-if
-        :dest-fact take-umbrella-id
-        :src-expr {:type :and
-                   :exprs [have-umbrella-id
-                           might-need-umbrella-id]}}
-       might-need-if-id
-       {:type :only-if
-        :dest-fact might-need-umbrella-id
-        :src-expr {:type :or
-                   :exprs [is-raining-id
-                           might-rain-id]}}
-       raining-if-id
-       {:type :only-if
-        :dest-fact is-raining-id
-        :src-expr water-falling-id}}
-
-      :rules
-      {rule-1-id {:name "a"
-                  :goal true
-                  :statements [take-if-id]}
-
-       rule-2-id {:name "b"
-                  :goal false
-                  :statements [might-need-if-id]}
-
-       rule-3-id {:name "c"
-                  :goal false
-                  :statements [raining-if-id]}}}
-
-     :rule-source-order
-     [rule-1-id
-      rule-2-id
-      rule-3-id]
-
-     :positions
-     {rule-1-id {:x 25, :y 40}
-      rule-2-id {:x 325, :y 111}
-      rule-3-id {:x 625, :y 147}}}))
+   :positions
+   {:rule {"a" {:x 25, :y 40}
+           "b" {:x 325, :y 111}
+           "c" {:x 625, :y 147}}}})
 
 (defn rule-names
   "Return a set of names of all rules in `db`."

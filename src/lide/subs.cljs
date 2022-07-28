@@ -165,8 +165,8 @@
 
 (rf/reg-sub
  ::position
- (fn [db [_ entity-id]]
-   (get-in db [:positions entity-id] {:x 0 :y 0})))
+ (fn [db [_ path]]
+   (get-in (:positions db) path {:x 0 :y 0})))
 
 (rf/reg-sub
   ::rendered

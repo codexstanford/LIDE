@@ -17,7 +17,7 @@
          (when vs-code
            (. vs-code
               postMessage
-              (clj->js {:type "programUpdated"
+              (clj->js {:type "programEdited"
                         :text (ys/codify-program
                                (ys-db/populate-program
                                 (get-in context [:effects :db :program]))
@@ -25,33 +25,30 @@
          context)))))
 
 (rf/reg-fx
+ ::edit-source
+ (fn [[vs-code range text]]
+   (when vs-code
+     (. vs-code
+        postMessage
+        (clj->js {:type "editSource"
+                  :range range
+                  :text text})))))
+
+(rf/reg-fx
  ::publish-rule-positions
  (goog.functions.debounce
-  (fn [[vs-code rules positions]]
+  (fn [[vs-code positions]]
     (when vs-code
       (. vs-code
          postMessage
-         (clj->js {:type "positionsUpdated"
-                   :positions (reduce (fn [acc [rule-id position]]
-                                        (assoc acc
-                                               (get-in rules [rule-id :name])
-                                               position))
-                                      {}
-                                      positions)}))))
+         (clj->js {:type "positionsEdited"
+                   :positions (or positions {})}))))
   2000))
 
 (rf/reg-event-db
  ::positions-read
  (fn [db [_ positions]]
-   (reduce (fn [db' [rule-name position]]
-             (let [[rule-id _] (ys-db/rule-by-name db rule-name)]
-               ;; TODO ought to be some cleanup if there's a position for a rule
-               ;; that doesn't exist
-               (if rule-id
-                 (assoc-in db' [:positions rule-id] position)
-                 db')))
-           db
-           positions)))
+   (assoc db :positions positions)))
 
 (rf/reg-event-db
  ::create-rule
@@ -97,7 +94,19 @@
          (assoc-in [:program :statements statement-id :src-expr] {:type type
                                                                   :exprs [fact-id]})))))
 
-(rf/reg-event-db
+(rf/reg-event-fx
+ ::set-dest-fact
+ (undo/undoable "set statement dest_fact descriptor")
+ (fn [cofx [_ [rule-name statement-idx] new-descriptor]]
+   (let [dest-fact-path [:program :rules rule-name :statements statement-idx :dest_fact]
+         dest-fact (get-in (:db cofx) (conj dest-fact-path))]
+     {:db (assoc-in (:db cofx) dest-fact-path new-descriptor)
+      :fx [[::edit-source [(-> cofx :db :vs-code)
+                           [(:startPosition dest-fact)
+                            (:endPosition dest-fact)]
+                           new-descriptor]]]})))
+
+#_(rf/reg-event-db
  ::set-determinee-descriptor
  [updates-code
   (undo/undoable "set determinee descriptor")]
@@ -151,24 +160,29 @@
  ::set-fact-value
  [updates-code
   (undo/undoable "set fact value")]
- (fn [db [_ fact-id value]]
-   (-> db
-       (assoc-in [:program :facts fact-id :value] value)
-       (update :program
-               #(ys/forward-chain %
-                                  {:statements-by-required-fact (ys/statements-by-required-fact %)}
-                                  fact-id)))))
+ (fn [db [_ descriptor value]]
+   (let [edited-values (assoc-in (get-in db [:program :fact-values])
+                                 [descriptor :value]
+                                 value)]
+     (-> db
+         #_(assoc :fact-values edited-values)
+         (update :fact-values
+                 #(ys/forward-chain %
+                                    edited-values
+                                    {:statements-by-required-fact (ys/statements-by-required-fact %)}
+                                    descriptor))))))
 
 (rf/reg-event-db
  ::code-updated
  (undo/undoable "update code")
- (fn [db [_ new-code]]
-   (let [parse (ys/parse new-code)]
-     (if (insta/failure? parse)
-       ;; If the new code wasn't parsable, ignore the change
-       db
-       ;; Otherwise, switch to the new program
-       (let [db' (->> (ys-db/ingest parse)
-                      first
-                      (merge db))]
-         (ys-db/reconcile-ids db' db))))))
+ (fn [db [_ new-program-json]]
+   (let [new-program
+         (js->clj new-program-json :keywordize-keys true)
+
+         ;; un-keywordize rule and fact names. This is kind of gross; I would
+         ;; like at some point to improve a lot of interchange format stuff
+         renamed-program
+         (-> new-program
+             (update :rules #(map-keys name %))
+             (update :facts #(map-keys name %)))]
+     (update db :program #(merge % renamed-program)))))

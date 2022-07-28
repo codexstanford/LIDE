@@ -251,20 +251,18 @@
                    (-> db :drag-origin :y))]
          {:db
           (-> db
-              (update-in [:positions (:dragging-id db)]
+              (update-in [:positions :rule (:dragging-id db)]
                          (fn [position]
-                           (-> position
-                               (update :x #(+ % dx))
-                               (update :y #(+ % dy)))))
+                           (merge-with +
+                                       (or position {:x 0, :y 0})
+                                       {:x dx, :y dy})))
               (assoc :drag-origin local-position)
               (assoc :dragged true))
 
           :fx
-          (if (and (:vs-code db)
-                   (= ::ys/rule (:dragging-type db)))
+          (if (:vs-code db)
             [[::ys-events/publish-rule-positions [(:vs-code db)
-                                                  (get-in db [:program :rules])
-                                                  (get-in db [:positions])]]]
+                                                  (:positions db)]]]
             [])})
 
        :else {:db db}))))

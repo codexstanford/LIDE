@@ -6,14 +6,19 @@
    [lide.yscript.db :as ys-db]))
 
 (rf/reg-sub
+ ::fact-values
+ (fn [db _]
+   (:fact-values db)))
+
+(rf/reg-sub
  ::fact
  (fn [db [_ id]]
    (get-in db [:program :facts id])))
 
 (rf/reg-sub
  ::statement
- (fn [db [_ id]]
-   (get-in db [:program :statements id])))
+ (fn [db [_ [rule-name statement-idx]]]
+   (get-in db [:program :rules rule-name :statements statement-idx])))
 
 (rf/reg-sub
  ::rule
@@ -69,9 +74,10 @@
  ::determinations-for-statement
  (fn [[_ st-id]]
    [(atom st-id)
-    (rf/subscribe [::subs/program])])
- (fn [[st-id program]]
-   (ys/compute-statement program (get-in program [:statements st-id]))))
+    (rf/subscribe [::subs/program])
+    (rf/subscribe [::fact-values])])
+ (fn [[st-id program fact-values]]
+   (ys/compute-statement program fact-values (get-in program [:statements st-id]))))
 
 (rf/reg-sub
  ::populated-program

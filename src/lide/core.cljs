@@ -19,10 +19,16 @@
     (rdom/render [main/main-panel] root-el)))
 
 (defn parse-positions [^js positions]
-  (->> (js->clj positions)
-       (util/map-vals (fn [position]
-                        {:x (get position "x")
-                         :y (get position "y")}))))
+  (-> (js->clj positions)
+      (clojure.set/rename-keys {"rule" :rule})
+      (update
+       :rule
+       (fn [rule-positions]
+         (util/map-vals
+          (fn [position]
+            {:x (get position "x")
+             :y (get position "y")})
+          rule-positions)))))
 
 (defn init []
   (dev-setup)
@@ -36,7 +42,7 @@
                      (fn [^js message]
                        (cond
                          (= "yscript.graph.codeUpdated" (-> message .-data .-type))
-                         (rf/dispatch [::ys-events/code-updated (-> message .-data .-text)])
+                         (rf/dispatch [::ys-events/code-updated (-> message .-data .-model)])
 
                          (= "yscript.graph.positionsRead" (-> message .-data .-type))
                          (rf/dispatch [::ys-events/positions-read
