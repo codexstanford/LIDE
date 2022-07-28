@@ -181,28 +181,10 @@
   "Determine whatever fact values `statement` can, and return a map of descriptors
   of such facts to their determined values."
   [program fact-values statement]
-  (->> (case (:type statement)
-         "only_if"
-         {(:dest_fact statement)
-          (compute-expression program fact-values (:src_expr statement))})
-       (remove
-        (fn [[_ value]]
-          (= value :unknown)))
-       (into {})))
-
-(defn execute-statement
-  "Determine whatever fact values `statement` can, and apply these changes to
-  `fact-values`."
-  [program fact-values statement]
-  (let [_ (println "with fact-values" fact-values)
-        _ (println (:dest_fact statement) "ONLY IF")
-        _ (println "determines" (compute-statement program fact-values statement))]
-    (->> (compute-statement program fact-values statement)
-         (reduce
-          (fn [fact-values' [descriptor value]]
-            (println "assoc-in" fact-values' [descriptor :value] value)
-            (assoc-in fact-values' [descriptor :value] value))
-          fact-values))))
+  (case (:type statement)
+    "only_if"
+    {(:dest_fact statement)
+     (compute-expression program fact-values (:src_expr statement))}))
 
 (defn forward-chain
   "Infer as much as possible from fact `fact-id` and update `fact-values`
@@ -216,14 +198,11 @@
                    (let [statement (get-in program [:rules rule-name :statements statement-idx])
                          computed-values (compute-statement program fact-values' statement)]
                      (reduce (fn [fact-values'' [descriptor computed-value]]
-                               (if (not= :unknown
-                                         (get-in computed-values descriptor))
-                                 (forward-chain program
-                                                (assoc-in fact-values''
-                                                          [descriptor :value]
-                                                          computed-value)
-                                                descriptor)
-                                 fact-values''))
+                               (forward-chain program
+                                              (assoc-in fact-values''
+                                                        [descriptor :value]
+                                                        computed-value)
+                                              descriptor))
                              fact-values'
                              computed-values)))
                  fact-values))))
