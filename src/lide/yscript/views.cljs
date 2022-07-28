@@ -10,10 +10,10 @@
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
 
-(defn fact-value [fact]
-  (if (= :unknown (:value fact))
+(defn fact-value-to-string [value]
+  (if (= value :unknown)
     "unknown"
-    (str (:value fact))))
+    (str value)))
 
 (defn next-value [value]
   (case value
@@ -23,22 +23,21 @@
 
 (defn required-fact [{:keys [descriptor range]}]
   (let [fact @(rf/subscribe [::ys-subs/fact descriptor])
-        _ (println fact)
         fact-values @(rf/subscribe [::ys-subs/fact-values])]
     [:div {:class "ys-fact"
            :data-fact-id descriptor}
      [:div {:on-click #(rf/dispatch [::ys-events/select-range range])}
       descriptor]
-     (let [fact-value (get fact-values descriptor :unknown)]
+     (let [fact-value (get fact-values descriptor {:value :unknown})]
        [:div {:class "ys-fact__value"}
         (if (seq (:determiners fact))
           [:<>
-           [:div fact-value]
+           [:div (:value fact-value)]
            [views/socket]]
           [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
                                           descriptor
-                                          (next-value fact-value)])}
-           fact-value])])]))
+                                          (next-value (:value fact-value))])}
+           (fact-value-to-string (:value fact-value))])])]))
 
 (defn flatten-conjunctions [expr]
   ;; TODO this doesn't tolerate manual association via BEGIN/END
@@ -76,7 +75,7 @@
      (case (:type statement)
        "only_if"
        [:div
-        (let [local-determination (get local-determinations (:dest_fact statement))]
+        (let [local-determination (get local-determinations (:dest_fact statement) :unknown)]
           [:div {:class "ys-statement__dest-fact"}
            [views/socket]
            [util/eip-plain-text
@@ -89,12 +88,12 @@
             ;; Warn about stale determinations if there is a value in the app DB
             ;; for dest_fact, and the statement has a local determination for
             ;; it, but the values differ
-            (let [global-value (get-in fact-values [(:dest_fact statement) :value])]
+            (let [global-value (get-in fact-values [(:dest_fact statement) :value] :unknown)]
               (when (and global-value
                          local-determination
                          (not= global-value local-determination))
                 [:div {:class "ys-statement__warn-stale"} "(stale)"]))
-            (fact-value local-determination)]])
+            (fact-value-to-string local-determination)]])
         [:div "ONLY IF"]
         (if (= :unspecified (:src_expr statement))
           [:select {:on-change #(do

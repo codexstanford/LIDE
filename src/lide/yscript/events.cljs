@@ -166,19 +166,16 @@
 
 (rf/reg-event-db
  ::set-fact-value
- [updates-code
-  (undo/undoable "set fact value")]
+ (undo/undoable "set fact value")
  (fn [db [_ descriptor value]]
-   (let [edited-values (assoc-in (get-in db [:program :fact-values])
+   (let [edited-values (assoc-in (:fact-values db)
                                  [descriptor :value]
                                  value)]
-     (-> db
-         #_(assoc :fact-values edited-values)
-         (update :fact-values
-                 #(ys/forward-chain %
-                                    edited-values
-                                    {:statements-by-required-fact (ys/statements-by-required-fact %)}
-                                    descriptor))))))
+     (assoc db
+            :fact-values
+            (ys/forward-chain (:program db)
+                              edited-values
+                              descriptor)))))
 
 (rf/reg-event-db
  ::code-updated
@@ -205,7 +202,6 @@
 (rf/reg-event-fx
  ::select-range
  (fn [cofx [_ range]]
-   (println range)
    {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
                           {:type "selectRange"
                            :range range}]]]}))

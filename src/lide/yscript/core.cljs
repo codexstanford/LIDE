@@ -31,13 +31,15 @@
   (named-rule (name-rule existing-names)))
 
 (defn facts-required-by-expression
-  "Return a set of all facts required by `expr`."
+  "Return a set of descriptors of all facts required by `expr`."
   [expr]
   (cond
-    (= :unspecified expr) #{}
-    (uuid? expr) #{expr} ;; `expr` is just a fact
-    (= :and (:type expr)) (apply set/union (map facts-required-by-expression (:exprs expr)))
-    (= :or  (:type expr)) (apply set/union (map facts-required-by-expression (:exprs expr)))))
+    (= "fact_expr" (:type expr))
+    #{(:descriptor expr)}
+
+    (contains? #{"and_expr" "or_expr"} (:type expr))
+    (set/union (facts-required-by-expression (:left expr))
+               (facts-required-by-expression (:right expr)))))
 
 (defn facts-required-by-statement
   "Return a set of all facts required for the execution of `rule`."
@@ -49,7 +51,7 @@
   "Return a set of all facts that can be determined by executing `statement`."
   [statement]
   (case (:type statement)
-    :only-if (facts-required-by-expression (:dest-fact statement))))
+    "only_if" #{(:dest_fact statement)}))
 
 (defn orphan-facts
   "Return a set of IDs of all facts neither determined nor required by any rule in
@@ -145,7 +147,7 @@
     :unknown
 
     (= "fact_expr" (:type expr))
-    (get fact-values (:descriptor expr) :unknown)
+    (get-in fact-values [(:descriptor expr) :value] :unknown)
 
     (= "and_expr" (:type expr))
     (let [left (compute-expression program fact-values (:left expr))]
@@ -153,11 +155,13 @@
         false
         (let [right (compute-expression program fact-values (:right expr))]
           (case [left right]
-            [true false] false
-            [:unknown false] false
-            [true :unknown] :unknown
+            ;; We know `left` isn't false, so 2x3 = 6 remaining possibilities
             [:unknown :unknown] :unknown
-            true))))
+            [:unknown false] false
+            [:unknown true] :unknown
+            [true :unknown] :unknown
+            [true false] false
+            [true true] true))))
 
     (= "or_expr" (:type expr))
     (let [left (compute-expression program fact-values (:left expr))]
@@ -165,50 +169,64 @@
         true
         (let [right (compute-expression program fact-values (:right expr))]
           (case [left right]
-            [false true] true
+            ;; similarly to AND above
+            [:unknown :unknown] :unknown
+            [:unknown false] :unknown
             [:unknown true] true
             [false :unknown] :unknown
-            [:unknown :unknown] :unknown
-            false))))))
+            [false false] false
+            [false true] true))))))
 
 (defn compute-statement
   "Determine whatever fact values `statement` can, and return a map of descriptors
   of such facts to their determined values."
   [program fact-values statement]
-  (case (:type statement)
-    "only_if"
-    {(:dest_fact statement)
-     (compute-expression program fact-values (:src_expr statement))}))
+  (->> (case (:type statement)
+         "only_if"
+         {(:dest_fact statement)
+          (compute-expression program fact-values (:src_expr statement))})
+       (remove
+        (fn [[_ value]]
+          (= value :unknown)))
+       (into {})))
 
 (defn execute-statement
   "Determine whatever fact values `statement` can, and apply these changes to
   `fact-values`."
   [program fact-values statement]
-  (case (:type statement)
-    :only-if (->> (compute-statement program fact-values statement)
-                  (reduce
-                   (fn [fact-values' [descriptor value]]
-                     (assoc-in fact-values' [descriptor :value] value))
-                   fact-values))))
+  (let [_ (println "with fact-values" fact-values)
+        _ (println (:dest_fact statement) "ONLY IF")
+        _ (println "determines" (compute-statement program fact-values statement))]
+    (->> (compute-statement program fact-values statement)
+         (reduce
+          (fn [fact-values' [descriptor value]]
+            (println "assoc-in" fact-values' [descriptor :value] value)
+            (assoc-in fact-values' [descriptor :value] value))
+          fact-values))))
 
 (defn forward-chain
   "Infer as much as possible from fact `fact-id` and update `fact-values`
   accordingly."
-  [program fact-values index fact-id]
-  (->> (get-in index [:statements-by-required-fact fact-id])
-       ;; TODO should handle rule order
-       (reduce (fn [fact-values' statement-id]
-                 (let [statement (get-in program [:statements statement-id])
-                       fact-values'' (execute-statement program fact-values' statement)]
-                   (->> statement
-                        facts-determined-by-statement
-                        (reduce (fn [fact-values''' determined-fact]
-                                  (if (not= :unknown
-                                            (get-in fact-values''' [determined-fact :value]))
-                                    (forward-chain program fact-values''' index determined-fact)
-                                    fact-values'''))
-                                fact-values''))))
-               fact-values)))
+  [program fact-values fact-id]
+  (let [fact (get-in program [:facts fact-id])]
+    (->> (:requirers fact)
+         (map :path)
+         ;; TODO should handle rule order
+         (reduce (fn [fact-values' [rule-name statement-idx & exprs]]
+                   (let [statement (get-in program [:rules rule-name :statements statement-idx])
+                         computed-values (compute-statement program fact-values' statement)]
+                     (reduce (fn [fact-values'' [descriptor computed-value]]
+                               (if (not= :unknown
+                                         (get-in computed-values descriptor))
+                                 (forward-chain program
+                                                (assoc-in fact-values''
+                                                          [descriptor :value]
+                                                          computed-value)
+                                                descriptor)
+                                 fact-values''))
+                             fact-values'
+                             computed-values)))
+                 fact-values))))
 
 (defn codify-fact-reference [fact]
   (if (= :unspecified (:descriptor fact))
