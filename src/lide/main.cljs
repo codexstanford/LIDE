@@ -75,8 +75,8 @@
     [:div {:id "app-container"}
      [:div {:class "work-viewport"}
       [program-graph]
-      [:div {:class "inspectors"}
-       (when (= target :epilog)
-         [epilog-views/code-panel])]]
+      (when (= target :epilog)
+        [:div {:class "inspectors"}
+         [epilog-views/code-panel]])]
      (when show-toolbar?
        [toolbar])]))
