@@ -76,36 +76,26 @@
      (case (:type statement)
        "only_if"
        [:div
-        (let [local-determination (get local-determinations (:dest_fact statement) :unknown)]
+        (let [{dest-fact-descriptor :descriptor
+               dest-fact-range :range} (:dest_fact statement)
+              local-determination (get local-determinations dest-fact-descriptor :unknown)]
           [:div {:class "ys-statement__dest-fact"}
            [views/socket]
-           [util/eip-plain-text
-            {:value (:dest_fact statement)
-             :on-blur #(rf/dispatch [::ys-events/set-dest-fact
-                                     path
-                                     (-> % .-target .-value)])
-             :placeholder "[not set]"}]
+           [:div {:class "ys-statement__dest-descriptor"
+                  :on-click #(rf/dispatch [::ys-events/select-range dest-fact-range])}
+            dest-fact-descriptor]
            [:div {:class "ys-statement__dest-value"}
             ;; Warn about stale determinations if there is a value in the app DB
             ;; for dest_fact, and the statement has a local determination for
             ;; it, but the values differ
-            (let [global-value (get-in fact-values [(:dest_fact statement) :value] :unknown)]
+            (let [global-value (get-in fact-values [dest-fact-descriptor :value] :unknown)]
               (when (and global-value
                          local-determination
                          (not= global-value local-determination))
                 [:div {:class "ys-statement__warn-stale"} "(stale)"]))
             (fact-value-to-string local-determination)]])
         [:div "ONLY IF"]
-        (if (= :unspecified (:src_expr statement))
-          [:select {:on-change #(do
-                                  (when (-> % .-target .-value)
-                                    (rf/dispatch [::ys-events/add-source-expr
-                                                  path
-                                                  (keyword (-> % .-target .-value))]))
-                                  (set! (-> % .-target .-value) ""))}
-           [:option {:value ""} "Add expression..."]
-           [:option {:value "and"} "AND"]
-           [:option {:value "or"} "OR"]]
+        (when (not= :unspecified (:src_expr statement))
           [expression {:expr (:src_expr statement)
                        :path (conj path :src_expr)}])])]))
 
@@ -116,22 +106,16 @@
            :data-rule-key name
            :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) name :rule])}
      [:div {:class "ys-rule__header"}
-      [:div "RULE"]
-      [:div {:class "ys-rule__name"
-             :on-click #(rf/dispatch [::ys-events/show-range (:range rule)])}
+      "RULE"
+      [:span {:class "ys-rule__name"
+              :on-click #(rf/dispatch [::ys-events/select-range (-> rule :name :range)])}
        name]
-      [:div "PROVIDES"]]
+      "PROVIDES"]
      (map-indexed
       (fn [idx _]
         [statement {:path [name idx]
                     :key idx}])
-      (:statements rule))
-     [:select {:on-change #(do
-                             (when (-> % .-target .-value)
-                               (rf/dispatch [::ys-events/add-statement name (keyword (-> % .-target .-value))]))
-                             (set! (-> % .-target .-value) ""))}
-      [:option {:value ""} "Add statement..."]
-      [:option {:value "only-if"} "ONLY IF"]]]))
+      (:statements rule))]))
 
 (defn rule [{:keys [name] :as props}]
   [views/prerender {:element-type :rule
