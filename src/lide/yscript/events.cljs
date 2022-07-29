@@ -184,12 +184,14 @@
    (let [new-program
          (js->clj new-program-json :keywordize-keys true)
 
-         ;; un-keywordize rule and fact names. This is kind of gross; I would
-         ;; like at some point to improve a lot of interchange format stuff
+         ;; Un-keywordize rule and fact names. Note that we do *not* use
+         ;; `(name %)`, as we need to tolerate slashes in the input. This is
+         ;; kind of gross; I would like at some point to improve a lot of
+         ;; interchange format stuff
          renamed-program
          (-> new-program
-             (update :rules #(util/map-keys name %))
-             (update :facts #(util/map-keys name %)))]
+             (update :rules #(util/map-keys (fn [k] (subs (str k) 1)) %))
+             (update :facts #(util/map-keys (fn [k] (subs (str k) 1)) %)))]
      (update db :program #(merge % renamed-program)))))
 
 (rf/reg-event-fx
