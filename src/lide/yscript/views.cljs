@@ -35,7 +35,8 @@
           [:<>
            [:div (fact-value-to-string fact-value)]
            [views/socket]]
-          [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
+          [:div {:class "ys-fact__value--modifiable"
+                 :on-click #(rf/dispatch [::ys-events/set-fact-value
                                           descriptor
                                           (next-value fact-value)])}
            (fact-value-to-string fact-value)])])]))
