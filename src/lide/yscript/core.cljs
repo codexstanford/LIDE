@@ -183,7 +183,7 @@
   [program fact-values statement]
   (case (:type statement)
     "only_if"
-    {(:dest_fact statement)
+    {(-> statement :dest_fact :descriptor)
      (compute-expression program fact-values (:src_expr statement))}))
 
 (defn forward-chain
