@@ -74,6 +74,24 @@
               (.getItem "lide.state")
               edn/read-string))))
 
+;; Persistent positions
+
+(rf/reg-fx
+ ::publish-rule-positions
+ (goog.functions.debounce
+  (fn [[vs-code positions]]
+    (when vs-code
+      (. vs-code
+         postMessage
+         (clj->js {:type "positionsEdited"
+                   :positions (or positions {})}))))
+  2000))
+
+(rf/reg-event-db
+ ::positions-read
+ (fn [db [_ positions]]
+   (assoc db :positions positions)))
+
 (rf/reg-event-fx
  ::initialize-db
  [(rf/inject-cofx ::saved-state)]
@@ -261,8 +279,8 @@
 
           :fx
           (if (:vs-code db)
-            [[::ys-events/publish-rule-positions [(:vs-code db)
-                                                  (:positions db)]]]
+            [[::events/publish-rule-positions [(:vs-code db)
+                                               (:positions db)]]]
             [])})
 
        :else {:db db}))))

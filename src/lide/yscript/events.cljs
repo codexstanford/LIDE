@@ -42,22 +42,6 @@
                           {:type "selectRange"
                            :range range}]]]}))
 
-(rf/reg-fx
- ::publish-rule-positions
- (goog.functions.debounce
-  (fn [[vs-code positions]]
-    (when vs-code
-      (. vs-code
-         postMessage
-         (clj->js {:type "positionsEdited"
-                   :positions (or positions {})}))))
-  2000))
-
-(rf/reg-event-db
- ::positions-read
- (fn [db [_ positions]]
-   (assoc db :positions positions)))
-
 (rf/reg-event-db
  ::create-rule
  (fn [db [_ position]]
