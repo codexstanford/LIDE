@@ -4,7 +4,19 @@
    [lide.util :as util]
    [lide.yscript.core :as ys]))
 
-(def default-db
+(def initial-db
+  {:program
+   {:target :yscript
+    :facts {}
+    :rules {}}
+
+   :fact-values
+   {}
+
+   :positions
+   {}})
+
+(def example-db
   {:program
    {:target :yscript
 

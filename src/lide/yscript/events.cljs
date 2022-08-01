@@ -21,27 +21,6 @@
              (update :facts #(util/map-keys (fn [k] (subs (str k) 1)) %)))]
      (update db :program #(merge % renamed-program)))))
 
-(rf/reg-fx
- ::tell-vs-code
- (fn [[vs-code message]]
-   (. vs-code
-      postMessage
-      (clj->js message))))
-
-(rf/reg-event-fx
- ::show-range
- (fn [cofx [_ range]]
-   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
-                          {:type "showRange"
-                           :range range}]]]}))
-
-(rf/reg-event-fx
- ::select-range
- (fn [cofx [_ range]]
-   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
-                          {:type "selectRange"
-                           :range range}]]]}))
-
 (rf/reg-event-db
  ::create-rule
  (fn [db [_ position]]

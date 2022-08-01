@@ -74,9 +74,6 @@
         vs-code @(rf/subscribe [::subs/vs-code])]
     [:div {:id "app-container"}
      [:div {:class "work-viewport"}
-      [program-graph]
-      (when (= target :epilog)
-        [:div {:class "inspectors"}
-         [epilog-views/code-panel]])]
+      [program-graph]]
      (when show-toolbar?
        [toolbar])]))

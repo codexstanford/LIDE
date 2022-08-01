@@ -7,9 +7,33 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [lide.db :as db]
    [lide.util :as util]
+   [lide.epilog.db :as epilog-db]
    [lide.yscript.core :as ys]
    [lide.yscript.db :as ys-db]
    [lide.yscript.events :as ys-events]))
+
+;; VS Code interop
+
+(rf/reg-fx
+ ::tell-vs-code
+ (fn [[vs-code message]]
+   (. vs-code
+      postMessage
+      (clj->js message))))
+
+(rf/reg-event-fx
+ ::show-range
+ (fn [cofx [_ range]]
+   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
+                          {:type "showRange"
+                           :range range}]]]}))
+
+(rf/reg-event-fx
+ ::select-range
+ (fn [cofx [_ range]]
+   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
+                          {:type "selectRange"
+                           :range range}]]]}))
 
 ;; General purpose escape/cancel handler
 
@@ -94,20 +118,22 @@
 
 (rf/reg-event-fx
  ::initialize-db
- [(rf/inject-cofx ::saved-state)]
- (fn [cofx _]
-   {:db (-> ys-db/default-db
-            #_(or (::saved-state cofx)
-                db/default-db)
-            ;; Add some values to make sure we have a viable DB (who knows what was saved)
-            ;; TODO Handle this more robustly
-            #_(update-in [:program :defeatings] #(or % #{}))
-            (update :graph-transform #(or % (util/dom-matrix-to-vals (js/DOMMatrix.)))))}))
+ (fn [cofx [_ target-language]]
+   {:db (merge (case target-language
+                 :epilog epilog-db/initial-db
+                 :yscript ys-db/initial-db)
+               (:db cofx))}))
 
 (rf/reg-event-db
  ::vs-code-api
  (fn [db [_ vs-code]]
    (assoc db :vs-code vs-code)))
+
+(rf/reg-event-fx
+ ::app-ready
+ (fn [cofx _]
+   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
+                          {:type "appReady"}]]]}))
 
 ;; Connections
 
@@ -279,8 +305,8 @@
 
           :fx
           (if (:vs-code db)
-            [[::events/publish-rule-positions [(:vs-code db)
-                                               (:positions db)]]]
+            [[::publish-rule-positions [(:vs-code db)
+                                        (:positions db)]]]
             [])})
 
        :else {:db db}))))

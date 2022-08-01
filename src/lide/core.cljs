@@ -6,6 +6,7 @@
    [lide.events :as events]
    [lide.main :as main]
    [lide.util :as util]
+   [lide.epilog.events :as epilog-events]
    [lide.yscript.events :as ys-events]))
 
 (defn dev-setup []
@@ -31,21 +32,24 @@
           rule-positions)))))
 
 (defn handle-message [^js event]
-  (let [message-data (-> event .-message .-data)]
-    (case (.-type message-data)
-      "codeUpdated.yscript"
-      (rf/dispatch [::ys-events/code-updated (.-model message-data)])
+  (let [message (-> event .-data)]
+    (case (.-type message)
+      "lide.initForLanguage"
+      (rf/dispatch [::events/initialize-db (keyword (.-language message))])
 
-      "positionsRead"
+      "lide.codeUpdated.epilog"
+      (rf/dispatch [::epilog-events/code-updated (.-model message)])
+
+      "lide.codeUpdated.yscript"
+      (rf/dispatch [::ys-events/code-updated (.-model message)])
+
+      "lide.positionsRead"
       (rf/dispatch [::events/positions-read
-                    (parse-positions (.-positions message-data))]))))
+                    (parse-positions (.-positions message))]))))
 
 (defn init []
   (dev-setup)
   (mount-root)
-  (rf/dispatch-sync [::events/initialize-db])
-  (when (.-acquireVsCodeApi js/window)
-    (rf/dispatch-sync [::events/vs-code-api (. js/window acquireVsCodeApi)]))
   ;; Global listeners for Ctrl+Z, VS Code messages, ...
   (.addEventListener js/window "message" handle-message)
   (.addEventListener js/document
@@ -57,4 +61,6 @@
 
                          (and (.-ctrlKey event)
                               (= "z" (.-key event)))
-                         (rf/dispatch [:undo])))))
+                         (rf/dispatch [:undo]))))
+  (rf/dispatch-sync [::events/vs-code-api (. js/window acquireVsCodeApi)])
+  (rf/dispatch-sync [::events/app-ready]))
