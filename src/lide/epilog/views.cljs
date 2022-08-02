@@ -31,8 +31,8 @@
    [:div {:class "body-literal__predicate"}
     [:span {:class "body-literal__predicate-text"
             :on-click #(rf/dispatch [::events/select-range
-                                     (-> literal :predicate :startPosition)
-                                     (-> literal :predicate :endPosition)])}
+                                     [(-> literal :predicate :startPosition)
+                                      (-> literal :predicate :endPosition)]])}
      (-> literal :predicate :text)]
     [:button {:title "Negate"
               :class "rule__button"
@@ -49,8 +49,8 @@
       (map-indexed
        (fn [arg-idx arg]
          [:span {:on-click #(rf/dispatch [::events/select-range
-                                          (:startPosition arg)
-                                          (:endPosition arg)])
+                                          [(:startPosition arg)
+                                           (:endPosition arg)]])
                  :key arg-idx}
           (:text arg)])
        (:args literal))
@@ -98,8 +98,8 @@
      [:div {:class "rule__head-predicate"}
       [views/socket {:on-click #(rf/dispatch [::events/select-defeater id])}]
       [:span {:on-click #(rf/dispatch [::events/select-range
-                                       (get-in rule-instances [0 :head :predicate :startPosition])
-                                       (get-in rule-instances [0 :head :predicate :endPosition])])}
+                                       [(get-in rule-instances [0 :head :predicate :startPosition])
+                                        (get-in rule-instances [0 :head :predicate :endPosition])]])}
        (get-in rule-instances [0 :head :predicate :text])]]
      (map-indexed
       (fn [idx rule-instance]
@@ -110,8 +110,8 @@
             (map-indexed
              (fn [arg-idx arg]
                [:span {:on-click #(rf/dispatch [::events/select-range
-                                                (:startPosition arg)
-                                                (:endPosition   arg)])
+                                                [(:startPosition arg)
+                                                 (:endPosition   arg)]])
                        :key arg-idx}
                 (:text arg)])
              (-> rule-instance :head :args))
