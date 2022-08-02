@@ -6,7 +6,9 @@
    [lide.events :as events]
    [lide.subs :as subs]
    [lide.util :as util]
-   [lide.views :as views]))
+   [lide.views :as views]
+   [lide.epilog.events :as el-events]
+   [lide.epilog.subs :as el-subs]))
 
 #_(defn literal-collapse [id layout]
   (let [symbol  (if (:collapsed layout) "+" "-")
@@ -24,37 +26,39 @@
              :y (/ graph/rule-head-height 2)}
       symbol]]))
 
-(defn body-literal [{:keys [id]}]
-  (let [literal @(rf/subscribe [::subs/literal id])]
-    [:div {:class "body-literal"
-           :data-literal-id id}
-     [:div {:class "body-literal__predicate"}
-      [util/eip-plain-text
-       {:value (:predicate literal)
-        :on-blur #(rf/dispatch [::events/edit-literal-predicate id (-> % .-target .-value)])}]
-      [:button {:title "Negate"
-                :class "rule__button"
-                :on-click #(rf/dispatch [::events/negate-literal id])}
-       "not"]
-      [views/socket]]
-     (if (seq (:args literal))
-       [:<>
-        [:div {:class "rule__tutor"} "is " (when (:negative literal) [:span {:class "rule__tutor--stress"} "not "]) "true of..."]
-        (map-indexed
-         (fn [arg-index arg]
-           [util/eip-plain-text
-            {:value arg
-             :on-blur #(rf/dispatch [::events/edit-literal-arg id arg-index (-> % .-target .-value)])
-             :style util/style-arg
-             :key arg}])
-         (:args literal))
-        [:div {:class "button-add"
-               :on-click #(rf/dispatch [::events/add-literal-argument id])}
-         "+ and..."]]
+(defn body-literal [{:keys [literal]}]
+  [:div {:class "body-literal"}
+   [:div {:class "body-literal__predicate"}
+    [:span {:on-click #(rf/dispatch [::events/select-range
+                                     (-> literal :predicate :startPosition)
+                                     (-> literal :predicate :endPosition)])}
+     (-> literal :predicate :text)]
+    [:button {:title "Negate"
+              :class "rule__button"
+              :on-click #(rf/dispatch [::el-events/negate-literal (:startPosition literal)])}
+     "not"]
+    [views/socket]]
+   (if (seq (:args literal))
+     [:<>
+      [:div {:class "rule__tutor"}
+       "is "
+       (when (:negative literal) [:span {:class "rule__tutor--stress"} "not "])
+       "true of..."]
+      (map-indexed
+       (fn [arg-idx arg]
+         [:span {:on-click #(rf/dispatch [::events/select-range
+                                          (:startPosition arg)
+                                          (:endPosition arg)])
+                 :key arg-idx}
+          (:text arg)])
+       (:args literal))
+      [:div {:class "button-add"
+             :on-click #(rf/dispatch [::events/add-literal-argument])}
+       "+ and..."]]
 
-       [:div {:class "button-add"
-              :on-click #(rf/dispatch [::events/add-literal-argument id])}
-        "+ is true of..."])]))
+     [:div {:class "button-add"
+            :on-click #(rf/dispatch [::events/add-literal-argument])}
+      "+ is true of..."])])
 
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
@@ -85,52 +89,58 @@
          (:attributes fact))]]]]))
 
 (defn rule-html [{:keys [id localize-position store-ref]}]
-  (let [rule @(rf/subscribe [::subs/populated-rule id])]
+  (let [rule-instances @(rf/subscribe [::el-subs/rule id])]
     [:div {:class "rule"
            :ref store-ref
-           :on-mouse-down #(rf/dispatch [::events/start-drag-rule (localize-position %) id])}
+           :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) id :rule])}
      [:div {:class "rule__head-predicate"}
       [views/socket {:on-click #(rf/dispatch [::events/select-defeater id])}]
-      [util/eip-plain-text
-       {:value (-> rule :head :predicate)
-        :on-blur #(rf/dispatch [::events/edit-head-predicate id (-> % .-target .-value)])}]]
-     (if (seq (-> rule :head :args))
-       [:<>
-        [:div {:class "rule__tutor"} "is true of..."]
-        [:<>
-         (map-indexed
-          (fn [arg-index arg]
-            [util/eip-plain-text
-             {:value arg
-              :on-blur #(rf/dispatch [::events/edit-head-arg id arg-index (-> % .-target .-value)])
-              :style util/style-arg
-              :key arg-index}])
-          (-> rule :head :args))]
-        [:div {:class "rule__add-arg button-add"
-               :on-click #(rf/dispatch [::events/add-argument id])}
-         "+ and..."]]
-       [:div {:class "rule__add-arg button-add"
-              :on-click #(rf/dispatch [::events/add-argument id])}
-        "+ is true of..."])
-     (if (seq (:body rule))
-       [:<>
-        [:div {:class "rule__tutor"} "when..."]
-        [:<>
-         (map
-          (fn [literal]
-            [body-literal {:id (:id literal)
-                           :key (:id literal)}])
-          (:body rule))]
-        [:div {:class "rule__add-arg button-add"
-               :on-click #(rf/dispatch [::events/add-body-literal id])}
-         "+ and..."]]
-       [:div {:class "rule__add-arg button-add"
-              :on-click #(rf/dispatch [::events/add-body-literal id])}
-        "+ when..."])
-     [:div {:class "rule__add-defeater button-add"
-            :on-click #(rf/dispatch [::events/defeated-selecting-defeater id])}
-      [:div {:class "rule__add-defeater-label"} "+ unless..."]
-      [views/socket]]]))
+      [:span {:on-click #(rf/dispatch [::events/select-range
+                                       (get-in rule-instances [0 :head :predicate :startPosition])
+                                       (get-in rule-instances [0 :head :predicate :endPosition])])}
+       (get-in rule-instances [0 :head :predicate :text])]]
+     (map-indexed
+      (fn [idx rule-instance]
+        [:<> {:key idx}
+         (if (seq (-> rule-instance :head :args))
+           [:<>
+            [:div {:class "rule__tutor"} "is true of..."]
+            (map-indexed
+             (fn [arg-idx arg]
+               [:span {:on-click #(rf/dispatch [::events/select-range
+                                                (:startPosition arg)
+                                                (:endPosition   arg)])
+                       :key arg-idx}
+                (:text arg)])
+             (-> rule-instance :head :args))
+            ;; TODO fix adding arguments
+            [:div {:class "rule__add-arg button-add"
+                   :on-click #(rf/dispatch [::events/add-argument id])}
+             "+ and..."]]
+           [:div {:class "rule__add-arg button-add"
+                  :on-click #(rf/dispatch [::events/add-argument id])}
+            "+ is true of..."])
+         (if (seq (:body rule-instance))
+           [:<>
+            [:div {:class "rule__tutor"} "when..."]
+            (map-indexed
+             (fn [literal-idx literal]
+               [body-literal {:literal literal
+                              :key literal-idx}])
+             (:body rule-instance))
+            [:div {:class "rule__add-arg button-add"
+                   :on-click #(rf/dispatch [::events/add-body-literal id])}
+             "+ and..."]]
+           [:div {:class "rule__add-arg button-add"
+                  :on-click #(rf/dispatch [::events/add-body-literal id])}
+            "+ when..."])
+         [:div {:class "rule__add-defeater button-add"
+                :on-click #(rf/dispatch [::events/defeated-selecting-defeater id])}
+          [:div {:class "rule__add-defeater-label"} "+ unless..."]
+          [views/socket]]])
+      rule-instances)]))
+
+;; when... unless... or when... unless... or when... unless...
 
 (defn rule [{:keys [id] :as props}]
   [views/prerender {:element-type :rule
@@ -271,10 +281,10 @@
                     :localize-position localize-position}]
              [subobject-connectors {:fact-id id}]])
           (:facts program))
-     (map (fn [[id _]]
-            [rule {:id  id
+     (map (fn [[name _]]
+            [rule {:id name
                    :localize-position localize-position
-                   :key    id}])
+                   :key name}])
           (:rules program))
      (map (fn [match]
             [rule-match-connector

@@ -22,6 +22,7 @@
 (defn parse-positions [^js positions]
   (-> (js->clj positions)
       (clojure.set/rename-keys {"rule" :rule})
+      (clojure.set/rename-keys {"fact" :fact})
       (update
        :rule
        (fn [rule-positions]
@@ -45,7 +46,11 @@
 
       "lide.positionsRead"
       (rf/dispatch [::events/positions-read
-                    (parse-positions (.-positions message))]))))
+                    (parse-positions (.-positions message))])
+
+      ;; Sometimes webview might receive other messages from who knows where.
+      ;; Just ignore them
+      nil)))
 
 (defn init []
   (dev-setup)

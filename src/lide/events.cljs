@@ -17,9 +17,10 @@
 (rf/reg-fx
  ::tell-vs-code
  (fn [[vs-code message]]
-   (. vs-code
-      postMessage
-      (clj->js message))))
+   (when vs-code
+     (. vs-code
+        postMessage
+        (clj->js message)))))
 
 (rf/reg-event-fx
  ::show-range
@@ -257,12 +258,6 @@
                     ;; rendered with extra space after losing an argument
                     (util/vector-remove args arg-idx)
                     (assoc args arg-idx new-arg)))))))
-
-(rf/reg-event-db
- ::negate-literal
- (undo/undoable "negate literal")
- (fn [db [_ literal-id]]
-   (update-in db [:program :literals literal-id :negative] not)))
 
 (rf/reg-event-fx
  ::mouse-move

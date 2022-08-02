@@ -1,6 +1,7 @@
 (ns lide.epilog.events
   (:require
    [re-frame.core :as rf]
+   [lide.events :as events]
    [lide.util :as util]))
 
 (rf/reg-event-db
@@ -9,9 +10,14 @@
    (let [new-program
          (js->clj new-program-json :keywordize-keys true)
 
-         ;; un-keywordize rule and fact names
+         ;; un-keywordize rule names
          renamed-program
-         (-> new-program
-             (update :rules #(util/map-keys name %))
-             (update :facts #(util/map-keys name %)))]
+         (update new-program :rules #(util/map-keys name %))]
      (update db :program #(merge % renamed-program)))))
+
+(rf/reg-event-fx
+ ::negate-literal
+ (fn [cofx [_ start-position]]
+   {:fx [[::events/tell-vs-code [(-> cofx :db :vs-code)
+                                 {:type "negateLiteral"
+                                  :startPosition start-position}]]]}))
