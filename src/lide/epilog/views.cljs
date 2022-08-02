@@ -29,13 +29,15 @@
 (defn body-literal [{:keys [literal]}]
   [:div {:class "body-literal"}
    [:div {:class "body-literal__predicate"}
-    [:span {:on-click #(rf/dispatch [::events/select-range
+    [:span {:class "body-literal__predicate-text"
+            :on-click #(rf/dispatch [::events/select-range
                                      (-> literal :predicate :startPosition)
                                      (-> literal :predicate :endPosition)])}
      (-> literal :predicate :text)]
     [:button {:title "Negate"
               :class "rule__button"
-              :on-click #(rf/dispatch [::el-events/negate-literal (:startPosition literal)])}
+              :on-click #(rf/dispatch [::el-events/negate-literal
+                                       (-> literal :predicate :startPosition)])}
      "not"]
     [views/socket]]
    (if (seq (:args literal))
