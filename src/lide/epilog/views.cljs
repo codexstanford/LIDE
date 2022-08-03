@@ -38,7 +38,7 @@
               :class "rule__button"
               :on-click #(rf/dispatch [::el-events/negate-literal
                                        (-> literal :predicate :startPosition)])}
-     "not"]
+     "~"]
     [views/socket]]
    (if (seq (:args literal))
      [:<>
