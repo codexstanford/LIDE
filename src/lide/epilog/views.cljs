@@ -90,63 +90,62 @@
                :subobject [views/socket])]])
          (:attributes fact))]]]]))
 
-(defn rule-html [{:keys [id localize-position store-ref]}]
-  (let [rule-instances @(rf/subscribe [::el-subs/rule id])]
+(defn rule-html [{:keys [path localize-position store-ref]}]
+  (let [rule @(rf/subscribe [::el-subs/rule path])]
     [:div {:class "rule"
            :ref store-ref
-           :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) id :rule])}
+           :on-mouse-down #(rf/dispatch [::events/start-drag
+                                         (localize-position %)
+                                         path
+                                         :rule])}
      [:div {:class "rule__head-predicate"}
-      [views/socket {:on-click #(rf/dispatch [::events/select-defeater id])}]
+      [views/socket {:on-click #(rf/dispatch [::events/select-defeater path])}]
       [:span {:on-click #(rf/dispatch [::events/select-range
-                                       [(get-in rule-instances [0 :head :predicate :startPosition])
-                                        (get-in rule-instances [0 :head :predicate :endPosition])]])}
-       (get-in rule-instances [0 :head :predicate :text])]]
-     (map-indexed
-      (fn [idx rule-instance]
-        [:<> {:key idx}
-         (if (seq (-> rule-instance :head :args))
-           [:<>
-            [:div {:class "rule__tutor"} "is true of..."]
-            (map-indexed
-             (fn [arg-idx arg]
-               [:span {:on-click #(rf/dispatch [::events/select-range
-                                                [(:startPosition arg)
-                                                 (:endPosition   arg)]])
-                       :key arg-idx}
-                (:text arg)])
-             (-> rule-instance :head :args))
-            ;; TODO fix adding arguments
-            [:div {:class "rule__add-arg button-add"
-                   :on-click #(rf/dispatch [::events/add-argument id])}
-             "+ and..."]]
-           [:div {:class "rule__add-arg button-add"
-                  :on-click #(rf/dispatch [::events/add-argument id])}
-            "+ is true of..."])
-         (if (seq (:body rule-instance))
-           [:<>
-            [:div {:class "rule__tutor"} "when..."]
-            (map-indexed
-             (fn [literal-idx literal]
-               [body-literal {:literal literal
-                              :key literal-idx}])
-             (:body rule-instance))
-            [:div {:class "rule__add-arg button-add"
-                   :on-click #(rf/dispatch [::events/add-body-literal id])}
-             "+ and..."]]
-           [:div {:class "rule__add-arg button-add"
-                  :on-click #(rf/dispatch [::events/add-body-literal id])}
-            "+ when..."])
-         [:div {:class "rule__add-defeater button-add"
-                :on-click #(rf/dispatch [::events/defeated-selecting-defeater id])}
-          [:div {:class "rule__add-defeater-label"} "+ unless..."]
-          [views/socket]]])
-      rule-instances)]))
+                                       [(get-in rule [:head :predicate :startPosition])
+                                        (get-in rule [:head :predicate :endPosition])]])}
+       (get-in rule [:head :predicate :text])]]
+     (if (seq (-> rule :head :args))
+       [:<>
+        [:div {:class "rule__tutor"} "is true of..."]
+        (map-indexed
+         (fn [arg-idx arg]
+           [:span {:on-click #(rf/dispatch [::events/select-range
+                                            [(:startPosition arg)
+                                             (:endPosition   arg)]])
+                   :key arg-idx}
+            (:text arg)])
+         (-> rule :head :args))
+        ;; TODO fix adding arguments
+        [:div {:class "rule__add-arg button-add"
+               :on-click #(rf/dispatch [::events/add-argument path])}
+         "+ and..."]]
+       [:div {:class "rule__add-arg button-add"
+              :on-click #(rf/dispatch [::events/add-argument path])}
+        "+ is true of..."])
+     (if (seq (:body rule))
+       [:<>
+        [:div {:class "rule__tutor"} "when..."]
+        (map-indexed
+         (fn [literal-idx literal]
+           [body-literal {:literal literal
+                          :key literal-idx}])
+         (:body rule))
+        [:div {:class "rule__add-arg button-add"
+               :on-click #(rf/dispatch [::events/add-body-literal path])}
+         "+ and..."]]
+       [:div {:class "rule__add-arg button-add"
+              :on-click #(rf/dispatch [::events/add-body-literal path])}
+        "+ when..."])
+     [:div {:class "rule__add-defeater button-add"
+            :on-click #(rf/dispatch [::events/defeated-selecting-defeater path])}
+      [:div {:class "rule__add-defeater-label"} "+ unless..."]
+      [views/socket]]]))
 
 ;; when... unless... or when... unless... or when... unless...
 
-(defn rule [{:keys [id] :as props}]
+(defn rule [{:keys [path] :as props}]
   [views/prerender {:element-type :rule
-                    :id id}
+                    :id path}
    [rule-html props]])
 
 (defn socket-position [rule-layout literal-id {:keys [end]}]
@@ -209,13 +208,18 @@
                                      :key fact-id}])))
           (remove nil?))]))
 
-(defn rule-match-connector [{:keys [connection]}]
-  "Draw a line connecting :src and :dest of `connection`."
-  (let [[end-rule-id end-literal-id] (:dest connection)
-        start-layout @(rf/subscribe [::subs/layout :rule (:src connection)])
-        end-layout   @(rf/subscribe [::subs/layout :rule end-rule-id])
-        start (socket-position start-layout :unbound {:end :src})
-        end   (socket-position end-layout end-literal-id {:end :dest})]
+(defn rule-match-connector
+  "Draw a line connecting :subgoal (a path to some subgoal) and :rule (a path to a
+  rule that matches the subgoal) of `connection`."
+  [{:keys [connection]}]
+  (let [[sub-rule-head sub-body-idx sub-literal-idx] (:subgoal connection)
+        [match-rule-head match-body-idx] (:rule connection)
+        match-layout @(rf/subscribe [::subs/layout :rule [match-rule-head match-body-idx]])
+        sub-layout   @(rf/subscribe [::subs/layout :rule [sub-rule-head sub-body-idx]])
+        match-socket (:socket match-layout)
+        sub-socket   (get-in sub-layout [:literals sub-literal-idx :socket])
+        start (views/center-position sub-socket)
+        end   (views/center-position match-socket)]
     [:<>
      [:line {:x1 (:x start)
              :y1 (:y start)
@@ -273,32 +277,36 @@
 
 (defn program-graph [{:keys [localize-position]}]
   (let [program @(rf/subscribe [::subs/program])
-        rule-matches @(rf/subscribe [::subs/rule-matches])
+        rule-matches @(rf/subscribe [::el-subs/matches])
         defeatings @(rf/subscribe [::subs/defeatings])
         mouse-position @(rf/subscribe [::subs/mouse-position])]
     [:<>
-     (map (fn [[id _]]
+     #_(map (fn [[id _]]
             [:<> {:key id}
              [fact {:id id
                     :localize-position localize-position}]
              [subobject-connectors {:fact-id id}]])
           (:facts program))
-     (map (fn [[name _]]
-            [rule {:id name
-                   :localize-position localize-position
-                   :key name}])
-          (:rules program))
+     (mapcat
+      (fn [[head bodies]]
+        (map-indexed
+         (fn [idx _]
+           [rule {:path [head idx]
+                  :localize-position localize-position
+                  :key [head idx]}])
+         bodies))
+      (:rules program))
      (map (fn [match]
             [rule-match-connector
              {:connection match
               :key (str match)}])
           rule-matches)
-     (map (fn [defeat]
+     #_(map (fn [defeat]
             [defeat-connector
              {:defeat defeat
               :key (str defeat)}])
           defeatings)
-     [defeat-connector-pending {:key "defeat-pending"
+     #_[defeat-connector-pending {:key "defeat-pending"
                                 :mouse-position mouse-position}]]))
 
 (defn code-panel []

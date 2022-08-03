@@ -130,21 +130,21 @@
   {:width  (.-offsetWidth  element)
    :height (.-offsetHeight element)})
 
+(defn layout-relative-to [root-position element]
+  {:size (element-size element)
+   :position (merge-with + root-position (element-position element))})
+
 (defn rule-layout [position element]
-  (let [root-position (element-position element)]
+  (let [socket-elem (.querySelector element ".rule__head-predicate .socket")]
     {:container {:position position
                  :size (element-size element)}
-     :body (->> (.querySelectorAll element ".body-literal")
-                (map
-                 (fn [literal-elem]
-                   [(uuid (.getAttribute literal-elem "data-literal-id"))
-                    ;; We want the relative position of the attribute row,
-                    ;; so subtract the position of the root element.
-                    {:position (merge-with -
-                                           (element-position literal-elem)
-                                           root-position)
-                     :size (element-size literal-elem)}]))
-                (into {}))}))
+     :socket (layout-relative-to position socket-elem)
+     :literals (->> (.querySelectorAll element ".body-literal")
+                    (mapv
+                     (fn [literal-elem]
+                       (let [socket-elem (.querySelector literal-elem ".socket")]
+                         (-> (layout-relative-to position literal-elem)
+                             (assoc :socket (layout-relative-to position socket-elem)))))))}))
 
 (defn fact-layout [position element]
   (let [root-position (element-position element)]

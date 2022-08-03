@@ -4,5 +4,10 @@
 
 (rf/reg-sub
  ::rule
- (fn [db [_ rule-name]]
-   (get-in db [:program :rules rule-name])))
+ (fn [db [_ [head body-idx]]]
+   (get-in db [:program :rules head body-idx])))
+
+(rf/reg-sub
+ ::matches
+ (fn [db _]
+   (get-in db [:program :matches])))

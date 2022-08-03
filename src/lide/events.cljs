@@ -120,10 +120,11 @@
 (rf/reg-event-fx
  ::initialize-db
  (fn [cofx [_ target-language]]
-   {:db (merge (case target-language
+   {:db (merge (:db cofx)
+               {:graph-transform (util/dom-matrix-to-vals (js/DOMMatrixReadOnly.))}
+               (case target-language
                  :epilog epilog-db/initial-db
-                 :yscript ys-db/initial-db)
-               (:db cofx))}))
+                 :yscript ys-db/initial-db))}))
 
 (rf/reg-event-db
  ::vs-code-api

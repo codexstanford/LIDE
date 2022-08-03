@@ -71,13 +71,6 @@
    (util/populate-rule program rule)))
 
 (rf/reg-sub
- ::rule-matches
- (fn [_ _]
-   (rf/subscribe [::program]))
- (fn [program _]
-   (util/find-rule-matches program)))
-
-(rf/reg-sub
  ::defeatings
  (fn [db]
    (-> db :program :defeatings)))
@@ -165,8 +158,8 @@
 
 (rf/reg-sub
  ::position
- (fn [db [_ path]]
-   (get-in (:positions db) path {:x 0 :y 0})))
+ (fn [db [_ type id]]
+   (get-in (:positions db) [type id] {:x 0 :y 0})))
 
 (rf/reg-sub
   ::rendered
@@ -178,7 +171,7 @@
  (fn [[_ type id]]
    [(rf/subscribe [::program-target])
     (atom type)
-    (rf/subscribe [::position [type id]])
+    (rf/subscribe [::position type id])
     (rf/subscribe [::rendered type id])])
  (fn [[target type position {:keys [element _]}]]
    (when element
