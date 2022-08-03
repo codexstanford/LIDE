@@ -214,6 +214,8 @@
   [{:keys [connection]}]
   (let [[sub-rule-head sub-body-idx sub-literal-idx] (:subgoal connection)
         [match-rule-head match-body-idx] (:rule connection)
+        subgoal @(rf/subscribe [::el-subs/rule [sub-rule-head sub-body-idx]])
+        negative (get-in subgoal [:body sub-literal-idx :negative])
         match-layout @(rf/subscribe [::subs/layout :rule [match-rule-head match-body-idx]])
         sub-layout   @(rf/subscribe [::subs/layout :rule [sub-rule-head sub-body-idx]])
         match-socket (:socket match-layout)
@@ -225,15 +227,7 @@
              :y1 (:y start)
              :x2 (:x end)
              :y2 (:y end)
-             :stroke (if (:highlighted connection) "green" "black")}]
-     [:line {:x1 (:x start)
-             :y1 (:y start)
-             :x2 (:x end)
-             :y2 (:y end)
-             :stroke "transparent"
-             :stroke-width 10
-             :on-mouse-over #(rf/dispatch [::events/highlight-connection (select-keys connection [:src :dest])])
-             :on-mouse-leave #(rf/dispatch [::events/stop-connection-highlight])}]]))
+             :stroke (if negative "red" "black")}]]))
 
 (defn defeat-connector [{:keys [defeat]}]
   "Draw a line connecting the defeated and defeater rules from `defeat`."
