@@ -1,7 +1,8 @@
 (ns lide.yscript.core
   (:require
    [clojure.set :as set]
-   [clojure.string :as string]))
+   [clojure.string :as string]
+   [lide.util :as util]))
 
 (defn rule-names
   "Return a collection of all rule names in use in `program`."
@@ -110,3 +111,18 @@
                              fact-values'
                              computed-values)))
                  fact-values))))
+
+(defn parse-positions
+  "Parse position data as read from .lide/positions.json."
+  [^js positions]
+  (-> (js->clj positions)
+      (clojure.set/rename-keys {"rule" :rule})
+      (clojure.set/rename-keys {"fact" :fact})
+      (update
+       :rule
+       (fn [rule-positions]
+         (util/map-vals
+          (fn [position]
+            {:x (get position "x")
+             :y (get position "y")})
+          rule-positions)))))

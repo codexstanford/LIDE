@@ -7,6 +7,7 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [lide.db :as db]
    [lide.util :as util]
+   [lide.epilog.core :as epilog]
    [lide.epilog.db :as epilog-db]
    [lide.yscript.core :as ys]
    [lide.yscript.db :as ys-db]
@@ -17,10 +18,11 @@
 (rf/reg-fx
  ::tell-vs-code
  (fn [[vs-code message]]
-   (when vs-code
-     (. vs-code
-        postMessage
-        (clj->js message)))))
+   (let [_ (println "tell-vs-code" vs-code message)]
+     (when vs-code
+       (. vs-code
+          postMessage
+          (clj->js message))))))
 
 (rf/reg-event-fx
  ::show-range
@@ -101,21 +103,29 @@
 
 ;; Persistent positions
 
-(rf/reg-fx
+;; TODO debounce this
+(rf/reg-event-fx
  ::publish-rule-positions
- (goog.functions.debounce
-  (fn [[vs-code positions]]
-    (when vs-code
-      (. vs-code
-         postMessage
-         (clj->js {:type "positionsEdited"
-                   :positions (or positions {})}))))
-  2000))
+ (fn [cofx]
+   (let [vs-code (-> cofx :db :vs-code)
+         target (-> cofx :db :program :target)
+         positions (or (-> cofx :db :positions) {})
+         _ (println "publish rule positions" vs-code (not (not vs-code)) target positions)]
+     {:fx (if vs-code
+            [[::tell-vs-code
+              [vs-code
+               {:type "positionsEdited"
+                :positions (case target
+                             :epilog (epilog/sanitize-positions positions)
+                             :yscript positions)}]]]
+            [])})))
 
 (rf/reg-event-db
  ::positions-read
  (fn [db [_ positions]]
-   (assoc db :positions positions)))
+   (case (get-in db [:program :target])
+     :epilog (assoc db :positions (epilog/parse-positions positions))
+     :yscript (assoc db :positions (ys/parse-positions positions)))))
 
 (rf/reg-event-fx
  ::initialize-db
@@ -299,11 +309,7 @@
               (assoc :drag-origin local-position)
               (assoc :dragged true))
 
-          :fx
-          (if (:vs-code db)
-            [[::publish-rule-positions [(:vs-code db)
-                                        (:positions db)]]]
-            [])})
+          :fx [[:dispatch [::publish-rule-positions]]]})
 
        :else {:db db}))))
 

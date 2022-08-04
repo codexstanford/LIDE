@@ -99,3 +99,26 @@
        (map (fn [[k v]]
               (str (attribute-predicate k) "(" type  ", " (attribute-value-to-string facts v) ")")))
        (string/join "\n")))
+
+(defn sanitize-positions
+  "Make position data writable to .lide/positions.json."
+  [positions]
+  (update positions :rule #(util/map-keys (fn [key-vec]
+                                            (string/join ":" key-vec))
+                                          %)))
+
+(defn parse-positions
+  "Parse position data as read from .lide/positions.json."
+  [^js positions]
+  (-> (js->clj positions)
+      (clojure.set/rename-keys {"rule" :rule})
+      (update :rule #(util/map-keys
+                      (fn [key-string]
+                        (let [[head idx] (string/split key-string #":")]
+                          [head (js/parseInt idx)]))
+                      %))
+      (update :rule #(util/map-vals
+                      (fn [position]
+                        {:x (get position "x")
+                         :y (get position "y")})
+                      %))))
