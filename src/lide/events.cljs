@@ -26,17 +26,19 @@
 
 (rf/reg-event-fx
  ::show-range
- (fn [cofx [_ range]]
+ (fn [cofx [_ [start end]]]
    {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
                           {:type "showRange"
-                           :range range}]]]}))
+                           :range {:startPosition start
+                                   :endPosition end}}]]]}))
 
 (rf/reg-event-fx
  ::select-range
- (fn [cofx [_ range]]
+ (fn [cofx [_ [start end]]]
    {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
                           {:type "selectRange"
-                           :range range}]]]}))
+                           :range {:startPosition start
+                                   :endPosition end}}]]]}))
 
 ;; General purpose escape/cancel handler
 
