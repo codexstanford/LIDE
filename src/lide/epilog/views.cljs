@@ -48,10 +48,10 @@
        "true of..."]
       (map-indexed
        (fn [arg-idx arg]
-         [:span {:on-click #(rf/dispatch [::events/select-range
-                                          [(:startPosition arg)
-                                           (:endPosition arg)]])
-                 :key arg-idx}
+         [:div {:on-click #(rf/dispatch [::events/select-range
+                                         [(:startPosition arg)
+                                          (:endPosition arg)]])
+                :key arg-idx}
           (:text arg)])
        (:args literal))
       [:div {:class "button-add"
