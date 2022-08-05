@@ -53,14 +53,7 @@
                                           (:endPosition arg)]])
                 :key arg-idx}
           (:text arg)])
-       (:args literal))
-      [:div {:class "button-add"
-             :on-click #(rf/dispatch [::events/add-literal-argument])}
-       "+ and..."]]
-
-     [:div {:class "button-add"
-            :on-click #(rf/dispatch [::events/add-literal-argument])}
-      "+ is true of..."])])
+       (:args literal))])])
 
 (defn fact [{:keys [id localize-position]}]
   (let [fact @(rf/subscribe [::subs/fact id])
@@ -114,14 +107,8 @@
                                              (:endPosition   arg)]])
                    :key arg-idx}
             (:text arg)])
-         (-> rule :head :args))
-        ;; TODO fix adding arguments
-        [:div {:class "rule__add-arg button-add"
-               :on-click #(rf/dispatch [::events/add-argument path])}
-         "+ and..."]]
-       [:div {:class "rule__add-arg button-add"
-              :on-click #(rf/dispatch [::events/add-argument path])}
-        "+ is true of..."])
+         (-> rule :head :args))]
+       [:div {:class "rule__tutor"} "is true..."])
      (if (seq (:body rule))
        [:<>
         [:div {:class "rule__tutor"} "when..."]
@@ -129,19 +116,7 @@
          (fn [literal-idx literal]
            [body-literal {:literal literal
                           :key literal-idx}])
-         (:body rule))
-        [:div {:class "rule__add-arg button-add"
-               :on-click #(rf/dispatch [::events/add-body-literal path])}
-         "+ and..."]]
-       [:div {:class "rule__add-arg button-add"
-              :on-click #(rf/dispatch [::events/add-body-literal path])}
-        "+ when..."])
-     [:div {:class "rule__add-defeater button-add"
-            :on-click #(rf/dispatch [::events/defeated-selecting-defeater path])}
-      [:div {:class "rule__add-defeater-label"} "+ unless..."]
-      [views/socket]]]))
-
-;; when... unless... or when... unless... or when... unless...
+         (:body rule))])]))
 
 (defn rule [{:keys [path] :as props}]
   [views/prerender {:element-type :rule
