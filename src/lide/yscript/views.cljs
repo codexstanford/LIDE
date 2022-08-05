@@ -27,7 +27,7 @@
     [:div {:class "ys-fact"
            :data-fact-descriptor descriptor}
      [:div {:class "ys-fact__descriptor"
-            :on-click #(rf/dispatch [::events/select-range range])}
+            :on-click #(rf/dispatch [::events/focus-range range])}
       descriptor]
      (let [fact-value (get-in fact-values [descriptor :value] :unknown)]
        [:div {:class "ys-fact__value"}
@@ -83,7 +83,7 @@
           [:div {:class "ys-statement__dest-fact"}
            [views/socket]
            [:div {:class "ys-statement__dest-descriptor"
-                  :on-click #(rf/dispatch [::events/select-range dest-fact-range])}
+                  :on-click #(rf/dispatch [::events/focus-range dest-fact-range])}
             dest-fact-descriptor]
            [:div {:class "ys-statement__dest-value"}
             ;; Warn about stale determinations if there is a value in the app DB
@@ -109,7 +109,7 @@
      [:div {:class "ys-rule__header"}
       "RULE"
       [:span {:class "ys-rule__name"
-              :on-click #(rf/dispatch [::events/select-range (-> rule :name :range)])}
+              :on-click #(rf/dispatch [::events/focus-range (-> rule :name :range)])}
        name]
       "PROVIDES"]
      (map-indexed

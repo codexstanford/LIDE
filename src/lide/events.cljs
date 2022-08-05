@@ -32,10 +32,10 @@
                                    :endPosition end}}]]]}))
 
 (rf/reg-event-fx
- ::select-range
+ ::focus-range
  (fn [cofx [_ [start end]]]
    {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
-                          {:type "selectRange"
+                          {:type "focusRange"
                            :range {:startPosition start
                                    :endPosition end}}]]]}))
 

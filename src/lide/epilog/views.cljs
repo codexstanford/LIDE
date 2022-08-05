@@ -30,7 +30,7 @@
   [:div {:class "body-literal"}
    [:div {:class "body-literal__predicate"}
     [:span {:class "body-literal__predicate-text"
-            :on-click #(rf/dispatch [::events/select-range
+            :on-click #(rf/dispatch [::events/focus-range
                                      [(-> literal :predicate :startPosition)
                                       (-> literal :predicate :endPosition)]])}
      (-> literal :predicate :text)]
@@ -48,7 +48,7 @@
        "true of..."]
       (map-indexed
        (fn [arg-idx arg]
-         [:div {:on-click #(rf/dispatch [::events/select-range
+         [:div {:on-click #(rf/dispatch [::events/focus-range
                                          [(:startPosition arg)
                                           (:endPosition arg)]])
                 :key arg-idx}
@@ -100,7 +100,7 @@
                                          :rule])}
      [:div {:class "rule__head-predicate"}
       [views/socket {:on-click #(rf/dispatch [::events/select-defeater path])}]
-      [:span {:on-click #(rf/dispatch [::events/select-range
+      [:span {:on-click #(rf/dispatch [::events/focus-range
                                        [(get-in rule [:head :predicate :startPosition])
                                         (get-in rule [:head :predicate :endPosition])]])}
        (get-in rule [:head :predicate :text])]]
@@ -109,7 +109,7 @@
         [:div {:class "rule__tutor"} "is true of..."]
         (map-indexed
          (fn [arg-idx arg]
-           [:span {:on-click #(rf/dispatch [::events/select-range
+           [:span {:on-click #(rf/dispatch [::events/focus-range
                                             [(:startPosition arg)
                                              (:endPosition   arg)]])
                    :key arg-idx}
