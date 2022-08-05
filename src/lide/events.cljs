@@ -18,11 +18,10 @@
 (rf/reg-fx
  ::tell-vs-code
  (fn [[vs-code message]]
-   (let [_ (println "tell-vs-code" vs-code message)]
-     (when vs-code
-       (. vs-code
-          postMessage
-          (clj->js message))))))
+   (when vs-code
+     (. vs-code
+        postMessage
+        (clj->js message)))))
 
 (rf/reg-event-fx
  ::show-range
@@ -111,8 +110,7 @@
  (fn [cofx]
    (let [vs-code (-> cofx :db :vs-code)
          target (-> cofx :db :program :target)
-         positions (or (-> cofx :db :positions) {})
-         _ (println "publish rule positions" vs-code (not (not vs-code)) target positions)]
+         positions (or (-> cofx :db :positions) {})]
      {:fx (if vs-code
             [[::tell-vs-code
               [vs-code
