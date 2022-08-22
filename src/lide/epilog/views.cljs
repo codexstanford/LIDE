@@ -116,7 +116,7 @@
          (fn [literal-idx literal]
            [body-literal {:literal literal
                           :key literal-idx}])
-         (:body rule))])]))
+         (epilog/condense-attributes rule))])]))
 
 (defn rule [{:keys [path] :as props}]
   [views/prerender {:element-type :rule

@@ -122,3 +122,116 @@
                         {:x (get position "x")
                          :y (get position "y")})
                       %))))
+
+(defn variable? [arg]
+  (= "variable" (:type arg)))
+
+(defn attribute-access? [literal]
+  ;; TODO server could check metadata to decide whether predicate is an
+  ;; attribute accessor more robustly
+  (and (= 2 (count (clojure.string/split (-> literal :predicate :text) #"\.")))
+       (= 2 (count (:args literal)))
+       (every? variable? (:args literal))))
+
+(defn expand-attr-path [provenance path]
+  (let [[parent-variable attr-name] (get provenance (first path))]
+    (if parent-variable
+      (expand-attr-path provenance
+                        (concat [parent-variable attr-name] (drop 1 path)))
+      path)))
+
+(defn to-attr-path [provenance arg]
+  (if (not (variable? arg))
+    (:text arg)
+    (->> (:text arg)
+         vector
+         (expand-attr-path provenance)
+         (clojure.string/join "->"))))
+
+(defn condense-attributes
+  "Return the body of `rule` with attribute access literals condensed.
+
+  'Condensed' means that (1) when a body literal binds a variable that derives
+  completely and uniquely from attribute accesses, that variable's provenance is
+  presented inline and (2) body literals that are used only to access such
+  attributes are removed when their existence can instead be implied.
+
+  For example:
+
+  p(A, B) :-
+    a.x(A, X) &
+    q(X) &
+    x.y(X, Y) &
+    r(Y)
+
+  would yield
+
+  p(A) :-
+    q(A->x) &
+    r(A->x->y)"
+  [rule]
+  (let [used
+        (->> (:body rule)
+             (reduce
+              (fn [acc literal]
+                (if (attribute-access? literal)
+                  ;; Only the first arg, the entity having an attribute accessed,
+                  ;; is considered "used", i.e. simply being accessed does not
+                  ;; constitute use of an attribute
+                  (assoc acc (-> (:args literal) first :text) true)
+                  ;; For other kinds of literals, all args are considered used
+                  (->> (:args literal)
+                       (map :text)
+                       (map #(vector % true))
+                       (into acc))))
+              {}))
+
+        ;; `provenance` is a map of variables with unique origins as accessed
+        ;; attributes to those origins, e.g.
+        ;;
+        ;; p(A) :-
+        ;;  a.b(A, B) &
+        ;;  b.c(B, C)
+        ;;
+        ;; yields
+        ;;
+        ;; {"B" ["A" "b"]
+        ;;  "C" ["B" "c"]}
+        provenance
+        (->> (:body rule)
+             (reduce
+              (fn [acc literal]
+                (if (attribute-access? literal)
+                  (let [attr-name (subs (re-find #"\..+" (-> literal :predicate :text)) 1)]
+                    (update acc
+                            (-> (:args literal) second :text)
+                            #(clojure.set/union % #{[(-> (:args literal) first :text)
+                                                     attr-name]})))
+                  acc))
+              {})
+             (filter
+              (fn [[variable provenances]]
+                (= 1 (count provenances))))
+             (map
+              (fn [[variable provenances]]
+                [variable (first provenances)]))
+             (into {}))]
+    (->> (:body rule)
+         (reduce
+          (fn [body literal]
+            ;; An attribute access can be elided where the accessed value is
+            ;; used and there is a unique provenance.
+            (if (and (attribute-access? literal)
+                     (get used (-> (:args literal) second :text))
+                     (get provenance (-> (:args literal) second :text)))
+              body
+              ;; For other literals, let's see if we can replace some args with
+              ;; attribute paths.
+              (let [pathed-literal
+                    (update literal
+                            :args
+                            #(map (fn [arg]
+                                    (assoc arg :text (to-attr-path provenance arg)))
+                                  %))]
+                (conj body pathed-literal))))
+          []))))
