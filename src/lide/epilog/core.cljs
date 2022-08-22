@@ -146,7 +146,7 @@
     (->> (:text arg)
          vector
          (expand-attr-path provenance)
-         (clojure.string/join "->"))))
+         (clojure.string/join "🡒"))))
 
 (defn condense-attributes
   "Return the body of `rule` with attribute access literals condensed.
