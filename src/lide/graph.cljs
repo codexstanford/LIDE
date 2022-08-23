@@ -140,11 +140,14 @@
                  :size (element-size element)}
      :socket (layout-relative-to position socket-elem)
      :literals (->> (.querySelectorAll element ".body-literal")
-                    (mapv
+                    (map
                      (fn [literal-elem]
-                       (let [socket-elem (.querySelector literal-elem ".socket")]
-                         (-> (layout-relative-to position literal-elem)
-                             (assoc :socket (layout-relative-to position socket-elem)))))))}))
+                       (let [src-idx (js/parseInt (.getAttribute literal-elem "data-source-index"))
+                             socket-elem (.querySelector literal-elem ".socket")]
+                         [src-idx
+                          (-> (layout-relative-to position literal-elem)
+                              (assoc :socket (layout-relative-to position socket-elem)))])))
+                    (into {}))}))
 
 (defn fact-layout [position element]
   (let [root-position (element-position element)]

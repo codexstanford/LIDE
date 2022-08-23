@@ -217,21 +217,23 @@
                 [variable (first provenances)]))
              (into {}))]
     (->> (:body rule)
-         (reduce
-          (fn [body literal]
+         (map
+          (fn [literal]
             ;; An attribute access can be elided where the accessed value is
             ;; used and there is a unique provenance.
             (if (and (attribute-access? literal)
                      (get used (-> (:args literal) second :text))
                      (get provenance (-> (:args literal) second :text)))
-              body
+              nil
               ;; For other literals, let's see if we can replace some args with
               ;; attribute paths.
-              (let [pathed-literal
-                    (update literal
-                            :args
-                            #(map (fn [arg]
-                                    (assoc arg :text (to-attr-path provenance arg)))
-                                  %))]
-                (conj body pathed-literal))))
-          []))))
+              (update literal
+                      :args
+                      #(map (fn [arg]
+                              (assoc arg :text (to-attr-path provenance arg)))
+                            %)))))
+         (map-indexed
+          (fn [idx literal]
+            (when literal [idx literal])))
+         (remove nil?)
+         (into {}))))

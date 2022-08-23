@@ -26,8 +26,9 @@
              :y (/ graph/rule-head-height 2)}
       symbol]]))
 
-(defn body-literal [{:keys [literal]}]
-  [:div {:class "body-literal"}
+(defn body-literal [{:keys [literal source-index]}]
+  [:div {:class "body-literal"
+         :data-source-index source-index}
    [:div {:class "body-literal__predicate"}
     [:span {:class "body-literal__predicate-text"
             :on-click #(rf/dispatch [::events/focus-range
@@ -112,10 +113,11 @@
      (if (seq (:body rule))
        [:<>
         [:div {:class "rule__tutor"} "when..."]
-        (map-indexed
-         (fn [literal-idx literal]
+        (map
+         (fn [[src-idx literal]]
            [body-literal {:literal literal
-                          :key literal-idx}])
+                          :source-index src-idx
+                          :key src-idx}])
          (epilog/condense-attributes rule))])]))
 
 (defn rule [{:keys [path] :as props}]
