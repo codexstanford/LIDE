@@ -28,6 +28,9 @@
       "lide.codeUpdated.epilog"
       (rf/dispatch [::epilog-events/code-updated (.-model message)])
 
+      "lide.queryResult"
+      (rf/dispatch [::epilog-events/query-result (.-query message) (.-result message)])
+
       "lide.codeUpdated.yscript"
       (rf/dispatch [::ys-events/code-updated (.-model message)])
 

@@ -23,6 +23,13 @@
                                   :startPosition start-position
                                   :endPosition   end-position}]]]}))
 
+(rf/reg-event-db
+ ::query-result
+ (fn [db [_ query result]]
+   (assoc db
+          :query query
+          :query-result result)))
+
 (rf/reg-event-fx
  ::negate-literal
  (fn [cofx [_ start-position]]

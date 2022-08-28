@@ -85,7 +85,8 @@
          (:attributes fact))]]]]))
 
 (defn rule-html [{:keys [path localize-position store-ref]}]
-  (let [rule @(rf/subscribe [::el-subs/rule path])]
+  (let [rule @(rf/subscribe [::el-subs/rule path])
+        query-result @(rf/subscribe [::el-subs/query-result (first path)])]
     [:div {:class "rule"
            :ref store-ref
            :on-mouse-down #(rf/dispatch [::events/start-drag
@@ -94,7 +95,8 @@
                                          :rule])}
      [:div {:class "rule__head-predicate"}
       [views/socket {:on-click #(rf/dispatch [::events/select-defeater path])}]
-      [:span {:on-click #(rf/dispatch [::events/focus-range
+      [:span {:class "rule__head-predicate-text"
+              :on-click #(rf/dispatch [::events/focus-range
                                        [(get-in rule [:head :predicate :startPosition])
                                         (get-in rule [:head :predicate :endPosition])]])}
        (get-in rule [:head :predicate :text])]
@@ -112,7 +114,10 @@
                                             [(:startPosition arg)
                                              (:endPosition   arg)]])
                    :key arg-idx}
-            (:text arg)])
+            (let [result-text (get-in query-result [0 (inc arg-idx)])]
+              (if result-text
+                [:span {:class "rule__query-result-arg"} result-text]
+                (:text arg)))])
          (-> rule :head :args))]
        [:div {:class "rule__tutor"} "is true..."])
      (if (seq (:body rule))
