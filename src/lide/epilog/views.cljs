@@ -97,7 +97,12 @@
       [:span {:on-click #(rf/dispatch [::events/focus-range
                                        [(get-in rule [:head :predicate :startPosition])
                                         (get-in rule [:head :predicate :endPosition])]])}
-       (get-in rule [:head :predicate :text])]]
+       (get-in rule [:head :predicate :text])]
+      [:span {:class "rule__do-query"
+              :on-click #(rf/dispatch [::el-events/query-rule
+                                       [(get-in rule [:head :startPosition])
+                                        (get-in rule [:head :endPosition])]])}
+       "?"]]
      (if (seq (-> rule :head :args))
        [:<>
         [:div {:class "rule__tutor"} "is true of..."]
