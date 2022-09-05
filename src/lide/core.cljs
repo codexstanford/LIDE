@@ -29,7 +29,8 @@
       (rf/dispatch [::epilog-events/code-updated (.-model message)])
 
       "lide.queryResult"
-      (rf/dispatch [::epilog-events/query-result (.-query message) (.-result message)])
+      (let [message (js->clj message :keywordize-keys true)]
+        (rf/dispatch [::epilog-events/query-result (:query message) (:results message)]))
 
       "lide.codeUpdated.yscript"
       (rf/dispatch [::ys-events/code-updated (.-model message)])

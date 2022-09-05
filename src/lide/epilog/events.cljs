@@ -16,12 +16,11 @@
      (update db :program #(merge % renamed-program)))))
 
 (rf/reg-event-fx
- ::query-rule
- (fn [cofx [_ [start-position end-position]]]
+ ::query
+ (fn [cofx [_ query]]
    {:fx [[::events/tell-vs-code [(-> cofx :db :vs-code)
-                                 {:type "queryRule"
-                                  :startPosition start-position
-                                  :endPosition   end-position}]]]}))
+                                 {:type "query"
+                                  :query query}]]]}))
 
 (rf/reg-event-db
  ::query-result

@@ -101,9 +101,7 @@
                                         (get-in rule [:head :predicate :endPosition])]])}
        (get-in rule [:head :predicate :text])]
       [:span {:class "rule__do-query"
-              :on-click #(rf/dispatch [::el-events/query-rule
-                                       [(get-in rule [:head :startPosition])
-                                        (get-in rule [:head :endPosition])]])}
+              :on-click #(rf/dispatch [::el-events/query (get-in rule [:head :repr])])}
        "?"]]
      (if (seq (-> rule :head :args))
        [:<>
@@ -114,9 +112,10 @@
                                             [(:startPosition arg)
                                              (:endPosition   arg)]])
                    :key arg-idx}
-            (let [result-text (get-in query-result [0 (inc arg-idx)])]
+            (let [result-text (get-in query-result [0 :result (inc arg-idx)])]
               (if result-text
-                [:span {:class "rule__query-result-arg"} result-text]
+                [:span {:class "rule__query-result-arg"
+                        :title (get-in query-result [0 :explanation])} result-text]
                 (:text arg)))])
          (-> rule :head :args))]
        [:div {:class "rule__tutor"} "is true..."])
