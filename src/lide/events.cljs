@@ -6,38 +6,14 @@
    [day8.re-frame.undo :as undo]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [lide.db :as db]
+   [lide.editor :as editor]
    [lide.util :as util]
    [lide.epilog.core :as epilog]
    [lide.epilog.db :as epilog-db]
+   [lide.epilog.events :as el-events]
    [lide.yscript.core :as ys]
    [lide.yscript.db :as ys-db]
    [lide.yscript.events :as ys-events]))
-
-;; VS Code interop
-
-(rf/reg-fx
- ::tell-vs-code
- (fn [[vs-code message]]
-   (when vs-code
-     (. vs-code
-        postMessage
-        (clj->js message)))))
-
-(rf/reg-event-fx
- ::show-range
- (fn [cofx [_ [start end]]]
-   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
-                          {:type "showRange"
-                           :range {:startPosition start
-                                   :endPosition end}}]]]}))
-
-(rf/reg-event-fx
- ::focus-range
- (fn [cofx [_ [start end]]]
-   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
-                          {:type "focusRange"
-                           :range {:startPosition start
-                                   :endPosition end}}]]]}))
 
 ;; General purpose escape/cancel handler
 
@@ -112,7 +88,7 @@
          target (-> cofx :db :program :target)
          positions (or (-> cofx :db :positions) {})]
      {:fx (if vs-code
-            [[::tell-vs-code
+            [[::editor/tell-vs-code
               [vs-code
                {:type "positionsEdited"
                 :positions (case target
@@ -144,8 +120,8 @@
 (rf/reg-event-fx
  ::app-ready
  (fn [cofx _]
-   {:fx [[::tell-vs-code [(-> cofx :db :vs-code)
-                          {:type "appReady"}]]]}))
+   {:fx [[::editor/tell-vs-code [(-> cofx :db :vs-code)
+                                 {:type "appReady"}]]]}))
 
 ;; Connections
 
@@ -190,7 +166,7 @@
            ;; before mouse up, that's a click on the graph background. In
            ;; response, we create a rule.
            (case (get-in (:db cofx) [:program :target])
-             :epilog [:dispatch [::create-rule position]]
+             :epilog [:dispatch [::el-events/create-rule position]]
              :yscript [:dispatch [::ys-events/create-rule position]]))]}))
 
 (rf/reg-event-db

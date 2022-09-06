@@ -3,6 +3,7 @@
    [clojure.string :as string]
    [re-frame.core :as rf]
    [lide.epilog.core :as epilog]
+   [lide.editor :as editor]
    [lide.events :as events]
    [lide.subs :as subs]
    [lide.util :as util]
@@ -31,7 +32,7 @@
          :data-source-index source-index}
    [:div {:class "body-literal__predicate"}
     [:span {:class "body-literal__predicate-text"
-            :on-click #(rf/dispatch [::events/focus-range
+            :on-click #(rf/dispatch [::editor/focus-range
                                      [(-> literal :predicate :startPosition)
                                       (-> literal :predicate :endPosition)]])}
      (-> literal :predicate :text)]
@@ -49,7 +50,7 @@
        "true of..."]
       (map-indexed
        (fn [arg-idx arg]
-         [:div {:on-click #(rf/dispatch [::events/focus-range
+         [:div {:on-click #(rf/dispatch [::editor/focus-range
                                          [(:startPosition arg)
                                           (:endPosition arg)]])
                 :key arg-idx}
@@ -96,7 +97,7 @@
      [:div {:class "rule__head-predicate"}
       [views/socket {:on-click #(rf/dispatch [::events/select-defeater path])}]
       [:span {:class "rule__head-predicate-text"
-              :on-click #(rf/dispatch [::events/focus-range
+              :on-click #(rf/dispatch [::editor/focus-range
                                        [(get-in rule [:head :predicate :startPosition])
                                         (get-in rule [:head :predicate :endPosition])]])}
        (get-in rule [:head :predicate :text])]
@@ -108,7 +109,7 @@
         [:div {:class "rule__tutor"} "is true of..."]
         (map-indexed
          (fn [arg-idx arg]
-           [:span {:on-click #(rf/dispatch [::events/focus-range
+           [:span {:on-click #(rf/dispatch [::editor/focus-range
                                             [(:startPosition arg)
                                              (:endPosition   arg)]])
                    :key arg-idx}
