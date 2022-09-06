@@ -33,12 +33,10 @@
         (when program
           [:svg {:class "graph-panel"
                  :id "graph-svg"
-                 :on-mouse-move (goog.functions.throttle
-                                 #(rf/dispatch [::events/mouse-move % (localize-position %)])
-                                 25)
+                 ;; TODO throttle these events
+                 :on-mouse-move #(rf/dispatch [::events/mouse-move % (localize-position %)])
                  :on-mouse-up #(rf/dispatch [::events/mouse-up (localize-position %)])
-                 :on-wheel (goog.functions.throttle #(rf/dispatch [::events/scroll-graph %])
-                                                    100)}
+                 :on-wheel #(rf/dispatch [::events/scroll-graph %])}
            [:rect {:class "graph__bg"
                    :height 10000
                    :width  10000
