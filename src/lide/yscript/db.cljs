@@ -14,7 +14,8 @@
    {}
 
    :positions
-   {}})
+   {:fact {}
+    :rule {}}})
 
 (def example-db
   {:program
