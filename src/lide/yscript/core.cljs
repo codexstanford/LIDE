@@ -28,6 +28,9 @@
     (= "fact_expr" (:type expr))
     #{(:descriptor expr)}
 
+    (= "not_expr" (:type expr))
+    (facts-required-by-expression (:negand expr))
+
     (contains? #{"and_expr" "or_expr"} (:type expr))
     (set/union (facts-required-by-expression (:left expr))
                (facts-required-by-expression (:right expr)))))
@@ -53,6 +56,13 @@
 
     (= "fact_expr" (:type expr))
     (get-in fact-values [(:descriptor expr) :value] :unknown)
+
+    (= "not_expr" (:type expr))
+    (let [value (compute-expression program fact-values (:negand expr))]
+      (case value
+        true false
+        false true
+        :unknown :unknown))
 
     (= "and_expr" (:type expr))
     (let [left (compute-expression program fact-values (:left expr))]

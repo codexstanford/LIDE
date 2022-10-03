@@ -44,11 +44,20 @@
 
 (defn flatten-conjunctions [expr]
   ;; TODO this doesn't tolerate manual association via BEGIN/END
-  (if (= "fact_expr" (:type expr))
+  (cond
+    (= (:type expr) "fact_expr")
     [{:descriptor (:descriptor expr)
       :operator ""
       :range (:range expr)}]
 
+    ;; Note this doesn't support nested NOTs, which you shouldn't do anyway
+    (= (:type expr) "not_expr")
+    [{:operator "NOT"
+      :range (:range expr)}
+     {:descriptor (-> expr :negand :descriptor)
+      :range (-> expr :negand :range)}]
+
+    :else
     (let [operator (case (:type expr)
                      "and_expr" "AND"
                      "or_expr"  "OR")
@@ -64,7 +73,8 @@
      (map-indexed
       (fn [idx expr-line]
         [:<> {:key idx}
-         [required-fact expr-line]
+         (when (not (string/blank? (:descriptor expr-line)))
+           [required-fact expr-line])
          (when (not (string/blank? (:operator expr-line)))
            [:div (:operator expr-line)])])
       lines))])
