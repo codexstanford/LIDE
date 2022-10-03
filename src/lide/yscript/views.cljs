@@ -110,8 +110,8 @@
             ;; for dest_fact, and the statement has a local determination for
             ;; it, but the values differ
             (let [global-value (get-in fact-values [dest-fact-descriptor :value] :unknown)]
-              (when (and global-value
-                         local-determination
+              (when (and (not= :unknown global-value)
+                         (not= :unknown local-determination)
                          (not= global-value local-determination))
                 [:div {:class "ys-statement__warn-stale"} "(stale)"]))
             (fact-value-element local-determination)]])
