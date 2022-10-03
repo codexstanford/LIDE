@@ -11,10 +11,19 @@
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
 
-(defn fact-value-to-string [value]
-  (if (= value :unknown)
-    "unknown"
-    (str value)))
+(defn fact-value-element [value]
+  (cond
+    (= value :unknown)
+    [:span {:class "fact-value--unknown"} "unknown"]
+
+    (= value true)
+    [:span {:class "fact-value--true"} "true"]
+
+    (= value false)
+    [:span {:class "fact-value--false"} "false"]
+
+    :else
+    [:span {:class "fact-value"} (str value)]))
 
 (defn next-value [value]
   (case value
@@ -34,13 +43,13 @@
        [:div {:class "ys-fact__value"}
         (if (seq (:determiners fact))
           [:<>
-           [:div (fact-value-to-string fact-value)]
+           [:div (fact-value-element fact-value)]
            [views/socket]]
           [:div {:class "ys-fact__value--modifiable"
                  :on-click #(rf/dispatch [::ys-events/set-fact-value
                                           descriptor
                                           (next-value fact-value)])}
-           (fact-value-to-string fact-value)])])]))
+           (fact-value-element fact-value)])])]))
 
 (defn flatten-conjunctions [expr]
   ;; TODO this doesn't tolerate manual association via BEGIN/END
@@ -105,7 +114,7 @@
                          local-determination
                          (not= global-value local-determination))
                 [:div {:class "ys-statement__warn-stale"} "(stale)"]))
-            (fact-value-to-string local-determination)]])
+            (fact-value-element local-determination)]])
         [:div "ONLY IF"]
         (when (not= :unspecified (:src_expr statement))
           [expression {:expr (:src_expr statement)
