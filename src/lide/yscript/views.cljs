@@ -109,8 +109,8 @@
             ;; Warn about stale determinations if there is a value in the app DB
             ;; for dest_fact, and the statement has a local determination for
             ;; it, but the values differ
-            (let [global-value (get-in fact-values [dest-fact-descriptor :value] :unknown)]
-              (when (and (not= :unknown global-value)
+            (let [global-value (get-in fact-values [dest-fact-descriptor :value])]
+              (when (and (some? global-value)
                          (not= :unknown local-determination)
                          (not= global-value local-determination))
                 [:div {:class "ys-statement__warn-stale"} "(stale)"]))
