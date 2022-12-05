@@ -11,29 +11,32 @@
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
 
-(defn fact-value-element [fact-value]
-  (let [value (:value fact-value)
-        class (if (= "assertion" (:source fact-value))
-                "fact-value fact-value--assertion"
-                "fact-value")]
-    (cond
-      (= value :unknown)
-      [:span {:class (str class " fact-value--unknown")} "unknown"]
-
-      (= value true)
-      [:span {:class (str class " fact-value--true")} "true"]
-
-      (= value false)
-      [:span {:class (str class " fact-value--false")} "false"]
-
-      :else
-      [:span {:class class} (str value)])))
-
 (defn next-value [value]
   (case value
     true false
     false :unknown
     :unknown true))
+
+(defn fact-value-element [descriptor fact-value]
+  (let [value (:value fact-value)
+        class (if (= "assertion" (:source fact-value))
+                "fact-value fact-value--assertion"
+                "fact-value")]
+    [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
+                                    descriptor
+                                    (next-value (:value fact-value))])}
+     (cond
+       (= value :unknown)
+       [:span {:class (str class " fact-value--unknown")} "unknown"]
+
+       (= value true)
+       [:span {:class (str class " fact-value--true")} "true"]
+
+       (= value false)
+       [:span {:class (str class " fact-value--false")} "false"]
+
+       :else
+       [:span {:class class} (str value)])]))
 
 (defn required-fact [{:keys [descriptor range]}]
   (let [fact @(rf/subscribe [::ys-subs/fact descriptor])
@@ -45,14 +48,9 @@
       descriptor]
      (let [fact-value (get-in fact-values [descriptor] {:value :unknown})]
        [:div {:class "ys-fact__value"}
-        (if (seq (:determiners fact))
-          [:<>
-           [:div (fact-value-element fact-value)]
-           [views/socket]]
-          [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
-                                          descriptor
-                                          (next-value (:value fact-value))])}
-           (fact-value-element fact-value)])])]))
+        (fact-value-element descriptor fact-value)
+        (when (seq (:determiners fact))
+          [views/socket])])]))
 
 (defn flatten-conjunctions [expr]
   ;; TODO this doesn't tolerate manual association via BEGIN/END
@@ -109,7 +107,8 @@
                   :on-click #(rf/dispatch [::editor/focus-range dest-fact-range])}
             dest-fact-descriptor]
            [:div {:class "ys-statement__dest-value"}
-            (fact-value-element (get-in fact-values [dest-fact-descriptor] {:value :unknown}))]])
+            (fact-value-element dest-fact-descriptor
+                                (get-in fact-values [dest-fact-descriptor] {:value :unknown}))]])
         [:div "ONLY IF"]
         (when (not= :unspecified (:src_expr statement))
           [expression {:expr (:src_expr statement)
