@@ -1,6 +1,7 @@
 (ns lide.yscript.events
   (:require
    [re-frame.core :as rf]
+   [lide.editor :as editor]
    [lide.util :as util]
    [lide.yscript.core :as ys]
    [lide.yscript.db :as ys-db]))
@@ -22,6 +23,13 @@
      (update db :program #(merge % renamed-program)))))
 
 (rf/reg-event-db
+ ::facts-updated
+ (fn [db [_ new-facts-json]]
+   (let [facts (js->clj new-facts-json :keywordize-keys true)
+         renamed-facts (util/map-keys  (fn [k] (subs (str k) 1)) facts)]
+     (assoc db :fact-values renamed-facts))))
+
+(rf/reg-event-db
  ::create-rule
  (fn [db [_ position]]
    (let [id (random-uuid)]
@@ -32,14 +40,13 @@
                     :statements []})
          (assoc-in [:positions id] position)))))
 
-(rf/reg-event-db
+(rf/reg-event-fx
  ::set-fact-value
- (fn [db [_ descriptor value]]
-   (let [edited-values (assoc-in (:fact-values db)
-                                 [descriptor :value]
-                                 value)]
-     (assoc db
-            :fact-values
-            (ys/forward-chain (:program db)
-                              edited-values
-                              descriptor)))))
+ (fn [cofx [_ descriptor value]]
+   (let [vs-code (-> cofx :db :vs-code)]
+     {:fx (if vs-code
+            [[::editor/tell-vs-code
+              [vs-code
+               {:type "incorporateFact"
+                :descriptor descriptor
+                :value value}]]])})))

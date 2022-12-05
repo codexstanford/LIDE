@@ -11,19 +11,23 @@
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
 
-(defn fact-value-element [value]
-  (cond
-    (= value :unknown)
-    [:span {:class "fact-value--unknown"} "unknown"]
+(defn fact-value-element [fact-value]
+  (let [value (:value fact-value)
+        class (if (= "assertion" (:source fact-value))
+                "fact-value fact-value--assertion"
+                "fact-value")]
+    (cond
+      (= value :unknown)
+      [:span {:class (str class " fact-value--unknown")} "unknown"]
 
-    (= value true)
-    [:span {:class "fact-value--true"} "true"]
+      (= value true)
+      [:span {:class (str class " fact-value--true")} "true"]
 
-    (= value false)
-    [:span {:class "fact-value--false"} "false"]
+      (= value false)
+      [:span {:class (str class " fact-value--false")} "false"]
 
-    :else
-    [:span {:class "fact-value"} (str value)]))
+      :else
+      [:span {:class class} (str value)])))
 
 (defn next-value [value]
   (case value
@@ -39,16 +43,15 @@
      [:div {:class "ys-fact__descriptor"
             :on-click #(rf/dispatch [::editor/focus-range range])}
       descriptor]
-     (let [fact-value (get-in fact-values [descriptor :value] :unknown)]
+     (let [fact-value (get-in fact-values [descriptor] {:value :unknown})]
        [:div {:class "ys-fact__value"}
         (if (seq (:determiners fact))
           [:<>
            [:div (fact-value-element fact-value)]
            [views/socket]]
-          [:div {:class "ys-fact__value--modifiable"
-                 :on-click #(rf/dispatch [::ys-events/set-fact-value
+          [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
                                           descriptor
-                                          (next-value fact-value)])}
+                                          (next-value (:value fact-value))])}
            (fact-value-element fact-value)])])]))
 
 (defn flatten-conjunctions [expr]
@@ -106,15 +109,7 @@
                   :on-click #(rf/dispatch [::editor/focus-range dest-fact-range])}
             dest-fact-descriptor]
            [:div {:class "ys-statement__dest-value"}
-            ;; Warn about stale determinations if there is a value in the app DB
-            ;; for dest_fact, and the statement has a local determination for
-            ;; it, but the values differ
-            (let [global-value (get-in fact-values [dest-fact-descriptor :value])]
-              (when (and (some? global-value)
-                         (not= :unknown local-determination)
-                         (not= global-value local-determination))
-                [:div {:class "ys-statement__warn-stale"} "(stale)"]))
-            (fact-value-element local-determination)]])
+            (fact-value-element (get-in fact-values [dest-fact-descriptor] {:value :unknown}))]])
         [:div "ONLY IF"]
         (when (not= :unspecified (:src_expr statement))
           [expression {:expr (:src_expr statement)

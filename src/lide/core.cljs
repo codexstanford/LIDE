@@ -38,6 +38,9 @@
       "lide.positionsRead"
       (rf/dispatch [::events/positions-read (.-positions message)])
 
+      "lide.factsUpdated"
+      (rf/dispatch [::ys-events/facts-updated (.-facts message)])
+
       ;; Sometimes our frame might receive other messages from who knows where.
       ;; Just ignore them
       nil)))
