@@ -11,32 +11,40 @@
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
 
-(defn next-value [value]
-  (case value
-    true false
-    false :unknown
-    :unknown true))
-
 (defn fact-value-element [descriptor fact-value]
   (let [value (:value fact-value)
         class (if (= "assertion" (:source fact-value))
                 "fact-value fact-value--assertion"
                 "fact-value")]
-    [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
-                                    descriptor
-                                    (next-value (:value fact-value))])}
-     (cond
-       (= value :unknown)
-       [:span {:class (str class " fact-value--unknown")} "unknown"]
+    [:div {:class "ys-fact__controls"}
+     (when (= "assertion" (:source fact-value))
+       [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
+                                       descriptor
+                                       :unknown])}
+        "🗙"])
+     [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
+                                     descriptor
+                                     (cond
+                                       (= "assertion" (:source fact-value))
+                                       (not (:value fact-value))
 
-       (= value true)
-       [:span {:class (str class " fact-value--true")} "true"]
+                                       (not= :unknown (:value fact-value))
+                                       (:value fact-value)
 
-       (= value false)
-       [:span {:class (str class " fact-value--false")} "false"]
+                                       :else
+                                       true)])}
+      (cond
+        (= value :unknown)
+        [:span {:class (str class " fact-value--unknown")} "unknown"]
 
-       :else
-       [:span {:class class} (str value)])]))
+        (= value true)
+        [:span {:class (str class " fact-value--true")} "true"]
+
+        (= value false)
+        [:span {:class (str class " fact-value--false")} "false"]
+
+        :else
+        [:span {:class class} (str value)])]]))
 
 (defn required-fact [{:keys [descriptor range]}]
   (let [fact @(rf/subscribe [::ys-subs/fact descriptor])
