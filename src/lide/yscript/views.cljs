@@ -63,10 +63,10 @@
       descriptor]
      (let [fact-value (get-in fact-values [descriptor] {:value :unknown})]
        [:<>
+        (when goal? [:div {:class "ys-next-marker"}])
         (fact-controls descriptor fact-value)
         (when (seq (:determiners fact))
-          [views/socket])])
-     (when goal? "*")]))
+          [views/socket])])]))
 
 (defn flatten-conjunctions [expr]
   ;; TODO this doesn't tolerate manual association via BEGIN/END

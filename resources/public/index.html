@@ -332,13 +332,13 @@
       }
 
       .ys-rule-fact__descriptor {
+        margin-right: auto;
         font-weight: bold;
         cursor: pointer;
       }
 
       .ys-rule-fact__controls {
         display: flex;
-        margin-left: auto;
         align-items: center;
         gap: 5px;
       }
@@ -372,6 +372,16 @@
 
       .ys-rule-fact .socket:last-child {
         margin-left: 3px;
+      }
+
+      .ys-next-marker::before {
+        content: "☞";
+        display: block;
+        margin-right: 4px;
+        font-size: 2.5em;
+        line-height: 0;
+        color: blue;
+        transform: rotate(15deg);
       }
     </style>
   </head>
