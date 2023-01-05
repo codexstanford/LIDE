@@ -137,7 +137,7 @@
            :data-rule-key name
            :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) name :rule])}
      [:div {:class "ys-rule__header"}
-      (when goal? "GOAL ")
+      (when goal? [:span {:class "ys-rule__goal"} "GOAL"])
       "RULE"
       [:span {:class "ys-rule__name"
               :on-click #(rf/dispatch [::editor/focus-range (-> rule :name :range)])}
@@ -145,8 +145,7 @@
       "PROVIDES"
       [:span {:class (str "ys-rule__set-goal"
                           (when goal? " ys-rule__set-goal--goal"))
-              :on-click #(rf/dispatch [::ys-events/set-goal (if goal? nil name)])}
-       "?"]]
+              :on-click #(rf/dispatch [::ys-events/set-goal (if goal? nil name)])}]]
      (map-indexed
       (fn [idx _]
         [statement {:path [name idx]

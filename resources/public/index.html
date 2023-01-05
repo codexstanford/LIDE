@@ -296,15 +296,34 @@
         user-select: none;
       }
 
+      .ys-rule__header {
+        display: flex;
+        align-items: baseline;
+      }
+
       .ys-rule__name {
-        margin: 0 4px;
+        margin: 0 0.25em;
         font-weight: bold;
         cursor: pointer;
       }
 
-      .ys-statement__warn-stale {
-        color: #666;
-        margin-right: 5px;
+      .ys-rule__goal {
+        margin-right: 0.25em;
+      }
+
+      .ys-rule__set-goal {
+        margin-left: auto;
+        color: #777;
+        cursor: pointer;
+      }
+
+      .ys-rule__set-goal--goal {
+        font-weight: bold;
+        color: black;
+      }
+
+      .ys-rule__set-goal::before {
+        content: "?";
       }
 
       .ys-rule-fact {
