@@ -11,54 +11,62 @@
    [lide.yscript.events :as ys-events]
    [lide.yscript.subs :as ys-subs]))
 
-(defn fact-value-element [descriptor fact-value]
+(defn fact-controls [descriptor fact-value]
   (let [value (:value fact-value)
         class (if (= "assertion" (:source fact-value))
-                "fact-value fact-value--assertion"
-                "fact-value")]
-    [:div {:class "ys-fact__controls"}
+                "ys-rule-fact__value ys-rule-fact__value--assertion"
+                "ys-rule-fact__value")
+        handle-click #(rf/dispatch [::ys-events/set-fact-value
+                                    descriptor
+                                    (cond
+                                      (= "assertion" (:source fact-value))
+                                      (not (:value fact-value))
+
+                                      (not= :unknown (:value fact-value))
+                                      (:value fact-value)
+
+                                      :else
+                                      true)])]
+    [:div {:class "ys-rule-fact__controls"}
      (when (= "assertion" (:source fact-value))
        [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
                                        descriptor
                                        :unknown])}
         "🗙"])
-     [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
-                                     descriptor
-                                     (cond
-                                       (= "assertion" (:source fact-value))
-                                       (not (:value fact-value))
+     (cond
+       (= value :unknown)
+       [:div {:class (str class " ys-rule-fact__value--unknown")
+              :on-click handle-click}
+        "unknown"]
 
-                                       (not= :unknown (:value fact-value))
-                                       (:value fact-value)
+       (= value true)
+       [:div {:class (str class " ys-rule-fact__value--true")
+               :click handle-click}
+        "true"]
 
-                                       :else
-                                       true)])}
-      (cond
-        (= value :unknown)
-        [:span {:class (str class " fact-value--unknown")} "unknown"]
+       (= value false)
+       [:div {:class (str class " ys-rule-fact__value--false")
+              :on-click handle-click}
+        "false"]
 
-        (= value true)
-        [:span {:class (str class " fact-value--true")} "true"]
-
-        (= value false)
-        [:span {:class (str class " fact-value--false")} "false"]
-
-        :else
-        [:span {:class class} (str value)])]]))
+       :else
+       [:div {:class class} (str value)])]))
 
 (defn required-fact [{:keys [descriptor range]}]
   (let [fact @(rf/subscribe [::ys-subs/fact descriptor])
+        goal? (= descriptor @(rf/subscribe [::ys-subs/next-for-goal]))
         fact-values @(rf/subscribe [::ys-subs/fact-values])]
-    [:div {:class "ys-fact"
+    [:div {:class "ys-rule-fact"
            :data-fact-descriptor descriptor}
-     [:div {:class "ys-fact__descriptor"
+     [:div {:class "ys-rule-fact__descriptor"
             :on-click #(rf/dispatch [::editor/focus-range range])}
       descriptor]
      (let [fact-value (get-in fact-values [descriptor] {:value :unknown})]
-       [:div {:class "ys-fact__value"}
-        (fact-value-element descriptor fact-value)
+       [:<>
+        (fact-controls descriptor fact-value)
         (when (seq (:determiners fact))
-          [views/socket])])]))
+          [views/socket])])
+     (when goal? "*")]))
 
 (defn flatten-conjunctions [expr]
   ;; TODO this doesn't tolerate manual association via BEGIN/END
@@ -109,31 +117,36 @@
         (let [{dest-fact-descriptor :descriptor
                dest-fact-range :range} (:dest_fact statement)
               local-determination (get local-determinations dest-fact-descriptor :unknown)]
-          [:div {:class "ys-statement__dest-fact"}
+          [:div {:class "ys-rule-fact"}
            [views/socket]
-           [:div {:class "ys-statement__dest-descriptor"
+           [:div {:class "ys-rule-fact__descriptor"
                   :on-click #(rf/dispatch [::editor/focus-range dest-fact-range])}
             dest-fact-descriptor]
-           [:div {:class "ys-statement__dest-value"}
-            (fact-value-element dest-fact-descriptor
-                                (get-in fact-values [dest-fact-descriptor] {:value :unknown}))]])
+           (fact-controls dest-fact-descriptor
+                          (get-in fact-values [dest-fact-descriptor] {:value :unknown}))])
         [:div "ONLY IF"]
         (when (not= :unspecified (:src_expr statement))
           [expression {:expr (:src_expr statement)
                        :path (conj path :src_expr)}])])]))
 
 (defn rule-html [{:keys [name localize-position store-ref]}]
-  (let [rule @(rf/subscribe [::ys-subs/rule name])]
+  (let [rule @(rf/subscribe [::ys-subs/rule name])
+        goal? (= name @(rf/subscribe [::ys-subs/goal-rule]))]
     [:div {:class "ys-rule"
            :ref store-ref
            :data-rule-key name
            :on-mouse-down #(rf/dispatch [::events/start-drag (localize-position %) name :rule])}
      [:div {:class "ys-rule__header"}
+      (when goal? "GOAL ")
       "RULE"
       [:span {:class "ys-rule__name"
               :on-click #(rf/dispatch [::editor/focus-range (-> rule :name :range)])}
        name]
-      "PROVIDES"]
+      "PROVIDES"
+      [:span {:class (str "ys-rule__set-goal"
+                          (when goal? " ys-rule__set-goal--goal"))
+              :on-click #(rf/dispatch [::ys-events/set-goal (if goal? nil name)])}
+       "?"]]
      (map-indexed
       (fn [idx _]
         [statement {:path [name idx]

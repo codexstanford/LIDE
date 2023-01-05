@@ -50,3 +50,8 @@
                {:type "incorporateFact"
                 :descriptor descriptor
                 :value value}]]])})))
+
+(rf/reg-event-db
+ ::set-goal
+ (fn [db [_ name]]
+   (assoc db :goal-rule name)))

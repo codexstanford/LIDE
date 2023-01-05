@@ -258,22 +258,6 @@
         text-align: right;
       }
 
-      .fact-value--assertion {
-        font-weight: bold;
-      }
-
-      .fact-value--true {
-        color: green;
-      }
-
-      .fact-value--false {
-        color: red;
-      }
-
-      .fact-value--unknown {
-        color: #777;
-      }
-
       .defeat-connector {
         pointer-events: none;
         stroke: red;
@@ -318,47 +302,57 @@
         cursor: pointer;
       }
 
-      .ys-statement__dest-fact {
-        display: flex;
-        align-items: center;
-      }
-
-      .ys-statement__dest-descriptor {
-        font-weight: bold;
-        cursor: pointer;
-      }
-
-      .ys-statement__dest-value {
-        display: flex;
-        margin-left: auto;
-      }
-
       .ys-statement__warn-stale {
         color: #666;
         margin-right: 5px;
       }
 
-      .ys-fact {
+      .ys-rule-fact {
         display: flex;
         align-items: center;
       }
 
-      .ys-fact__descriptor {
+      .ys-rule-fact__descriptor {
         font-weight: bold;
         cursor: pointer;
       }
 
-      .ys-fact__controls {
+      .ys-rule-fact__controls {
         display: flex;
+        margin-left: auto;
         align-items: center;
         gap: 5px;
       }
 
-      .ys-fact__value {
+      .ys-rule-fact__value {
         display: flex;
         flex-shrink: 0;
         margin-left: auto;
         cursor: pointer;
+      }
+
+      .ys-rule-fact__value--assertion {
+        font-weight: bold;
+      }
+
+      .ys-rule-fact__value--true {
+        color: green;
+      }
+
+      .ys-rule-fact__value--false {
+        color: red;
+      }
+
+      .ys-rule-fact__value--unknown {
+        color: #777;
+      }
+
+      .ys-rule-fact .socket:first-child {
+        margin-right: 3px;
+      }
+
+      .ys-rule-fact .socket:last-child {
+        margin-left: 3px;
       }
     </style>
   </head>

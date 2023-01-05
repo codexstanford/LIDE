@@ -178,7 +178,7 @@
                 :socket {:position (element-position socket-elem)
                          :size (element-size socket-elem)}
                 :facts
-                (->> (.querySelectorAll st-elem ".ys-fact")
+                (->> (.querySelectorAll st-elem ".ys-rule-fact")
                      (reduce
                       (fn [acc fact-elem]
                         (let [socket-elem

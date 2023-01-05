@@ -6,6 +6,11 @@
    [lide.yscript.db :as ys-db]))
 
 (rf/reg-sub
+ ::program
+ (fn [db _]
+   (:program db)))
+
+(rf/reg-sub
  ::fact-values
  (fn [db _]
    (:fact-values db)))
@@ -29,3 +34,19 @@
  ::rule
  (fn [db [_ id]]
    (get-in db [:program :rules id])))
+
+(rf/reg-sub
+ ::goal-rule
+ (fn [db]
+   (:goal-rule db)))
+
+(rf/reg-sub
+ ::next-for-goal
+ (fn [_ _]
+   [(rf/subscribe [::program])
+    (rf/subscribe [::fact-values])
+    (rf/subscribe [::goal-rule])])
+ (fn [[program fact-values goal-rule]]
+   (ys/next-for-goal-fact program
+                          fact-values
+                          (-> program :rules (get goal-rule) :statements (nth 0) :dest_fact :descriptor))))

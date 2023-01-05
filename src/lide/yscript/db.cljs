@@ -10,6 +10,9 @@
     :facts {}
     :rules {}}
 
+   :goal-rule
+   nil
+
    :fact-values
    {}
 
@@ -53,6 +56,9 @@
             :dest_fact "it is raining"
             :src_expr {:type "fact_expr"
                        :descriptor "water is falling from the sky"}}]}}}
+
+   :goal-rule
+   nil
 
    :fact-values
    {"water is falling from the sky" {:value false}}
