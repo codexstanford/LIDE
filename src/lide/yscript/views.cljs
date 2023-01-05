@@ -41,7 +41,7 @@
 
        (= value true)
        [:div {:class (str class " ys-rule-fact__value--true")
-               :click handle-click}
+              :on-click handle-click}
         "true"]
 
        (= value false)
