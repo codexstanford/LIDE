@@ -29,7 +29,8 @@
                                       true)])]
     [:div {:class "ys-rule-fact__controls"}
      (when (= "assertion" (:source fact-value))
-       [:div {:on-click #(rf/dispatch [::ys-events/set-fact-value
+       [:div {:class "ys-rule-fact__unassert"
+              :on-click #(rf/dispatch [::ys-events/set-fact-value
                                        descriptor
                                        :unknown])}
         "🗙"])
