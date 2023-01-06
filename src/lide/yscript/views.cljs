@@ -112,23 +112,38 @@
         statement @(rf/subscribe [::ys-subs/statement path])
         local-determinations (ys/compute-statement program fact-values statement)]
     [:div {:class "ys-statement"}
-     (case (:type statement)
-       "only_if"
-       [:div
-        (let [{dest-fact-descriptor :descriptor
-               dest-fact-range :range} (:dest_fact statement)
-              local-determination (get local-determinations dest-fact-descriptor :unknown)]
-          [:div {:class "ys-rule-fact"}
+     (let [{dest-fact-descriptor :descriptor
+            dest-fact-range :range} (:dest_fact statement)
+           local-determination (get local-determinations dest-fact-descriptor :unknown)]
+       (case (:type statement)
+         "if_then"
+         [:<>
+          [:div "IF"]
+          (when (not= :unspecified (:src_expr statement))
+            [expression {:expr (:src_expr statement)
+                         :path (conj path :src_expr)}])
+          [:div "THEN"]
+          [:div {:class "ys-rule-fact ys-dest-fact"}
            [views/socket]
            [:div {:class "ys-rule-fact__descriptor"
                   :on-click #(rf/dispatch [::editor/focus-range dest-fact-range])}
             dest-fact-descriptor]
            (fact-controls dest-fact-descriptor
-                          (get-in fact-values [dest-fact-descriptor] {:value :unknown}))])
-        [:div "ONLY IF"]
-        (when (not= :unspecified (:src_expr statement))
-          [expression {:expr (:src_expr statement)
-                       :path (conj path :src_expr)}])])]))
+                          (get-in fact-values [dest-fact-descriptor] {:value :unknown}))]]
+
+         "only_if"
+         [:<>
+          [:div {:class "ys-rule-fact ys-dest-fact"}
+           [views/socket]
+           [:div {:class "ys-rule-fact__descriptor"
+                  :on-click #(rf/dispatch [::editor/focus-range dest-fact-range])}
+            dest-fact-descriptor]
+           (fact-controls dest-fact-descriptor
+                          (get-in fact-values [dest-fact-descriptor] {:value :unknown}))]
+          [:div "ONLY IF"]
+          (when (not= :unspecified (:src_expr statement))
+            [expression {:expr (:src_expr statement)
+                         :path (conj path :src_expr)}])]))]))
 
 (defn rule-html [{:keys [name localize-position store-ref]}]
   (let [rule @(rf/subscribe [::ys-subs/rule name])

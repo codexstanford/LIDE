@@ -39,8 +39,7 @@
 (defn facts-determined-by-statement
   "Return a set of all facts that can be determined by executing `statement`."
   [statement]
-  (case (:type statement)
-    "only_if" #{(:dest_fact statement)}))
+  #{(:dest_fact statement)})
 
 (defn compute-expression
   "Compute the value of `expression` given the information in `program` and
@@ -97,10 +96,8 @@
   "Determine whatever fact values `statement` can, and return a map of descriptors
   of such facts to their determined values."
   [program fact-values statement]
-  (case (:type statement)
-    "only_if"
-    {(-> statement :dest_fact :descriptor)
-     (compute-expression program fact-values (:src_expr statement))}))
+  {(-> statement :dest_fact :descriptor)
+   (compute-expression program fact-values (:src_expr statement))})
 
 (defn forward-chain
   "Infer as much as possible from fact `fact-id` and update `fact-values`

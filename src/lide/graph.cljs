@@ -172,7 +172,7 @@
      (->> (.querySelectorAll element ".ys-statement")
           (map
            (fn [st-elem]
-             (let [socket-elem (.querySelector st-elem ".socket")]
+             (let [socket-elem (.querySelector st-elem ".ys-dest-fact .socket")]
                {:position (element-position st-elem)
                 :size (element-size st-elem)
                 :socket {:position (element-position socket-elem)
