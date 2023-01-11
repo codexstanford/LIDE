@@ -6,7 +6,6 @@
    [lide.editor :as editor]
    [lide.events :as events]
    [lide.subs :as subs]
-   [lide.util :as util]
    [lide.views :as views]
    [lide.epilog.events :as el-events]
    [lide.epilog.subs :as el-subs]))
@@ -135,9 +134,10 @@
                     :id path}
    [rule-html props]])
 
-(defn socket-position [rule-layout literal-id {:keys [end]}]
+(defn socket-position
   "Find the XY location where a connector should terminate on a particular rule
   and, optionally, body literal."
+  [rule-layout literal-id {:keys [end]}]
   (merge-with +
               (-> rule-layout :container :position)
               ;; XXX more magic numbers here
@@ -216,8 +216,12 @@
              :y2 (:y end)
              :stroke (if negative "red" "black")}]]))
 
-(defn defeat-connector [{:keys [defeat]}]
+;; This stuff about drawing defeat connectors is obsolete for now, but something
+;; similar would be useful for drawing general-purpose connections between rules
+
+(defn defeat-connector
   "Draw a line connecting the defeated and defeater rules from `defeat`."
+  [{:keys [defeat]}]
   (let [{:keys [defeated defeater]} defeat
         start-layout @(rf/subscribe [::subs/layout :rule defeater])
         end-layout   @(rf/subscribe [::subs/layout :rule defeated])
@@ -241,8 +245,9 @@
              :stroke-width 10
              :on-click #(rf/dispatch [::events/remove-defeat defeat])}]]))
 
-(defn defeat-connector-pending [{:keys [mouse-position]}]
+(defn defeat-connector-pending
   "Draw a line emanating from the defeated rule while we select another rule to be defeater."
+  [{:keys [mouse-position]}]
   (let [defeated-id @(rf/subscribe [::subs/defeated-selecting-defeater])
         defeated-layout @(rf/subscribe [::subs/layout :rule defeated-id])
         start (merge-with +

@@ -1,6 +1,7 @@
 (ns lide.epilog.core
   "Convert logic program constructs to their Epilog representations."
   (:require
+   clojure.set
    [clojure.string :as string]
    [lide.util :as util]))
 
@@ -41,12 +42,13 @@
              (minimize-attribute-subgoals (attribute-var-name threading-var attr) sub-attrs)))
           attrs))
 
-(defn required-attributes [literals]
+(defn required-attributes
   "Determine what attribute accesses are needed to produce the rule body
   constituted by `literals`.
 
   Some of `literals` may have arguments representing attribute paths, which map
   to more than one subgoal."
+  [literals]
   (->> literals
        (map :args)
        flatten
@@ -78,10 +80,11 @@
          (str " :-\n  "))
        (string/join " &\n  " (map stringify-literal (:body compiled-rule)))))
 
-(defn stringify-converse-operation [compiled-rule]
+(defn stringify-converse-operation
   "Render an operation that is the converse of `compiled-rule`.
 
   These are useful for forward chaining."
+  [compiled-rule]
   (str "tick"
        (when (seq (:body compiled-rule))
          (str " ::\n  "
