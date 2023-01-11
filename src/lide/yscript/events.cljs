@@ -1,10 +1,9 @@
 (ns lide.yscript.events
   (:require
-   [re-frame.core :as rf]
    [lide.editor :as editor]
    [lide.util :as util]
    [lide.yscript.core :as ys]
-   [lide.yscript.db :as ys-db]))
+   [re-frame.core :as rf]))
 
 (rf/reg-event-db
  ::code-updated

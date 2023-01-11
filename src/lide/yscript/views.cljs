@@ -1,15 +1,13 @@
 (ns lide.yscript.views
   (:require
    [clojure.string :as string]
-   [re-frame.core :as rf]
    [lide.editor :as editor]
    [lide.events :as events]
    [lide.subs :as subs]
-   [lide.util :as util]
    [lide.views :as views]
-   [lide.yscript.core :as ys]
    [lide.yscript.events :as ys-events]
-   [lide.yscript.subs :as ys-subs]))
+   [lide.yscript.subs :as ys-subs]
+   [re-frame.core :as rf]))
 
 (defn fact-controls [descriptor fact-value]
   (let [value (:value fact-value)
@@ -94,7 +92,7 @@
        (concat left-and
                (flatten-conjunctions (:right expr)))))))
 
-(defn expression [{:keys [expr path]}]
+(defn expression [{:keys [expr]}]
   [:div {:class "ys-expr"}
    (let [lines (flatten-conjunctions expr)]
      (map-indexed
@@ -107,14 +105,11 @@
       lines))])
 
 (defn statement [{:keys [path]}]
-  (let [program @(rf/subscribe [::subs/program])
-        fact-values @(rf/subscribe [::ys-subs/fact-values])
-        statement @(rf/subscribe [::ys-subs/statement path])
-        local-determinations (ys/compute-statement program fact-values statement)]
+  (let [fact-values @(rf/subscribe [::ys-subs/fact-values])
+        statement @(rf/subscribe [::ys-subs/statement path])]
     [:div {:class "ys-statement"}
      (let [{dest-fact-descriptor :descriptor
-            dest-fact-range :range} (:dest_fact statement)
-           local-determination (get local-determinations dest-fact-descriptor :unknown)]
+            dest-fact-range :range} (:dest_fact statement)]
        (case (:type statement)
          "if_then"
          [:<>
@@ -173,31 +168,13 @@
                     :id name}
    [rule-html props]])
 
-(defn statement-socket-position [rule-layout statement-id]
-  (merge-with +
-              (get-in rule-layout [:container :position])
-              (get-in rule-layout [:statements statement-id :position])))
-
-(defn fact-socket-positions
-  "Return a set of positions for sockets of `fact-id` in the rule laid out by
-  `rule-layout`."
-  [rule-layout fact-id]
-  (->> (get-in rule-layout [:facts fact-id])
-       (map (comp :socket :position))
-       (map (fn [socket-position]
-              (merge-with +
-                          (get-in rule-layout [:container :position])
-                          socket-position)))))
-
 (defn requirer-determiner-connectors
   "Draw connectors between `determining-statement-id` and all the instances of
   `fact-id` being required in `requiring-statement-id`."
   [{:keys [descriptor requirer determiner]}]
   (let [[requirer-rule-name   requirer-statement-idx]   requirer
         [determiner-rule-name determiner-statement-idx] determiner
-        requirer-rule @(rf/subscribe [::ys-subs/rule requirer-rule-name])
         requirer-layout @(rf/subscribe [::subs/layout :rule requirer-rule-name])
-        determiner-rule @(rf/subscribe [::ys-subs/rule determiner-rule-name])
         determiner-layout @(rf/subscribe [::subs/layout :rule determiner-rule-name])]
     [:<>
      (->> (get-in requirer-layout [:statements requirer-statement-idx :facts descriptor])
@@ -240,8 +217,7 @@
                                                       :key (str descriptor requirer determiner)}]))))))]))
 
 (defn program-graph [{:keys [localize-position]}]
-  (let [program @(rf/subscribe [::subs/program])
-        mouse-position @(rf/subscribe [::subs/mouse-position])]
+  (let [program @(rf/subscribe [::subs/program])]
     [:<>
      (->> (:rules program)
           (map (fn [[name _]]

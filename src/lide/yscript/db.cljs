@@ -1,8 +1,4 @@
-(ns lide.yscript.db
-  (:require
-   [clojure.set :as set]
-   [lide.util :as util]
-   [lide.yscript.core :as ys]))
+(ns lide.yscript.db)
 
 (def initial-db
   {:program
@@ -20,7 +16,7 @@
    {:fact {}
     :rule {}}})
 
-(def example-db
+(def sample-db
   {:program
    {:target :yscript
 

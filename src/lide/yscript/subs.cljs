@@ -1,9 +1,7 @@
 (ns lide.yscript.subs
   (:require
    [re-frame.core :as rf]
-   [lide.subs :as subs]
-   [lide.yscript.core :as ys]
-   [lide.yscript.db :as ys-db]))
+   [lide.yscript.core :as ys]))
 
 (rf/reg-sub
  ::program
@@ -14,11 +12,6 @@
  ::fact-values
  (fn [db _]
    (:fact-values db)))
-
-(rf/reg-sub
- ::rule-order
- (fn [db _]
-   (:rule-source-order db)))
 
 (rf/reg-sub
  ::fact
