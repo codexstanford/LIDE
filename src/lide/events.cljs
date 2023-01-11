@@ -1,11 +1,8 @@
 (ns lide.events
   (:require
    [clojure.edn :as edn]
-   [clojure.string :as string]
    [re-frame.core :as rf]
    [day8.re-frame.undo :as undo]
-   [day8.re-frame.tracing :refer-macros [fn-traced]]
-   [lide.db :as db]
    [lide.editor :as editor]
    [lide.util :as util]
    [lide.epilog.core :as epilog]
@@ -71,7 +68,7 @@
 
 (rf/reg-cofx
  ::saved-state
- (fn [cofx key]
+ (fn [cofx]
    (assoc cofx
           ::saved-state
           (-> js/localStorage
@@ -170,81 +167,10 @@
              :yscript [:dispatch [::ys-events/create-rule position]]))]}))
 
 (rf/reg-event-db
- ::create-rule
- (undo/undoable "create rule")
- (fn [db [_ position]]
-   (let [new-head-id (random-uuid)
-         new-rule-id (random-uuid)]
-     (-> db
-         (assoc-in [:program :literals new-head-id]
-                   {:predicate "new" :args []})
-         (assoc-in [:program :rules new-rule-id]
-                   {:head new-head-id :body []})
-         (assoc-in [:positions :rule new-rule-id] position)))))
-
-(rf/reg-event-db
- ::add-body-literal
- (undo/undoable "add body literal")
- (fn [db [_ rule-id]]
-   (let [new-literal-id (random-uuid)]
-     (-> db
-         (assoc-in [:program :literals new-literal-id] {:predicate "new" :args []})
-         (update-in [:program :rules rule-id :body] conj new-literal-id)))))
-
-(rf/reg-event-db
- ::select-rule
- (fn [db [_ rule-id]]
-   (assoc db :selected-rule-id rule-id)))
-
-(rf/reg-event-db
- ::select-literal
- (fn [db [_ literal-id]]
-   (assoc db :selected-literal literal-id)))
-
-(rf/reg-event-db
  ::toggle-collapse-literal
  (fn [db [_ literal-id]]
    (update-in db [:program :literals literal-id :collapsed] not)))
 
-(rf/reg-event-db
- ::edit-literal-predicate
- (undo/undoable "edit literal predicate")
- (fn [db [_ literal-id new-predicate]]
-   (if (string/blank? new-predicate)
-     (update db :program #(util/remove-literal % literal-id))
-     (assoc-in db [:program :literals literal-id :predicate] new-predicate))))
-
-(rf/reg-event-db
- ::edit-literal-arg
- (undo/undoable "edit literal arg")
- (fn [db [_ literal-id arg-idx new-arg]]
-   (if (string/blank? new-arg)
-     (update-in db [:program :literals literal-id :args] #(util/vector-remove % arg-idx))
-     (assoc-in db [:program :literals literal-id :args arg-idx] new-arg))))
-
-(rf/reg-event-db
- ::edit-head-predicate
- (undo/undoable "edit head predicate")
- (fn [db [_ rule-id new-predicate]]
-   (let [rule (get-in db [:program :rules rule-id])]
-     (if (string/blank? new-predicate)
-       ;; TODO Should also delete body literals that don't appear in any other rules
-       (update-in db [:program :rules] #(dissoc % rule-id))
-       (assoc-in db [:program :literals (:head rule) :predicate] new-predicate)))))
-
-(rf/reg-event-db
- ::edit-head-arg
- (undo/undoable "edit head arg")
- (fn [db [_ rule-id arg-idx new-arg]]
-   (let [rule (get-in db [:program :rules rule-id])]
-     (update-in db
-                [:program :literals (:head rule) :args]
-                (fn [args]
-                  (if (string/blank? new-arg)
-                    ;; XXX Seems not to work quite right, rule heads are
-                    ;; rendered with extra space after losing an argument
-                    (util/vector-remove args arg-idx)
-                    (assoc args arg-idx new-arg)))))))
 
 (rf/reg-event-fx
  ::mouse-move

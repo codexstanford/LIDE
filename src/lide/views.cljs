@@ -1,12 +1,9 @@
 (ns lide.views
   (:require
-   [clojure.string :as string]
-   [reagent.core :as r]
-   [re-frame.core :as rf]
    [lide.events :as events]
-   [lide.graph :as graph]
    [lide.subs :as subs]
-   [lide.util :as util]))
+   [re-frame.core :as rf]
+   [reagent.core :as r]))
 
 (defn center-position
   "Find the center point of a square at `position` with `size`."

@@ -4,15 +4,12 @@
 /*-init.clj
 /*.log
 
+/node_modules/
+
 # Leiningen
 /.lein-*
 /.nrepl-port
 
-# Node.js dependencies
-/node_modules/
-
-# shadow-cljs cache, port files
 /.shadow-cljs/
-
-# clj-kondo cache
 /.clj-kondo/.cache
+/.lsp/.cache

@@ -1,20 +1,19 @@
 (ns lide.main
   (:require
-   [clojure.string :as string]
-   [re-frame.core :as rf]
+   [lide.epilog.views :as epilog-views]
    [lide.events :as events]
    [lide.subs :as subs]
    [lide.util :as util]
    [lide.views :as views]
-   [lide.epilog.core :as epilog]
-   [lide.epilog.views :as epilog-views]
-   [lide.yscript.views :as ys-views]))
+   [lide.yscript.views :as ys-views]
+   [re-frame.core :as rf]))
 
-(defn graph-viewport [{:keys [set-ref]} & children]
+(defn graph-viewport
   "Draw an SVG group to contain the program graph.
 
   Using a group is useful because we can apply scale/translation
   transformations to the entire graph at once."
+  [{:keys [set-ref]} & children]
   (let [graph-transform @(rf/subscribe [::subs/graph-transform])]
     [:g {:ref set-ref
          :class "graph__viewport"
@@ -67,9 +66,7 @@
       "Redo"]]))
 
 (defn main-panel []
-  (let [target @(rf/subscribe [::subs/program-target])
-        show-toolbar? @(rf/subscribe [::subs/show-toolbar?])
-        vs-code @(rf/subscribe [::subs/vs-code])]
+  (let [show-toolbar? @(rf/subscribe [::subs/show-toolbar?])]
     [:div {:id "app-container"}
      [:div {:class "work-viewport"}
       [program-graph]]

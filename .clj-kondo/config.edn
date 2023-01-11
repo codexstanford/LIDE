@@ -12,4 +12,5 @@
                                                       find-doc
                                                       print-doc
                                                       pst
-                                                      source]}}}}
+                                                      source]}}
+           :clojure-lsp/unused-public-var {:exclude #{lide.core/init}}}}
