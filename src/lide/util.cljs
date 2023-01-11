@@ -1,7 +1,6 @@
 (ns lide.util
   (:require
-   [clojure.string :as string]
-   [reagent.core :as r]))
+   [clojure.string :as string]))
 
 ;; General utilities
 
@@ -33,13 +32,6 @@
   "Remove the element at `idx` from `vec`."
   [vec idx]
   (into (subvec vec 0 idx) (subvec vec (inc idx))))
-
-(defn hash-to-hsl [s]
-  (->> s
-       (. js/lide hashString s)
-       (#(* % 360))
-       (#(. js/Math floor %))
-       (#(str "hsl(" % ",100%,33%)"))))
 
 ;; DOM transform matrix stuff
 
@@ -181,65 +173,3 @@
                              (vec (remove #(= literal-id %) body)))))
                  rules)))))
 
-;; Reusable components
-
-(defn eip-svg-text-input [{:keys [value on-blur stop-editing x y width height]}]
-  (let [!value (r/atom value)]
-    (fn [{:keys [value on-blur x y width height]
-          :or {on-change (fn [] nil)
-               on-blur   (fn [] nil)}}]
-      (let [blur #(do (stop-editing)
-                      (on-blur %))]
-        [:foreignObject {:x 0
-                         :y (- y (/ height 2))
-                         :width width
-                         :height height}
-         [:input {:ref #(when % (do (.focus %)
-                                    (.select %)))
-                  :class "eip-svg-text__input"
-                  :value @!value
-                  :on-change #(reset! !value (-> % .-target .-value))
-                  :on-blur #(blur %)
-                  ;; Notice that the event blur is passed here is not in fact a
-                  ;; blur event. This could be misleading to callers but
-                  ;; event.target.value still works and that's all I use it for
-                  ;; for now
-                  :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
-                                  (blur %))}]]))))
-
-(defn eip-svg-text [{:keys [value x y display-style]}]
-  (let [!editing? (r/atom false)
-        start-editing #(reset! !editing? true)
-        stop-editing  #(reset! !editing? false)]
-    (fn [{:keys [value x y display-style] :as props}]
-      (if @!editing?
-        [eip-svg-text-input (assoc props :stop-editing stop-editing)]
-        [:text {:style display-style
-                :x x
-                :y y
-                :on-click start-editing}
-         value]))))
-
-(defn eip-plain-text [{:keys [value on-blur style]}]
-  (let [!value (r/atom value)
-        !input (r/atom nil)]
-    (fn [{:keys [class on-blur style value]
-          :or {style (constantly {})}
-          :as props}]
-      [:input (merge
-               props
-               {:ref #(reset! !input %)
-                :class (str "eip-plain-text " class)
-                :value @!value
-                :on-focus #(.select @!input)
-                :on-change #(reset! !value (-> % .-target .-value))
-                :on-key-down #(when (contains? #{"Enter" "Escape"} (.-key %))
-                                (.blur @!input))
-                :style (when @!value (style @!value))})])))
-
-(defn style-arg
-  "Hash `arg` to a color if it's a variable and return an appropriate style map."
-  [arg]
-  (if (variable? arg)
-    {"color" (hash-to-hsl arg)}
-    {}))
